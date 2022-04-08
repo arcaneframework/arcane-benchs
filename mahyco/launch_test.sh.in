@@ -1,0 +1,2 @@
+#!/bin/sh
+@MPIEXEC_EXECUTABLE@ -n @NB_CPU@ ${MPI_ARGS} @MAHYCO_EXE@ -A,MaxIteration=50 @MAHYCO_DATADIR@/Data.@NB_CPU@.arc
