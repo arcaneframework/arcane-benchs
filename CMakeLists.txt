@@ -30,7 +30,7 @@ endif()
 add_subdirectory(mahyco)
 set(MAHYCO_EXE "${Mahyco_BINARY_DIR}/Mahyco")
 set(MAHYCO_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/mahyco/data")
-set(MAHYCO_CPULIST 8 16 32 128 256 512 1024 2048)
+set(MAHYCO_CPULIST 8 16 32 128 256 512 1024 2048 4096 8192)
 foreach(X ${MAHYCO_CPULIST})
   # Used by 'mahyco/launch_test'
   set(NB_CPU ${X})
