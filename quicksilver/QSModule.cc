@@ -2,6 +2,9 @@
 
 #include "QS_axl.h"
 #include <arcane/ITimeLoopMng.h>
+#include <arcane/geometry/IGeometryMng.h>
+#include <arcane/cartesianmesh/CellDirectionMng.h>
+#include <arcane/cartesianmesh/ICartesianMesh.h>
 
 #include "CoralBenchmark.hh"
 #include "CycleTracking.hh"
@@ -41,7 +44,7 @@ public:
   explicit QSModule(const ModuleBuildInfo &mbi) : ArcaneQSObject(mbi) {}
 
 public:
-  void startInit(); // override;
+  void startInit() override;
 
   void cycleInit() override;
   void cycleTracking() override;
@@ -49,12 +52,18 @@ public:
 
   void gameOver() override;
 
-  /** Retourne le numéro de version du module */
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
 public:
   MonteCarlo *monteCarlo = NULL;
   Parameters params;
+
+protected:
+  ICartesianMesh* cartesian_mesh;
+
+public:
+  void getParametersAxl();
+
 };
 
 /*---------------------------------------------------------------------------*/
@@ -64,12 +73,17 @@ void QSModule::
 startInit()
 {
   info() << "Module Quicksilver INIT"; 
+
+  cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
+
   // mpiInit(&argc, &argv);
   printBanner(GIT_VERS, GIT_HASH);
   int argc = 3;
   char *argv[] = {".", "-i", "/home/lheritiera/Documents/arcane/arcane-benchs/quicksilver/Coral2_P1.inp"};
 
   params = getParameters(argc, argv);
+  cartesian_mesh->computeDirections();
+  getParametersAxl();
   printParameters(params, cout);
 
   // monteCarlo stores just about everything.
@@ -79,15 +93,56 @@ startInit()
 }
 
 void QSModule::
+getParametersAxl()
+{
+  // Equivalent de Parameters::parseCommandLine().
+  params.simulationParams.dt = options()->getDt();
+  params.simulationParams.fMax = options()->getFMax();
+  params.simulationParams.nParticles = options()->getNParticles();
+  params.simulationParams.nSteps = options()->getNSteps();
+  params.simulationParams.seed = options()->getSeed();
+  {
+    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirX));
+    params.simulationParams.nx = cdm.globalNbCell();
+  }
+  {
+    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirY));
+    params.simulationParams.ny = cdm.globalNbCell();
+  }
+  {
+    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirZ));
+    params.simulationParams.nz = cdm.globalNbCell();
+  }
+
+  // TODO : lx, ly, lz à calculer avec les valeurs de mesh.
+  params.simulationParams.lx = options()->getLx();
+  params.simulationParams.ly = options()->getLy();
+  params.simulationParams.lz = options()->getLz();
+
+  // xDom, yDom, zDom à calculer avec les valeurs de nb-part-x.
+
+  // ???
+  // addArg("bTally",           'B', 1, 'i', &(sp.balanceTallyReplications), 0, "number of balance tally replications");
+  // addArg("fTally",           'F', 1, 'i', &(sp.fluxTallyReplications),    0, "number of scalar flux tally replications");
+  // addArg("cTally",           'C', 1, 'i', &(sp.cellTallyReplications),    0, "number of scalar cell tally replications");
+
+
+
+  // Equivalent de Parameters::scanSimulationBlock().
+  params.simulationParams.boundaryCondition = options()->getBoundaryCondition().localstr();
+  params.simulationParams.eMin = options()->getEMin();
+  params.simulationParams.eMax = options()->getEMax();
+  params.simulationParams.nGroups = options()->getNGroups();
+  params.simulationParams.lowWeightCutoff = options()->getLowWeightCutoff();
+
+}
+
+void QSModule::
 cycleInit()
 {
   info() << "Module Quicksilver cycleInit";
 
   bool loadBalance = (bool)params.simulationParams.loadBalance;
-
-  // Stop code after 10 iterations
-  if (m_global_iteration() > 10)
-    subDomain()->timeLoopMng()->stopComputeLoop(true);
 
   MC_FASTTIMER_START(MC_Fast_Timer::cycleInit);
 

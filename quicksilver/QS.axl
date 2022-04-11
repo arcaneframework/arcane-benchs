@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <module name="QS" version="1.0">
   <description>Descripteur du module QS</description>
+
   <entry-points>
-    <!-- <entry-point method-name="subMain" name="SubMain" where="start-init" property="none" /> -->
     <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
 
     <entry-point method-name="cycleInit" name="CycleInit" where="compute-loop" property="none" />
@@ -11,4 +11,165 @@
     
     <entry-point method-name="gameOver" name="GameOver" where="exit" property="none" />
   </entry-points>
+
+  <options>
+
+    <simple name="dt" type="real" default="1e-8">
+      <description>
+        time step (seconds)
+      </description>
+    </simple>
+
+    <simple name="fMax" type="real" default="0.1">
+      <description>
+        max random mesh node displacement
+      </description>
+    </simple>
+
+    <simple name="nParticles" type="int64" default="1000000">
+      <description>
+        number of particles
+      </description>
+    </simple>
+
+    <simple name="nSteps" type="integer" default="10">
+      <description>
+        number of time steps
+      </description>
+    </simple>
+
+    <simple name="seed" type="integer" default="1029384756">
+      <description>
+        random number seed
+      </description>
+    </simple>
+
+    <simple name="lx" type="real" default="100.0">
+      <description>
+        x-size of simulation (cm)
+      </description>
+    </simple>
+
+    <simple name="ly" type="real" default="100.0">
+      <description>
+        y-size of simulation (cm)
+      </description>
+    </simple>
+
+    <simple name="lz" type="real" default="100.0">
+      <description>
+        z-size of simulation (cm)
+      </description>
+    </simple>
+
+    <!-- TODO : Passer à une enumeration (mais faut edit le code avant) -->
+    <simple name="boundaryCondition" type="string" default="reflect">
+      <description>
+        boundaryCondition
+      </description>
+    </simple>
+
+    <simple name="eMin" type="real" default="1e-9">
+      <description>
+        min energy of cross section
+      </description>
+    </simple>
+
+    <simple name="eMax" type="real" default="20">
+      <description>
+        max energy of cross section
+      </description>
+    </simple>
+
+    <simple name="nGroups" type="integer" default="230">
+      <description>
+        number of groups for cross sections
+      </description>
+    </simple>
+    
+    <simple name="lowWeightCutoff" type="real" default="0.001">
+      <description>
+        low weight roulette cutoff
+      </description>
+    </simple>
+
+
+
+
+    <!-- <simple name="material" type="string" default="">
+      <description>
+        materialName
+      </description>
+    </simple>
+
+    <simple name="shape" type="string" default="brick">
+      <description>
+        shape
+      </description>
+    </simple>
+
+    <simple name="radius" type="real" default="0.0">
+      <description>
+        radius
+      </description>
+    </simple>
+
+    <simple name="xCenter" type="real" default="0.0">
+      <description>
+        xCenter
+      </description>
+    </simple>
+
+    <simple name="yCenter" type="real" default="0.0">
+      <description>
+        yCenter
+      </description>
+    </simple>
+
+    <simple name="zCenter" type="real" default="0.0">
+      <description>
+        zCenter
+      </description>
+    </simple>
+
+    <simple name="xMin" type="real" default="0.0">
+      <description>
+        xMin
+      </description>
+    </simple>
+
+    <simple name="yMin" type="real" default="0.0">
+      <description>
+        yMin
+      </description>
+    </simple>
+
+    <simple name="zMin" type="real" default="0.0">
+      <description>
+        zMin
+      </description>
+    </simple>
+
+    <simple name="xMax" type="real" default="0.0">
+      <description>
+        xMax
+      </description>
+    </simple>
+
+    <simple name="yMax" type="real" default="0.0">
+      <description>
+        yMax
+      </description>
+    </simple>
+
+    <simple name="zMax" type="real" default="0.0">
+      <description>
+        zMax
+      </description>
+    </simple> -->
+
+
+
+  </options>
+
 </module>

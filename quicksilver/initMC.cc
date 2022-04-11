@@ -59,9 +59,9 @@ MonteCarlo* initMC(const Parameters& params)
    #else
      monteCarlo = new MonteCarlo(params);
    #endif
-   initGPUInfo(monteCarlo);
-   initTimeInfo(monteCarlo, params);
-   initNuclearData(monteCarlo, params);
+   //initGPUInfo(monteCarlo); // Pas besoin ?
+   initTimeInfo(monteCarlo, params); // Pas besoin ? (a part pour init monteCarlo)
+   initNuclearData(monteCarlo, params); // Comprendre à quoi ça sert après.
    initMesh(monteCarlo, params);
    initTallies(monteCarlo, params);
 
@@ -130,21 +130,11 @@ namespace
 {
    void initNuclearData(MonteCarlo* monteCarlo, const Parameters& params)
    {
-      #if defined HAVE_UVM
-         void *ptr1, *ptr2;
-         cudaMallocManaged( &ptr1, sizeof(NuclearData), cudaMemAttachGlobal );
-         cudaMallocManaged( &ptr2, sizeof(MaterialDatabase), cudaMemAttachGlobal );
 
-         monteCarlo->_nuclearData = new(ptr1) NuclearData(params.simulationParams.nGroups,
-                                                          params.simulationParams.eMin,
-                                                          params.simulationParams.eMax);
-         monteCarlo->_materialDatabase = new(ptr2) MaterialDatabase();
-     #else
-         monteCarlo->_nuclearData = new NuclearData(params.simulationParams.nGroups,
-                                                    params.simulationParams.eMin,
-                                                    params.simulationParams.eMax);
-         monteCarlo->_materialDatabase = new MaterialDatabase();
-     #endif
+     monteCarlo->_nuclearData = new NuclearData(params.simulationParams.nGroups,
+                                                   params.simulationParams.eMin,
+                                                   params.simulationParams.eMax);
+     monteCarlo->_materialDatabase = new MaterialDatabase();
 
      map<string, Polynomial> crossSection;
      for (auto crossSectionIter = params.crossSectionParams.begin();
@@ -243,9 +233,11 @@ namespace
       int nx = params.simulationParams.nx;
       int ny = params.simulationParams.ny;
       int nz = params.simulationParams.nz;
+
       double lx = params.simulationParams.lx;
       double ly = params.simulationParams.ly;
       double lz = params.simulationParams.lz;
+
       int xDom = params.simulationParams.xDom;
       int yDom = params.simulationParams.yDom;
       int zDom = params.simulationParams.zDom;
