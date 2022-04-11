@@ -1022,14 +1022,14 @@ InitGeometricValues()
         m_face_normal[iFace].x = produit(face_vec1.y, face_vec2.z, face_vec1.z, face_vec2.y);
         m_face_normal[iFace].y = - produit(face_vec2.x, face_vec1.z, face_vec2.z, face_vec1.x);
         m_face_normal[iFace].z = produit(face_vec1.x, face_vec2.y, face_vec1.y, face_vec2.x);
-        m_face_normal[iFace] /= m_face_normal[iFace].abs();
+        m_face_normal[iFace] /= m_face_normal[iFace].normL2();
     }
   } else {
     ENUMERATE_FACE (iFace, allFaces()) {
       Face face = *iFace;
       m_face_normal[iFace].x = (m_node_coord[face.node(1)].y - m_node_coord[face.node(0)].y); 
       m_face_normal[iFace].y = (m_node_coord[face.node(1)].x - m_node_coord[face.node(0)].x); 
-      m_face_normal[iFace] /= m_face_normal[iFace].abs();
+      m_face_normal[iFace] /= m_face_normal[iFace].normL2();
     }
   }
   ENUMERATE_FACE (iFace, allFaces()) {
@@ -1043,7 +1043,7 @@ InitGeometricValues()
       const Face& face = *iface;
       Integer index = iface.index(); 
         m_outer_face_normal[icell][index] = (m_face_coord[face]-m_cell_coord[icell]) 
-            / (m_face_coord[face]-m_cell_coord[icell]).abs();
+            / (m_face_coord[face]-m_cell_coord[icell]).normL2();
     }
   }
   PROF_ACC_END;
