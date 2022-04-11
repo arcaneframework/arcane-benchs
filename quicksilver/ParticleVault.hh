@@ -208,7 +208,7 @@ eraseSwapParticle(int index)
 
 // -----------------------------------------------------------------------
 HOST_DEVICE
-void MC_Load_Particle(MonteCarlo *mcco, MC_Particle &mc_particle, ParticleVault *particleVault, int particle_index);
+void MC_Load_Particle(MonteCarlo *monteCarlo, MC_Particle &mc_particle, ParticleVault *particleVault, int particle_index);
 HOST_DEVICE_END
 
 #endif

@@ -119,7 +119,7 @@ MC_Nearest_Facet MCT_Nearest_Facet(MC_Particle *mc_particle,
 //        MC_Warning( "Infinite distance (cell not bound) for location [Reg:%d Local Dom:%d "
 //                    "Global Dom: %d Cell:%d Fac:%d], coordinate (%g %g %g) and direction (%g %g %g).\n",
 //                    location.region, location.domain,
-//                    mcco->region->Global_Domain_Number(location.region, location.domain),
+//                    monteCarlo->region->Global_Domain_Number(location.region, location.domain),
 //                    location.cell, location.facet,
 //                    coordinate.x, coordinate.y, coordinate.z,
 //                    direction_cosine->alpha, direction_cosine->beta, direction_cosine->gamma);
@@ -574,7 +574,7 @@ namespace
 
          for (int facet_index = 0; facet_index < num_facets_per_cell; facet_index++)
          {
-//to-do        mcco->distance_to_facet->task[my_task_num].facet[facet_index].distance = PhysicalConstants::_hugeDouble;
+//to-do        monteCarlo->distance_to_facet->task[my_task_num].facet[facet_index].distance = PhysicalConstants::_hugeDouble;
             distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
 
             MC_General_Plane &plane = domain.mesh._cellGeometry[location.cell]._facet[facet_index];
@@ -602,7 +602,7 @@ namespace
                *facet_coords[0], *facet_coords[1], *facet_coords[2],
                coordinate, direction_cosine, false);
 
-//to-do        mcco->distance_to_facet->task[my_task_num].facet[facet_index].distance = t;
+//to-do        monteCarlo->distance_to_facet->task[my_task_num].facet[facet_index].distance = t;
             distance_to_facet[facet_index].distance = t;
          } // for facet_index
 
@@ -611,7 +611,7 @@ namespace
          MC_Nearest_Facet nearest_facet = MCT_Nearest_Facet_Find_Nearest(
             mc_particle, &domain, &location, coordinate,
             iteration, move_factor, num_facets_per_cell,
-//to-do       mcco->distance_to_facet->task[my_task_num].facet,
+//to-do       monteCarlo->distance_to_facet->task[my_task_num].facet,
             distance_to_facet,
             retry);
 

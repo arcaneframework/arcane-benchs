@@ -2,13 +2,13 @@
 <module name="QS" version="1.0">
   <description>Descripteur du module QS</description>
   <entry-points>
-    <entry-point method-name="subMain" name="SubMain" where="start-init" property="none" />
-    <!-- <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
+    <!-- <entry-point method-name="subMain" name="SubMain" where="start-init" property="none" /> -->
+    <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
 
     <entry-point method-name="cycleInit" name="CycleInit" where="compute-loop" property="none" />
     <entry-point method-name="cycleTracking" name="CycleTracking" where="compute-loop" property="none" />
     <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
     
-    <entry-point method-name="gameOver" name="GameOver" where="exit" property="none" /> -->
+    <entry-point method-name="gameOver" name="GameOver" where="exit" property="none" />
   </entry-points>
 </module>

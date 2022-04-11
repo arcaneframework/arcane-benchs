@@ -34,7 +34,7 @@ HOST_DEVICE_CUDA
    {}
 
    HOST_DEVICE_CUDA
-   const MC_Domain& get_domain(MonteCarlo *mcco) const;
+   const MC_Domain& get_domain(MonteCarlo *monteCarlo) const;
 };
 HOST_DEVICE_END
 

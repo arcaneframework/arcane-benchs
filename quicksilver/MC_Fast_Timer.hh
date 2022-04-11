@@ -71,41 +71,41 @@ extern const char *mc_fast_timer_names[MC_Fast_Timer::Num_Timers];
 
       #define MC_FASTTIMER_START(timerIndex) \
          if (omp_get_thread_num() == 0) {				      \
-            mcco->fast_timer->timers[timerIndex].startClock = mpiWtime(); \
+            monteCarlo->fast_timer->timers[timerIndex].startClock = mpiWtime(); \
          }
 
       #define MC_FASTTIMER_STOP(timerIndex) \
           if ( omp_get_thread_num() == 0 ) { \
-              mcco->fast_timer->timers[timerIndex].stopClock = mpiWtime(); \
-              mcco->fast_timer->timers[timerIndex].lastCycleClock   += \
-		(long unsigned) ((mcco->fast_timer->timers[timerIndex].stopClock - mcco->fast_timer->timers[timerIndex].startClock) * 1000000.0); \
-              mcco->fast_timer->timers[timerIndex].cumulativeClock += \
-		(long unsigned) ((mcco->fast_timer->timers[timerIndex].stopClock - mcco->fast_timer->timers[timerIndex].startClock) * 1000000.0); \
-              mcco->fast_timer->timers[timerIndex].numCalls++; \
+              monteCarlo->fast_timer->timers[timerIndex].stopClock = mpiWtime(); \
+              monteCarlo->fast_timer->timers[timerIndex].lastCycleClock   += \
+		(long unsigned) ((monteCarlo->fast_timer->timers[timerIndex].stopClock - monteCarlo->fast_timer->timers[timerIndex].startClock) * 1000000.0); \
+              monteCarlo->fast_timer->timers[timerIndex].cumulativeClock += \
+		(long unsigned) ((monteCarlo->fast_timer->timers[timerIndex].stopClock - monteCarlo->fast_timer->timers[timerIndex].startClock) * 1000000.0); \
+              monteCarlo->fast_timer->timers[timerIndex].numCalls++; \
           }
 
-      #define MC_FASTTIMER_GET_LASTCYCLE(timerIndex) (float)mcco->fast_timer->timers[timerIndex].lastCycleClock / 1000000.
+      #define MC_FASTTIMER_GET_LASTCYCLE(timerIndex) (float)monteCarlo->fast_timer->timers[timerIndex].lastCycleClock / 1000000.
 
    #else // else CHRONO_MISSING is not defined, so high resolution clock is available
 
       #define MC_FASTTIMER_START(timerIndex) \
           if (omp_get_thread_num() == 0) { \
-              mcco->fast_timer->timers[timerIndex].startClock = std::chrono::high_resolution_clock::now(); \
+              monteCarlo->fast_timer->timers[timerIndex].startClock = std::chrono::high_resolution_clock::now(); \
           }
 
       #define MC_FASTTIMER_STOP(timerIndex) \
           if ( omp_get_thread_num() == 0 ) { \
-              mcco->fast_timer->timers[timerIndex].stopClock = std::chrono::high_resolution_clock::now(); \
-              mcco->fast_timer->timers[timerIndex].lastCycleClock += \
+              monteCarlo->fast_timer->timers[timerIndex].stopClock = std::chrono::high_resolution_clock::now(); \
+              monteCarlo->fast_timer->timers[timerIndex].lastCycleClock += \
                 std::chrono::duration_cast<std::chrono::microseconds> \
-		(mcco->fast_timer->timers[timerIndex].stopClock - mcco->fast_timer->timers[timerIndex].startClock).count(); \
-              mcco->fast_timer->timers[timerIndex].cumulativeClock += \
+		(monteCarlo->fast_timer->timers[timerIndex].stopClock - monteCarlo->fast_timer->timers[timerIndex].startClock).count(); \
+              monteCarlo->fast_timer->timers[timerIndex].cumulativeClock += \
 	        std::chrono::duration_cast<std::chrono::microseconds> \
-	        (mcco->fast_timer->timers[timerIndex].stopClock - mcco->fast_timer->timers[timerIndex].startClock).count(); \
-              mcco->fast_timer->timers[timerIndex].numCalls++;		\
+	        (monteCarlo->fast_timer->timers[timerIndex].stopClock - monteCarlo->fast_timer->timers[timerIndex].startClock).count(); \
+              monteCarlo->fast_timer->timers[timerIndex].numCalls++;		\
           }
 
-      #define MC_FASTTIMER_GET_LASTCYCLE(timerIndex) (float)mcco->fast_timer->timers[timerIndex].lastCycleClock / 1000000.
+      #define MC_FASTTIMER_GET_LASTCYCLE(timerIndex) (float)monteCarlo->fast_timer->timers[timerIndex].lastCycleClock / 1000000.
 
 
    #endif // end ifdef CHRONO_MISSING else section

@@ -2,6 +2,6 @@
 #define GLOBALS_HH
 
 class MonteCarlo;
-extern MonteCarlo* mcco;
+extern MonteCarlo* monteCarlo;
 
 #endif

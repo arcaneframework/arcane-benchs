@@ -233,15 +233,15 @@ void MC_Particle_Buffer::Initialize_Map()
     this->num_buffers = 0;
 
     // Determine number of buffers needed and assign processors to buffers
-    for ( int domain_index = 0; domain_index < mcco->domain.size(); domain_index++ )
+    for ( int domain_index = 0; domain_index < monteCarlo->domain.size(); domain_index++ )
     {
-        MC_Domain &domain = mcco->domain[domain_index];
+        MC_Domain &domain = monteCarlo->domain[domain_index];
         for ( int neighbor_index = 0; neighbor_index < domain.mesh._nbrRank.size(); neighbor_index++ )
         {
             int neighbor_rank = domain.mesh._nbrRank[neighbor_index];
 
             // If neighbor is not on same processor
-            if ( neighbor_rank != mcco->processor_info->rank )
+            if ( neighbor_rank != monteCarlo->processor_info->rank )
             {
                 if ( this->Get_Processor_Buffer_Index(neighbor_rank) == -1 )
                 {
@@ -271,10 +271,10 @@ void MC_Particle_Buffer::Unpack_Particle_Buffer(int buffer_index, uint64_t &fill
 
     recv_buffer.Reset_Offsets();
 
-    if (mcco->_params.simulationParams.debugThreads >= 2)
+    if (monteCarlo->_params.simulationParams.debugThreads >= 2)
     {
         fprintf(stderr,"%02d-%02d <- %02d %3d particles MC_Particle_Buffer::Unpack_Particle_Buffer into vault %d\n",
-                        mcco->processor_info->rank ,omp_get_thread_num(), recv_buffer.processor,
+                        monteCarlo->processor_info->rank ,omp_get_thread_num(), recv_buffer.processor,
                         recv_buffer.num_particles, 0);
     }
 
@@ -286,7 +286,7 @@ void MC_Particle_Buffer::Unpack_Particle_Buffer(int buffer_index, uint64_t &fill
 
         base_particle.last_event = MC_Tally_Event::Facet_Crossing_Communication;
 
-        mcco->_particleVaultContainer->addProcessingParticle(base_particle, fill_vault);
+        monteCarlo->_particleVaultContainer->addProcessingParticle(base_particle, fill_vault);
     }
 }
 
@@ -297,12 +297,12 @@ void MC_Particle_Buffer::Unpack_Particle_Buffer(int buffer_index, uint64_t &fill
 //----------------------------------------------------------------------------------------------------------------------
 bool MC_Particle_Buffer::Trivially_Done()
 {
-    if (mcco->processor_info->num_processors > 1) 
+    if (monteCarlo->processor_info->num_processors > 1) 
     {
         return false;
     }
 
-    uint64_t processingSize = mcco->_particleVaultContainer->sizeProcessing();
+    uint64_t processingSize = monteCarlo->_particleVaultContainer->sizeProcessing();
     if( processingSize == 0 )
     {
         return true;
@@ -341,9 +341,9 @@ void MC_Particle_Buffer::Delete_Completed_Extra_Send_Buffers()
 //----------------------------------------------------------------------------------------------------------------------
 //  Constructor.
 //----------------------------------------------------------------------------------------------------------------------
-MC_Particle_Buffer::MC_Particle_Buffer(MonteCarlo *mcco_, size_t bufferSize_)
+MC_Particle_Buffer::MC_Particle_Buffer(MonteCarlo *monteCarlo_, size_t bufferSize_)
 {
-    this->mcco  = mcco_;
+    this->monteCarlo  = monteCarlo_;
 #ifdef HAVE_ASYNC_MPI
     this->new_test_done_method = MC_New_Test_Done_Method::NonBlocking;
 #else
@@ -366,11 +366,11 @@ void MC_Particle_Buffer::Initialize()
 {
     NVTX_Range range("MC_Particle_Buffer::Initialize");
 
-    if (mcco->processor_info->num_processors > 1) 
+    if (monteCarlo->processor_info->num_processors > 1) 
     {
         this->Instantiate();
 
-        mpiBarrier(mcco->processor_info->comm_mc_world);
+        mpiBarrier(monteCarlo->processor_info->comm_mc_world);
     }
 }
 
@@ -425,10 +425,10 @@ void MC_Particle_Buffer::Buffer_Particle(MC_Base_Particle &particle, int buffer)
 {
     particle_buffer_base_type &send_buffer = this->task[0].send_buffer[buffer];
 
-    if (mcco->_params.simulationParams.debugThreads >= 3)
+    if (monteCarlo->_params.simulationParams.debugThreads >= 3)
     { 
         fprintf(stderr,"%02d-%02d MC_Particle_Buffer::Buffer_Particle entered task_index=%d buffer_size=%d "
-                "buffer.num_particles=%d\n",mcco->processor_info->rank ,omp_get_thread_num(),0, buffer_size, 
+                "buffer.num_particles=%d\n",monteCarlo->processor_info->rank ,omp_get_thread_num(),0, buffer_size, 
                 send_buffer.num_particles); 
     }
 
@@ -484,16 +484,16 @@ void MC_Particle_Buffer::Send_Particle_Buffer(int buffer)
         send_buffer.int_data[0] = send_buffer.num_particles;
         send_buffer.int_data[1] = 0; //Padding
 
-        if (mcco->_params.simulationParams.debugThreads >= 2)
+        if (monteCarlo->_params.simulationParams.debugThreads >= 2)
         {
             fprintf(stderr,"%02d-%02d -> %02d %3d particles MC_Particle_Buffer::Send_Particle_Buffer\n",
-                    mcco->processor_info->rank ,omp_get_thread_num(), send_buffer.processor,
+                    monteCarlo->processor_info->rank ,omp_get_thread_num(), send_buffer.processor,
                     send_buffer.num_particles);
         }
 
 
         mpiIsend(send_buffer.int_data, send_buffer.length, MPI_BYTE, send_buffer.processor,
-                 MC_Tag_Particle_Buffer, mcco->processor_info->comm_mc_world,
+                 MC_Tag_Particle_Buffer, monteCarlo->processor_info->comm_mc_world,
                  &send_buffer.request_list);
 
         // non-blocking send, copy send_buffer to the extra list, so we can re-use send_buffer
@@ -517,7 +517,7 @@ void MC_Particle_Buffer::Post_Receive_Particle_Buffer( size_t bufferSize_ )
         //Posting the Irecv Buffers
         mpiIrecv(recv_buffer.int_data, recv_buffer.length, MPI_BYTE, recv_buffer.processor,          
                  MC_Tag_Particle_Buffer, 
-                 mcco->processor_info->comm_mc_world, &recv_buffer.request_list);
+                 monteCarlo->processor_info->comm_mc_world, &recv_buffer.request_list);
     }
 }
 
@@ -541,7 +541,7 @@ void MC_Particle_Buffer::Receive_Particle_Buffers(uint64_t &fill_vault)
 
             mpiIrecv(recv_buffer.int_data, recv_buffer.length, MPI_BYTE, recv_buffer.processor,
                      MC_Tag_Particle_Buffer,
-                     mcco->processor_info->comm_mc_world, &recv_buffer.request_list);
+                     monteCarlo->processor_info->comm_mc_world, &recv_buffer.request_list);
         }
     }
 }
@@ -563,7 +563,7 @@ void MC_Particle_Buffer::Cancel_Receive_Buffer_Requests()
 //----------------------------------------------------------------------------------------------------------------------
 bool MC_Particle_Buffer::Test_Done_New( MC_New_Test_Done_Method::Enum test_done_method )
 {
-    if ( !(mcco->processor_info->num_processors > 1 ))
+    if ( !(monteCarlo->processor_info->num_processors > 1 ))
     {
         return this->Trivially_Done();
     }
@@ -572,7 +572,7 @@ bool MC_Particle_Buffer::Test_Done_New( MC_New_Test_Done_Method::Enum test_done_
 
     MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_Test_Done);
 
-    mcco->_tallies->SumTasks();
+    monteCarlo->_tallies->SumTasks();
 
     if ( test_done_method == MC_New_Test_Done_Method::Blocking )
     {
@@ -603,14 +603,14 @@ bool MC_Particle_Buffer::Allreduce_ParticleCounts()
     int64_t buf[2];
     int64_t hard_blocking_sum[2] = {0, 0};
 
-    this->test_done.Get_Local_Gains_And_Losses(mcco, buf);
+    this->test_done.Get_Local_Gains_And_Losses(monteCarlo, buf);
 
-    mpiAllreduce(buf, hard_blocking_sum, 2, MPI_INT64_T, MPI_SUM, mcco->processor_info->comm_mc_world);
+    mpiAllreduce(buf, hard_blocking_sum, 2, MPI_INT64_T, MPI_SUM, monteCarlo->processor_info->comm_mc_world);
 
 #if 0
     if (hard_blocking_sum[0] == hard_blocking_sum[1])
         fprintf(stderr,"DEBUGT %d:%d %s:%d Allreduce_ParticleCounts gains=%d loss=%d\n",
-                mcco->processor_info->rank,omp_get_thread_num(),
+                monteCarlo->processor_info->rank,omp_get_thread_num(),
                 __FILE__,__LINE__,hard_blocking_sum[0],hard_blocking_sum[1]);
 #endif
 
@@ -634,9 +634,9 @@ bool MC_Particle_Buffer::Iallreduce_ParticleCounts()
         }
         else
         {
-            this->test_done.Get_Local_Gains_And_Losses(mcco, this->test_done.non_blocking_send);
+            this->test_done.Get_Local_Gains_And_Losses(monteCarlo, this->test_done.non_blocking_send);
             mpiIAllreduce(this->test_done.non_blocking_send, this->test_done.non_blocking_sum, 
-                          2, MPI_INT64_T, MPI_SUM, mcco->processor_info->comm_mc_world, 
+                          2, MPI_INT64_T, MPI_SUM, monteCarlo->processor_info->comm_mc_world, 
                           &this->test_done.IallreduceRequest);
         }
     }

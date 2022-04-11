@@ -3,7 +3,7 @@
 
 class MonteCarlo;
 
-void MC_SourceNow(MonteCarlo *mcco);
+void MC_SourceNow(MonteCarlo *monteCarlo);
 
 #endif
 

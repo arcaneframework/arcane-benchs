@@ -6,9 +6,9 @@
 //  Return a reference to the domain for this location.
 
 HOST_DEVICE
-const MC_Domain &MC_Location::get_domain(MonteCarlo *mcco) const
+const MC_Domain &MC_Location::get_domain(MonteCarlo *monteCarlo) const
 {
-    return mcco->domain[domain];
+    return monteCarlo->domain[domain];
 }
 
 HOST_DEVICE_END

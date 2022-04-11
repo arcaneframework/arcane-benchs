@@ -45,7 +45,7 @@ void MC_Verify_Thread_Zero(char const * const file, int line)
     if (thread_id != 0)
     {
         int mpi_rank = -1;
-        mpiComm_rank(mcco->processor_info->comm_mc_world, &mpi_rank);
+        mpiComm_rank(monteCarlo->processor_info->comm_mc_world, &mpi_rank);
         fprintf(stderr,"Fatal Error: %s:%d MPI Routine called by thread other than zero."
                        "\n\tMPI Process %d, Thread %d", file, line, mpi_rank, thread_id);
         mpiAbort(MPI_COMM_WORLD, -1); abort();

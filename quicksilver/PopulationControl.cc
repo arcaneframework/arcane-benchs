@@ -29,12 +29,12 @@ void PopulationControl(MonteCarlo* monteCarlo, bool loadBalance)
     {
         // If we are parallel, we will have one domain per mpi processs.  The targetNumParticles is across
         // all MPI processes, so we need to divide by the number or ranks to get the per-mpi-process number targetNumParticles
-        targetNumParticles = ceil((double)targetNumParticles / (double)mcco->processor_info->num_processors );
+        targetNumParticles = ceil((double)targetNumParticles / (double)monteCarlo->processor_info->num_processors );
 
         //NO LONGER SPLITING VAULTS BY THREADS
 //        // If we are threaded, targetNumParticles should be divided by the number of threads (tasks) to balance
 //        // the particles across the thread level vaults.
-//        targetNumParticles = ceil((double)targetNumParticles / (double)mcco->processor_info->num_tasks);
+//        targetNumParticles = ceil((double)targetNumParticles / (double)monteCarlo->processor_info->num_tasks);
     }
     else
     {

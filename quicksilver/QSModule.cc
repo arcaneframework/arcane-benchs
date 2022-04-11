@@ -30,11 +30,6 @@
 #include "git_hash.hh"
 #include "git_vers.hh"
 
-void gameOver();
-void cycleInit(bool loadBalance);
-void cycleTracking(MonteCarlo *monteCarlo);
-void cycleFinalize();
-
 using namespace Arcane;
 using namespace std;
 
@@ -48,18 +43,18 @@ public:
 public:
   void startInit(); // override;
 
-  void subMain() override;
-  void cycleInit(bool loadBalance);           // override;
-  void cycleTracking(MonteCarlo *monteCarlo); // override;
-  void cycleFinalize();                       // override;
+  void cycleInit() override;
+  void cycleTracking() override;
+  void cycleFinalize() override;
 
-  void gameOver(); // override;
+  void gameOver() override;
 
   /** Retourne le numéro de version du module */
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
 public:
-  MonteCarlo *mcco = NULL;
+  MonteCarlo *monteCarlo = NULL;
+  Parameters params;
 };
 
 /*---------------------------------------------------------------------------*/
@@ -69,62 +64,26 @@ void QSModule::
 startInit()
 {
   info() << "Module Quicksilver INIT"; 
-}
-
-void QSModule::
-subMain()
-{
   // mpiInit(&argc, &argv);
   printBanner(GIT_VERS, GIT_HASH);
-
   int argc = 3;
-  char *argv[] = {".", "-i",
-                  "/home/lheritiera/Documents/arcane/arcane-benchs/quicksilver/"
-                  "Coral2_P1.inp"};
+  char *argv[] = {".", "-i", "/home/lheritiera/Documents/arcane/arcane-benchs/quicksilver/Coral2_P1.inp"};
 
-  Parameters params = getParameters(argc, argv);
+  params = getParameters(argc, argv);
   printParameters(params, cout);
 
-  // mcco stores just about everything.
-  mcco = initMC(params);
+  // monteCarlo stores just about everything.
+  monteCarlo = initMC(params);
 
-  int loadBalance = params.simulationParams.loadBalance;
-
-  MC_FASTTIMER_START(MC_Fast_Timer::main); // this can be done once mcco exist.
-
-  const int nSteps = params.simulationParams.nSteps;
-
-  for (int ii = 0; ii < nSteps; ++ii) {
-    cycleInit(bool(loadBalance));
-    cycleTracking(mcco);
-    cycleFinalize();
-
-    mcco->fast_timer->Last_Cycle_Report(params.simulationParams.cycleTimers,
-                                        mcco->processor_info->rank,
-                                        mcco->processor_info->num_processors,
-                                        mcco->processor_info->comm_mc_world);
-  }
-
-  MC_FASTTIMER_STOP(MC_Fast_Timer::main);
-
-  gameOver();
-
-  coralBenchmarkCorrectness(mcco, params);
-
-#ifdef HAVE_UVM
-  mcco->~MonteCarlo();
-  cudaFree(mcco);
-#else
-  delete mcco;
-#endif
-
-  mpiFinalize();
+  MC_FASTTIMER_START(MC_Fast_Timer::main); // this can be done once monteCarlo exist.
 }
 
 void QSModule::
-cycleInit(bool loadBalance)
+cycleInit()
 {
   info() << "Module Quicksilver cycleInit";
+
+  bool loadBalance = (bool)params.simulationParams.loadBalance;
 
   // Stop code after 10 iterations
   if (m_global_iteration() > 10)
@@ -132,32 +91,32 @@ cycleInit(bool loadBalance)
 
   MC_FASTTIMER_START(MC_Fast_Timer::cycleInit);
 
-  mcco->clearCrossSectionCache();
+  monteCarlo->clearCrossSectionCache();
 
-  mcco->_tallies->CycleInitialize(mcco);
+  monteCarlo->_tallies->CycleInitialize(monteCarlo);
 
-  mcco->_particleVaultContainer->swapProcessingProcessedVaults();
+  monteCarlo->_particleVaultContainer->swapProcessingProcessedVaults();
 
-  mcco->_particleVaultContainer->collapseProcessed();
-  mcco->_particleVaultContainer->collapseProcessing();
+  monteCarlo->_particleVaultContainer->collapseProcessed();
+  monteCarlo->_particleVaultContainer->collapseProcessing();
 
-  mcco->_tallies->_balanceTask[0]._start =
-      mcco->_particleVaultContainer->sizeProcessing();
+  monteCarlo->_tallies->_balanceTask[0]._start =
+      monteCarlo->_particleVaultContainer->sizeProcessing();
 
-  mcco->particle_buffer->Initialize();
+  monteCarlo->particle_buffer->Initialize();
 
-  MC_SourceNow(mcco);
+  MC_SourceNow(monteCarlo);
 
-  PopulationControl(mcco, loadBalance); // controls particle population
+  PopulationControl(monteCarlo, loadBalance); // controls particle population
 
   RouletteLowWeightParticles(
-      mcco); // Delete particles with low statistical weight
+      monteCarlo); // Delete particles with low statistical weight
 
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleInit);
 }
 
 void QSModule::
-cycleTracking(MonteCarlo *monteCarlo)
+cycleTracking()
 {
   info() << "Module Quicksilver cycleTracking";
 
@@ -345,29 +304,47 @@ cycleFinalize()
 
   MC_FASTTIMER_START(MC_Fast_Timer::cycleFinalize);
 
-  mcco->_tallies->_balanceTask[0]._end =
-      mcco->_particleVaultContainer->sizeProcessed();
+  monteCarlo->_tallies->_balanceTask[0]._end =
+      monteCarlo->_particleVaultContainer->sizeProcessed();
 
   // Update the cumulative tally data.
-  mcco->_tallies->CycleFinalize(mcco);
+  monteCarlo->_tallies->CycleFinalize(monteCarlo);
 
-  mcco->time_info->cycle++;
+  monteCarlo->time_info->cycle++;
 
-  mcco->particle_buffer->Free_Memory();
+  monteCarlo->particle_buffer->Free_Memory();
 
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleFinalize);
+
+  monteCarlo->fast_timer->Last_Cycle_Report(params.simulationParams.cycleTimers,
+                                        monteCarlo->processor_info->rank,
+                                        monteCarlo->processor_info->num_processors,
+                                        monteCarlo->processor_info->comm_mc_world);
 }
 
 void QSModule::
 gameOver()
 {
+  MC_FASTTIMER_STOP(MC_Fast_Timer::main);
+
   info() << "Module Quicksilver gameOver";
 
-  mcco->fast_timer->Cumulative_Report(
-      mcco->processor_info->rank, mcco->processor_info->num_processors,
-      mcco->processor_info->comm_mc_world,
-      mcco->_tallies->_balanceCumulative._numSegments);
-  mcco->_tallies->_spectrum.PrintSpectrum(mcco);
+  monteCarlo->fast_timer->Cumulative_Report(
+      monteCarlo->processor_info->rank, monteCarlo->processor_info->num_processors,
+      monteCarlo->processor_info->comm_mc_world,
+      monteCarlo->_tallies->_balanceCumulative._numSegments);
+  monteCarlo->_tallies->_spectrum.PrintSpectrum(monteCarlo);
+
+  coralBenchmarkCorrectness(monteCarlo, params);
+
+  #ifdef HAVE_UVM
+  monteCarlo->~MonteCarlo();
+  cudaFree(monteCarlo);
+#else
+  delete monteCarlo;
+#endif
+
+  //mpiFinalize();
 }
 
 /*---------------------------------------------------------------------------*/

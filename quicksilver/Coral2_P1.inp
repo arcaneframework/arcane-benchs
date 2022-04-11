@@ -6,7 +6,7 @@ Simulation:
    cycleTimers: 0
    debugThreads: 0
    mpiThreadMultiple: 0
-   nSteps: 1
+   nSteps: 10
    seed: 1029384756
    eMax: 20
    eMin: 1e-09

@@ -344,8 +344,8 @@ class Tallies
     void CycleInitialize(MonteCarlo* monteCarlo);
 
     void SumTasks();
-    void CycleFinalize(MonteCarlo *mcco);
-    void PrintSummary(MonteCarlo *mcco);
+    void CycleFinalize(MonteCarlo *monteCarlo);
+    void PrintSummary(MonteCarlo *monteCarlo);
 
     HOST_DEVICE_CUDA
     void TallyScalarFlux(double value, int domain, int task, int cell, int group)
@@ -359,7 +359,7 @@ class Tallies
         ATOMIC_ADD( _cellTallyDomain[domain]._task[task]._cell[cell], value );
     }
 
-    double ScalarFluxSum(MonteCarlo *mcco);
+    double ScalarFluxSum(MonteCarlo *monteCarlo);
 
   private:
     int _num_balance_replications;

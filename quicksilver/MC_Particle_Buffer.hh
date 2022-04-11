@@ -75,7 +75,7 @@ class mcp_test_done_class
     int64_t non_blocking_sum[2];
     MPI_Request IallreduceRequest;
 
-    void Get_Local_Gains_And_Losses(MonteCarlo *mcco, int64_t sent_recv[2]);
+    void Get_Local_Gains_And_Losses(MonteCarlo *monteCarlo, int64_t sent_recv[2]);
     void Post_Recv();
     void Zero_Out();
     void Reduce_Num_Sent_And_Recv(int64_t buf_sum[2]);
@@ -103,7 +103,7 @@ class MC_Particle_Buffer
 {
  private:
 
-    MonteCarlo *mcco;
+    MonteCarlo *monteCarlo;
     mcp_test_done_class          test_done;
     particle_buffer_task_class  *task;                 // buffers for each task
     std::map<int, int>    processor_buffer_map; // Map processors to buffers. buffer_index = processor_buffer_map[processor]
@@ -123,7 +123,7 @@ class MC_Particle_Buffer
     int  num_buffers;         // Number of particle buffers
     int  buffer_size;         // Buffer size to be sent.
 
-    MC_Particle_Buffer(MonteCarlo *mcco_, size_t bufferSize_);       // constructor
+    MC_Particle_Buffer(MonteCarlo *monteCarlo_, size_t bufferSize_);       // constructor
     void Initialize();
     int  Choose_Buffer(int neighbor_rank);
     int  Get_Processor_Buffer_Index(int processor);
@@ -149,7 +149,7 @@ private:
 };
 
 /*
-  mcco->particle_buffer->test_done.local_sent
+  monteCarlo->particle_buffer->test_done.local_sent
                                   .local_recv
                                   .BlockingSum;
 

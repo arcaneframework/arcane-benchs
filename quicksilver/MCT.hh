@@ -47,7 +47,7 @@ Subfacet_Adjacency &MCT_Adjacent_Facet(const MC_Location &location, MC_Particle 
 HOST_DEVICE_END
 
 HOST_DEVICE
-void MCT_Reflect_Particle(MonteCarlo *mcco, MC_Particle &particle);
+void MCT_Reflect_Particle(MonteCarlo *monteCarlo, MC_Particle &particle);
 HOST_DEVICE_END
 
 #endif
