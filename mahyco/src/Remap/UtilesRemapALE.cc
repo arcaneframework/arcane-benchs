@@ -1,4 +1,4 @@
-// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #include "RemapALEService.h"
 void RemapALEService::ComputeNodeGroupToRelax(){
     
@@ -265,11 +265,11 @@ void RemapALEService::computeNewEnvCells(Integer index_env) {
     }
   }
   if (!cells_to_add.empty()) {
-    pinfo() << "ADD_CELLS to env " << env->name() << " n=" << cells_to_add.size();
+    info() << "ADD_CELLS to env " << env->name() << " n=" << cells_to_add.size();
     env->cells().addItems(cells_to_add);
   }
   if (!cells_to_remove.empty()){
-    pinfo() << "REMOVE_CELLS to env " << env->name() << " n=" << cells_to_remove.size();
+    info() << "REMOVE_CELLS to env " << env->name() << " n=" << cells_to_remove.size();
     env->cells().removeItems(cells_to_remove);
   }
 }
