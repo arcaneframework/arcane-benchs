@@ -21,9 +21,9 @@
         <nb-part-z>2</nb-part-z>
         <origin>1.0 2.0 3.0</origin>
         <generate-sod-groups>true</generate-sod-groups>
-        <x><n>200</n><length>1.0</length></x>
-        <y><n>20</n><length>0.3</length></y>
-        <z><n>30</n><length>0.3</length></z>
+        <x><n>480</n><length>1.0</length></x>
+        <y><n>8</n><length>0.3</length></y>
+        <z><n>8</n><length>0.3</length></z>
       </generator>
 
       <initialization>
@@ -41,7 +41,9 @@
 
   <arcane-load-balance>
     <active>true</active>
-    <partitioner name="Metis" />
+    <partitioner name="MeshPartitionerTester">
+      <sub-rank-divider>8</sub-rank-divider>
+    </partitioner>
     <period>5</period>
     <statistics>true</statistics>
     <max-imbalance>0.01</max-imbalance>
@@ -49,7 +51,7 @@
   </arcane-load-balance>
 
   <additional-variables>
-    <nb-additional-cell-variable>200</nb-additional-cell-variable>
+    <nb-additional-cell-variable>300</nb-additional-cell-variable>
     <cell-array-variable-size>50</cell-array-variable-size>
   </additional-variables>
 
@@ -59,8 +61,8 @@
     <deltat-init>0.001</deltat-init>
     <deltat-min>0.0001</deltat-min>
     <deltat-max>0.01</deltat-max>
-    <final-time>0.2</final-time>
-
+    <!-- <final-time>1.56e-2</final-time> -->
+    <final-time>7.52e-3</final-time>
     <viscosity-linear-coef>.5</viscosity-linear-coef>
     <viscosity-quadratic-coef>.6</viscosity-quadratic-coef>
 
