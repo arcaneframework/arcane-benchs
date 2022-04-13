@@ -15,9 +15,11 @@ git clone https://github.com/arcaneframework/arcane-benchs
 
 You need to compile and install
 [Arcane](https://github.com/arcaneframework/framework) in Release
-configuration following the instructions in the github repository. We
+configuration following the instructions in the github
+repository. Version 3.5.7+ of Arcane is required. We
 suppose Arcane will be installed in the directory
-`${ARCANE_INSTALL_PATH}`. You can use the sources of Arcane provided in this
+`${ARCANE_INSTALL_PATH}`. Instead of using a separate distribution
+of Arcane You can use the sources of Arcane provided in this
 repository if you use git submodules:
 
 ~~~{.sh}
@@ -48,6 +50,11 @@ Two benchs are availables:
 The benchs are launched by shell scripts generated in the build
 directory. You can specifiy the environment variable ` MPI_ARGS` if you
 want to add some arguments to the MPI launch command.
+
+It is important to note that by default only the processus with rank 0
+will display information in the listing. You may set the environment
+variable `ARCANE_PARALLEL_OUTPUT` to `1` to allow all other ranks to print
+their corresponding listing in a file `output%R` where `%R` is the rank.
 
 ### MicroHydro
 
