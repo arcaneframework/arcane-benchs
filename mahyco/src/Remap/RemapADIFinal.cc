@@ -66,14 +66,14 @@ void RemapADIService::remapVariables(Integer dimension, Integer withDualProjecti
     }
     
     if (!cells_to_add.empty()) {
-      pinfo() << "ADD_CELLS to env " << env->name() << " n=" << cells_to_add.size() 
-        << " ITERATION " << globalIteration();
+      info() << "ADD_CELLS to env " << env->name() << " n=" << cells_to_add.size() 
+             << " ITERATION " << globalIteration();
       env_cells.addItems(cells_to_add);
       to_add_rm_cells = true;
     }
     if (!cells_to_remove.empty()){
-      pinfo() << "REMOVE_CELLS to env " << env->name() << " n=" << cells_to_remove.size()
-        << " ITERATION " << globalIteration();
+      info() << "REMOVE_CELLS to env " << env->name() << " n=" << cells_to_remove.size()
+             << " ITERATION " << globalIteration();
       env_cells.removeItems(cells_to_remove);
       to_add_rm_cells = true;
     }
@@ -190,7 +190,7 @@ void RemapADIService::remapVariables(Integer dimension, Integer withDualProjecti
 
       // On ajoute réellement les items à l'environnement
       CellGroup env_cells = env->cells();
-      pinfo() << "ADD_CELLS to env " << env->name() << " n=" << cells_to_add.size(); 
+      info() << "ADD_CELLS to env " << env->name() << " n=" << cells_to_add.size(); 
       env_cells.addItems(cells_to_add);
       to_add_rm_cells = true;
     }
