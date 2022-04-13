@@ -252,7 +252,7 @@ namespace
             nDomainsPerRank = 4;
       
       DecompositionObject ddc(myRank, nRanks, nDomainsPerRank, 0);
-      vector<int> myDomainGid = ddc.getAssignedDomainGids();
+      vector<int> myDomainGid = ddc.getAssignedDomainGids(); // Nos sous-domaines
       
       GlobalFccGrid globalGrid(nx, ny, nz, lx, ly, lz);
       
@@ -265,6 +265,7 @@ namespace
       
       qs_assert(domainCenter.size() == nCenters);
       
+      // Liste de nos sous-domaines.
       vector<MeshPartition> partition;
       {
          int foremanRank = myRank;

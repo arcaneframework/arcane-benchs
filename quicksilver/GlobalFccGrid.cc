@@ -16,8 +16,8 @@ namespace
 
 GlobalFccGrid::GlobalFccGrid(int nx, int ny, int nz,
                              double lx, double ly, double lz)
-: _nx(nx), _ny(ny), _nz(nz),
-  _lx(lx), _ly(ly), _lz(lz),
+: _nx(nx), _ny(ny), _nz(nz), // total
+  _lx(lx), _ly(ly), _lz(lz), // total
   _cellTupleToIndex(nx, ny, nz),
   _cellIndexToTuple(nx, ny, nz),
   _nodeTupleToIndex(nx+1, ny+1, nz+1, 4),
@@ -55,14 +55,18 @@ const vector<Tuple4>& GlobalFccGrid::cornerTupleOffsets() const
       offset.push_back(Tuple4(1, 0, 0, 0)); // 1
       offset.push_back(Tuple4(0, 1, 0, 0)); // 2
       offset.push_back(Tuple4(1, 1, 0, 0)); // 3
+
       offset.push_back(Tuple4(0, 0, 1, 0)); // 4
       offset.push_back(Tuple4(1, 0, 1, 0)); // 5
       offset.push_back(Tuple4(0, 1, 1, 0)); // 6
       offset.push_back(Tuple4(1, 1, 1, 0)); // 7
+
       offset.push_back(Tuple4(1, 0, 0, 1)); // 8
       offset.push_back(Tuple4(0, 0, 0, 1)); // 9
+      
       offset.push_back(Tuple4(0, 1, 0, 2)); // 10
       offset.push_back(Tuple4(0, 0, 0, 2)); // 11
+
       offset.push_back(Tuple4(0, 0, 1, 3)); // 12
       offset.push_back(Tuple4(0, 0, 0, 3)); // 13
    }

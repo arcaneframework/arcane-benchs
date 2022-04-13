@@ -96,7 +96,7 @@ MC_Mesh_Domain::MC_Mesh_Domain(const MeshPartition& meshPartition, const GlobalF
 
 
    int totalCells = 0;
-   for (auto iter=meshPartition.begin(); iter!=meshPartition.end(); ++iter)
+   for (auto iter=meshPartition.begin(); iter!=meshPartition.end(); ++iter) // Iteration cells sous-domaine
    {
       if (iter->second._domainGid != meshPartition.domainGid())
          continue;
@@ -119,7 +119,7 @@ MC_Mesh_Domain::MC_Mesh_Domain(const MeshPartition& meshPartition, const GlobalF
    }
 
    {//limit scope
-      // initialize _cellGeometry
+      // initialize _cellGeometry (size = meshPartition.size())
       _cellGeometry.resize(_cellConnectivity.size(), VAR_MEM);
 
       // First, we need to count up the total number of facets of all
@@ -242,7 +242,7 @@ namespace
 
 
          
-         grid.getNodeGids(iCellGid, nodeGid);
+         grid.getNodeGids(iCellGid, nodeGid); // iCellGid dans notre sous-domaine.
          for (unsigned ii=0; ii<newCell.num_points; ++ii)
          {
             auto here = nodeIndexMap.find(nodeGid[ii]);
@@ -251,7 +251,7 @@ namespace
          }
 
          vector<FaceInfo> faceInfo(6);
-         grid.getFaceNbrGids(iCellGid, faceNbr);
+         grid.getFaceNbrGids(iCellGid, faceNbr); // iCellGid dans notre sous-domaine.
          for (unsigned ii=0; ii<6; ++ii)
          {
             auto here = partition.findCell(faceNbr[ii]);
@@ -260,7 +260,7 @@ namespace
             faceInfo[ii]._event = MC_Subfacet_Adjacency_Event::Adjacency_Undefined;
             faceInfo[ii]._cellInfo = jCellInfo;
             faceInfo[ii]._nbrIndex = nbrDomainIndex[jCellInfo._domainGid];
-            if (faceNbr[ii] == iCellGid)
+            if (faceNbr[ii] == iCellGid) // Si face au bord.
                faceInfo[ii]._event = boundaryCondition[ii];
             else
             {
@@ -362,6 +362,7 @@ MC_Domain::MC_Domain(const MeshPartition& meshPartition, const GlobalFccGrid& gr
   global_domain(meshPartition.domainGid()),
   mesh(meshPartition, grid, ddc, getBoundaryCondition(params))
 {
+   // size = meshPartition.size().
    cell_state.resize(mesh._cellGeometry.size(), VAR_MEM);
    _cachedCrossSectionStorage.setCapacity(cell_state.size() * numEnergyGroups, VAR_MEM);
 

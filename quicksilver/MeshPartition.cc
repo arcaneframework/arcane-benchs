@@ -141,7 +141,7 @@ namespace
       for (unsigned ii=0; ii<nbrDomain.size(); ++ii)
          remoteDomainMap[nbrDomain[ii]] = ii;
 
-      for (auto iter=cellInfoMap.begin(); iter!=cellInfoMap.end(); ++iter)
+      for (auto iter=cellInfoMap.begin(); iter!=cellInfoMap.end(); ++iter) // pour toutes les cells du domain.
       {
          const Long64& iCellGid = iter->first;
          const int&    iDomainGid = iter->second._domainGid;

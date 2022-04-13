@@ -2,6 +2,73 @@
 <module name="QS" version="1.0">
   <description>Descripteur du module QS</description>
 
+  <variables>
+  
+    <variable
+        field-name="tally"
+        name="Tally"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="volume"
+        name="Volume"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="facetp"
+        name="Facetp"
+        data-type="real"
+        item-kind="face"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="coord"
+        name="Coord"
+        data-type="real"
+        item-kind="node"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="coordMid"
+        name="CoordMid"
+        data-type="real"
+        item-kind="face"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+     <variable
+        field-name="coordFace"
+        name="CoordFace"
+        data-type="real"
+        item-kind="face"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="boundaryCond"
+        name="BoundaryCond"
+        data-type="integer"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+  </variables>
+
   <entry-points>
     <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
 

@@ -560,7 +560,7 @@ namespace
       double                 move_factor = 0.5 * PhysicalConstants::_smallDouble;
 
       // Initialize some data for the unstructured, hexahedral mesh.
-      int num_facets_per_cell = domain.mesh._cellConnectivity[location.cell].num_facets;
+      int num_facets_per_cell = domain.mesh._cellConnectivity[location.cell].num_facets; // = 24
 
       while (true) // will break out when distance is found
       {

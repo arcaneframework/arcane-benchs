@@ -19,22 +19,25 @@
         <!-- lx = lenght * n -->
         <x>
           <length>10.0</length>
-          <n>10</n>
+          <n>3</n>
         </x>
 
         <!-- ly = lenght * n -->
         <y>
           <length>10.0</length>
-          <n>10</n>
+          <n>3</n>
         </y>
 
         <!-- lz = lenght * n -->
         <z>
           <length>10.0</length>
-          <n>10</n>
+          <n>3</n>
         </z>
 
       </generator>
+      <!-- <initialisation>
+        <variable nom="Tally" valeur="0."/>
+      </initialisation> -->
     </mesh>
   </meshes>
 

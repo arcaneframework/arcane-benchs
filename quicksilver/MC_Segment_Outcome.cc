@@ -33,7 +33,7 @@ MC_Segment_Outcome_type::Enum MC_Segment_Outcome(MonteCarlo* monteCarlo, MC_Part
     // initialize distances to large number
     int number_of_events = 3;
     double distance[3];
-    distance[0] = distance[1] = distance[2] = 1e80;
+    distance[0] = distance[1] = distance[2] = 1e80; // +inf
 
     // Calculate the particle speed
     double particle_speed = mc_particle.Get_Velocity()->Length();

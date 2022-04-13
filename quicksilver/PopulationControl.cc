@@ -57,6 +57,7 @@ void PopulationControl(MonteCarlo* monteCarlo, bool loadBalance)
         splitRRFactor = (double)targetNumParticles / (double)globalNumParticles;
     }
 
+    // On augmente ou diminue la population selon splitRRFactor (si > 1, on augmente en splittant ; si < 1, on diminue en killant ou en augmentant le poids (rand))
     if (splitRRFactor != 1.0)  // no need to split if population is already correct.
         PopulationControlGuts(splitRRFactor, localNumParticles, monteCarlo->_particleVaultContainer, taskBalance);
 

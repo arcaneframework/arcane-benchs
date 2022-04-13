@@ -3,7 +3,7 @@ project(Quicksilver LANGUAGES CXX)
 
 find_package(Arcane REQUIRED)
 
-add_executable(Quicksilver QSModule.cc main.cc QS_axl.h 
+add_executable(Quicksilver main.cc QSModule.cc QS_axl.h InitMCModule.cc InitMC_axl.h
 CollisionEvent.cc
 CoralBenchmark.cc
 CycleTracking.cc
@@ -46,6 +46,7 @@ utils.cc
 utilsMpi.cc )
 
 arcane_generate_axl(QS)
+arcane_generate_axl(InitMC)
 arcane_add_arcane_libraries_to_target(Quicksilver)
 target_include_directories(Quicksilver PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 configure_file(Quicksilver.config ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
