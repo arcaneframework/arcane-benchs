@@ -117,12 +117,12 @@ launch_micro_hydro_lb8.1.sh
 ### MaHyCo
 
 This bench is used to evaluate weak scaling of synchronisations. In
-this configuration, a subdomain is the owner of 18000 with 3 layers of
-ghost cells. The scripts are provided to launch the test from 128
-subdomains to 2048. The important information is the total time of the
-execution loop. If the scalability of synchronisations is perfect, that time should
-be constant. You can launch a test and get the results with the
-following commands:
+this configuration, a subdomain is the owner of approximately 18000
+cells with 3 layers of ghost cells. The scripts are provided to launch
+the test from 128 subdomains to 2048. The important information is the
+total time of the execution loop. If the scalability of
+synchronisations is perfect, that time should be constant. You can
+launch a test and get the results with the following commands:
 
 ~~~{sh}
 sh launch_mahyco_512.sh > result2.txt
