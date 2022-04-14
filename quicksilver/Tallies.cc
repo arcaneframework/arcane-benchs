@@ -184,6 +184,7 @@ void Tallies::InitializeTallies( MonteCarlo *monteCarlo,
 
 
     //Initialize the balance tally replications
+    // un "Balance" par sous-domaine.
     if( _balanceTask.size() == 0 )
     {
         if( _balanceTask.capacity() == 0 ) 
@@ -204,6 +205,7 @@ void Tallies::InitializeTallies( MonteCarlo *monteCarlo,
     }
 
     //Initialize the cellTally
+    // = 1 double par cell.
     if( _cellTallyDomain.size() == 0 )
     {
         if( _cellTallyDomain.capacity() == 0 ) 
@@ -220,6 +222,7 @@ void Tallies::InitializeTallies( MonteCarlo *monteCarlo,
     }
 
     //Initialize the scalarFluxTally
+    // 1 array<double> par cell (de taille "monteCarlo->_nuclearData->_energies.size()-1").
     if( _scalarFluxDomain.size() == 0 )
     {
         if( _scalarFluxDomain.capacity() == 0 )

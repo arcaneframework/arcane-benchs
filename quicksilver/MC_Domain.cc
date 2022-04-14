@@ -115,7 +115,7 @@ MC_Mesh_Domain::MC_Mesh_Domain(const MeshPartition& meshPartition, const GlobalF
    {
       const Long64& iNodeGid = iter->first;
       const int& iNodeIndex = iter->second;
-      _node[iNodeIndex] = grid.nodeCoord(iNodeGid);
+      _node[iNodeIndex] = grid.nodeCoord(iNodeGid); // _node contient les coord du node EN CM.
    }
 
    {//limit scope
@@ -279,6 +279,7 @@ namespace
          for (unsigned ii=0; ii<newCell.num_facets; ++ii)
          {
             location.facet = ii;
+            // TODO : Voir si utile pour arcane version.
             makeFacet(newCell._facet[ii], location, newCell._point, faceInfo);
          }
 
@@ -332,7 +333,7 @@ MC_Vector findCellCenter(const MC_Facet_Adjacency_Cell& cell,
 // This is messed up.  Why doesn't either the cell or the mesh have a
 // member function to compute the volume?
 double cellVolume(const MC_Facet_Adjacency_Cell& cell,
-                  const qs_vector<MC_Vector>& node)
+                  const qs_vector<MC_Vector>& node) // Node : coord en cm.
 {
    // find center of cell
    MC_Vector cellCenter(0., 0., 0.);

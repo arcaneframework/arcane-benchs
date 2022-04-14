@@ -4,14 +4,8 @@
 
   <variables>
   
-    <variable
-        field-name="tally"
-        name="Tally"
-        data-type="real"
-        item-kind="cell"
-        dim="0"
-        dump="true"
-        need-sync="true" />
+    <!-- TODO : Refaire les data-types -->
+
 
     <variable
         field-name="volume"
@@ -41,8 +35,26 @@
         need-sync="true" />
 
     <variable
+        field-name="coordCm"
+        name="CoordCm"
+        data-type="real"
+        item-kind="node"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
         field-name="coordMid"
         name="CoordMid"
+        data-type="real"
+        item-kind="face"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="coordMidCm"
+        name="CoordMidCm"
         data-type="real"
         item-kind="face"
         dim="1"
@@ -66,6 +78,187 @@
         dim="0"
         dump="true"
         need-sync="true" />
+
+    <variable
+        field-name="material"
+        name="Material"
+        data-type="integer"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="cellNumberDensity"
+        name="CellNumberDensity"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="sourceTally"
+        name="SourceTally"
+        data-type="int32"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="absorb"
+        name="Absorb"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="census"
+        name="Census"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="escape"
+        name="Escape"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="collision"
+        name="Collision"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="end"
+        name="End"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="fission"
+        name="Fission"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="produce"
+        name="Produce"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="scatter"
+        name="Scatter"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="start"
+        name="Start"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="source"
+        name="Source"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="rr"
+        name="Rr"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="split"
+        name="Split"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="numSegments"
+        name="NumSegments"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="cellTally"
+        name="CellTally"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="scalarFluxTally"
+        name="ScalarFluxTally"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="total"
+        name="Total"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="coordCenter"
+        name="CoordCenter"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
 
   </variables>
 
@@ -160,83 +353,10 @@
       </description>
     </simple>
 
-
-
-
-    <!-- <simple name="material" type="string" default="">
-      <description>
-        materialName
-      </description>
-    </simple>
-
-    <simple name="shape" type="string" default="brick">
-      <description>
-        shape
-      </description>
-    </simple>
-
-    <simple name="radius" type="real" default="0.0">
-      <description>
-        radius
-      </description>
-    </simple>
-
-    <simple name="xCenter" type="real" default="0.0">
-      <description>
-        xCenter
-      </description>
-    </simple>
-
-    <simple name="yCenter" type="real" default="0.0">
-      <description>
-        yCenter
-      </description>
-    </simple>
-
-    <simple name="zCenter" type="real" default="0.0">
-      <description>
-        zCenter
-      </description>
-    </simple>
-
-    <simple name="xMin" type="real" default="0.0">
-      <description>
-        xMin
-      </description>
-    </simple>
-
-    <simple name="yMin" type="real" default="0.0">
-      <description>
-        yMin
-      </description>
-    </simple>
-
-    <simple name="zMin" type="real" default="0.0">
-      <description>
-        zMin
-      </description>
-    </simple>
-
-    <simple name="xMax" type="real" default="0.0">
-      <description>
-        xMax
-      </description>
-    </simple>
-
-    <simple name="yMax" type="real" default="0.0">
-      <description>
-        yMax
-      </description>
-    </simple>
-
-    <simple name="zMax" type="real" default="0.0">
-      <description>
-        zMax
-      </description>
-    </simple> -->
-
-
-
+    <!-- <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
+		 <name lang="fr">echangeur-particule</name>
+		 <description>Service utilisé pour échanger les particules.</description>
+	 </service-instance> -->
   </options>
 
 </module>

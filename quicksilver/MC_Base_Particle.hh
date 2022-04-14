@@ -8,6 +8,7 @@
 #include "MC_Particle.hh"
 #include "MC_Location.hh"
 #include "DirectionCosine.hh"
+#include <arcane/Item.h>
 
 
 struct MC_Data_Member_Operation
@@ -89,6 +90,8 @@ class MC_Base_Particle
     int                                species;
     int                                domain;
     int                                cell;
+    Arcane::Cell                       cellArc;
+    Arcane::Face                       faceArc;
 
     static int                         num_base_ints;   // Number of ints for communication
     static int                         num_base_floats; // Number of floats for communication
@@ -181,6 +184,8 @@ inline MC_Base_Particle::MC_Base_Particle(const MC_Base_Particle &particle)
     species             = particle.species;
     domain              = particle.domain;
     cell                = particle.cell;
+    cellArc             = particle.cellArc;
+    faceArc             = particle.faceArc;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -205,6 +210,8 @@ inline MC_Base_Particle::MC_Base_Particle(const MC_Particle &particle)
     species             = particle.species;
     domain              = particle.domain;
     cell                = particle.cell;
+    cellArc             = particle.cellArc;
+    faceArc             = particle.faceArc;
 }
 
 
@@ -231,6 +238,8 @@ inline MC_Base_Particle& MC_Base_Particle::operator= (const MC_Particle &particl
     species = particle.species;
     domain = particle.domain;
     cell = particle.cell;
+    cellArc = particle.cellArc;
+    faceArc = particle.faceArc;
 
     return *this;
 }
@@ -303,6 +312,8 @@ inline MC_Particle::MC_Particle( const MC_Base_Particle &from_particle )
      energy_group(0),
      domain(from_particle.domain),
      cell(from_particle.cell),
+     cellArc(from_particle.cellArc),
+     faceArc(from_particle.faceArc),
      normal_dot(0.0)
 {
     double speed = from_particle.velocity.Length();
@@ -348,6 +359,8 @@ inline void MC_Particle::Copy_From_Base( const MC_Base_Particle &from_particle)
     this->breed               = from_particle.breed;
     this->domain              = from_particle.domain;
     this->cell                = from_particle.cell;
+    this->cellArc             = from_particle.cellArc;
+    this->faceArc             = from_particle.faceArc;
 }
 
 //----------------------------------------------------------------------------------------------------------------------

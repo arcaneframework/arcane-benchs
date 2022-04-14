@@ -11,6 +11,7 @@
 #include "MC_Location.hh"
 
 #include "DeclareMacro.hh"
+#include <arcane/Item.h>
 
 class MC_Base_Particle;
 
@@ -83,7 +84,11 @@ class MC_Particle
     // the current cell in its current domain
     int cell;
 
+    Arcane::Cell cellArc;
+
     int facet;
+
+    Arcane::Face faceArc;
 
     // When crossing a facet, keep the surface normal dot product
     double normal_dot;
