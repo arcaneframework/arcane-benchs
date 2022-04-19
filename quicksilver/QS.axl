@@ -269,13 +269,194 @@
         need-sync="true" />
 
     <variable
-        field-name="particle_temperature"
-        name="Temperature"
+        field-name="particleCoord"
+        name="ParticleCoord"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="1"
+        dump="true"/>
+
+    <variable
+        field-name="particleVelocity"
+        name="ParticleVelocity"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="1"
+        dump="true"/>
+
+    <variable
+        field-name="particleDirCos"
+        name="ParticleDirCos"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="1"
+        dump="true"/>
+
+    <variable
+        field-name="particleKinEne"
+        name="ParticleKinEne"
         family-name="ArcaneParticles"
         data-type="real"
         item-kind="particle"
         dim="0"
         dump="true"/>
+
+    <variable
+        field-name="particleWeight"
+        name="ParticleWeight"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleTimeCensus"
+        name="ParticleTimeCensus"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleTotalCrossSection"
+        name="ParticleTotalCrossSection"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleAge"
+        name="ParticleAge"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleNumMeanFreeP"
+        name="ParticleNumMeanFreeP"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleMeanFreeP"
+        name="ParticleMeanFreeP"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleSegPathLength"
+        name="ParticleSegPathLength"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleRNS"
+        name="ParticleRNS"
+        family-name="ArcaneParticles"
+        data-type="int64"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleLastEvent"
+        name="ParticleLastEvent"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleNumColl"
+        name="ParticleNumColl"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleTask"
+        name="ParticleTask"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleSpecies"
+        name="ParticleSpecies"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleBreed"
+        name="ParticleBreed"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleEneGrp"
+        name="ParticleEneGrp"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleFace"
+        name="ParticleFace"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleNormalDot"
+        name="ParticleNormalDot"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
+        field-name="particleNumSeg"
+        name="ParticleNumSeg"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
   </variables>
 
   <entry-points>

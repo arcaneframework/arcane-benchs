@@ -6,6 +6,16 @@
 #include <arcane/cartesianmesh/CellDirectionMng.h>
 #include <arcane/cartesianmesh/ICartesianMesh.h>
 #include <arcane/IParallelMng.h>
+#include "arcane/ModuleBuildInfo.h"
+#include "arcane/IMesh.h"
+#include "arcane/IMeshModifier.h"
+#include "arcane/IItemFamily.h"
+#include "arcane/IParticleFamily.h"
+#include "arcane/ItemVector.h"
+#include "arcane/IParticleExchanger.h"
+#include "arcane/IAsyncParticleExchanger.h"
+#include "arcane/ItemPrinter.h"
+#include "arcane/IExtraGhostParticlesBuilder.h"
 #include "QS_axl.h"
 
 
@@ -48,9 +58,18 @@ using namespace std;
 /*!
  * \brief Module QS.
  */
-class QSModule : public ArcaneQSObject {
+class QSModule : 
+public ArcaneQSObject {
 public:
-  explicit QSModule(const ModuleBuildInfo &mbi) : ArcaneQSObject(mbi) {}
+  explicit QSModule(const ModuleBuildInfo &mbi) : 
+  ArcaneQSObject(mbi)
+, m_mesh(mbi.mesh())
+, m_particle_family(nullptr)
+, m_particle_family_with_ghost(nullptr)
+, m_first_uid(0) 
+{
+  
+}
 
 public:
   void startInit() override;
@@ -64,6 +83,15 @@ public:
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
 public:
+
+  IMesh* m_mesh;
+  IItemFamily* m_particle_family;
+  IItemFamily* m_particle_family_with_ghost;
+  Int64 m_first_uid;
+  SharedArray< SharedArray<Integer> > m_extra_ghost_particles_to_send;
+
+  ParticleVectorView m_particles;
+
   MonteCarlo *monteCarlo = NULL;
   MonteCarlo *monteCarloArc = NULL;
   Parameters params;
@@ -90,10 +118,11 @@ public:
   void checkCrossSections(MonteCarlo* monteCarlo, const Parameters& params);
   void clearCrossSectionCache();
   void MC_SourceNowArc(MonteCarlo *monteCarlo);
-  double Get_Speed_From_Energy(double energy);
-  void MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
-                                  Cell &cell,
-                                  MC_Vector &coordinate,  
+  Real Get_Speed_From_Energy(Particle p);
+  void MCT_Generate_Coordinate_3D_GArc(Particle p,
+                                  // uint64_t *random_number_seed,
+                                  // Cell &cell,
+                                  // MC_Vector &coordinate,  
                                   MonteCarlo* monteCarlo );
   double MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
                                             const MC_Vector &v1_,
@@ -101,7 +130,7 @@ public:
                                             const MC_Vector &v3);
 
   void PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance);
-  void PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles, ParticleVaultContainer* my_particle_vault);
+  void PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles);
   void RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo);
 
   void tracking(MonteCarlo* monteCarlo);
@@ -149,6 +178,7 @@ public:
   MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int particle_index, ParticleVault* processingVault);
   void MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, MC_Particle &particle);
   unsigned int MC_Find_Min(const double *array, int num_elements);
+  void Sample_Isotropic(Particle p);
 };
 
 /*---------------------------------------------------------------------------*/

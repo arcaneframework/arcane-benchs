@@ -65,6 +65,17 @@ startInit()
   info() << "Module Quicksilver INIT"; 
 
   cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
+
+  // m_particle_family = mesh()->createItemFamily(IK_Particle,"ArcaneParticles");
+  m_particle_family = mesh()->findItemFamily("ArcaneParticles");
+  m_particle_family_with_ghost = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesWithGhost");
+  m_particle_family_with_ghost->toParticleFamily()->setEnableGhostItems(true) ;
+
+  info() << "Name of IParticleExchanger=" << options()->particleExchanger.name();
+  IParticleExchanger* pe = options()->particleExchanger();
+  pe->initialize(m_particle_family);
+  m_particle_family->setHasUniqueIdMap(false);
+
   // mpiInit(&argc, &argv);
   printBanner(GIT_VERS, GIT_HASH);
   int argc = 3;
@@ -113,11 +124,11 @@ cycleInit()
   // Réduction ou augmentation du nombre de particules.
   PopulationControl(monteCarlo, loadBalance); // controls particle population
   PopulationControlArc(monteCarloArc, loadBalance); // controls particle population
+  exit(54);
 
   // Roulette sur les particules avec faible poids.
   RouletteLowWeightParticles(monteCarlo); // Delete particles with low statistical weight
   RouletteLowWeightParticlesArc(monteCarloArc); // Delete particles with low statistical weight
-
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleInit);
 }
 
@@ -884,11 +895,78 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
     // Store the source particle weight for later use.
     monteCarlo->source_particle_weight = source_particle_weight;
 
-    uint64_t vault_size       = monteCarlo->_particleVaultContainer->getVaultSize();
-    uint64_t processing_index = monteCarlo->_particleVaultContainer->sizeProcessing() / vault_size;
-
     uint64_t task_index = 0;
     uint64_t particle_count = 0;
+
+
+
+    ENUMERATE_CELL(icell, ownCells())
+    {
+      double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
+      double cell_num_particles_float = cell_weight_particles / source_particle_weight;
+      particle_count += (uint64_t)cell_num_particles_float;
+    }
+
+
+    Int64UniqueArray uids(particle_count);
+    Int32UniqueArray local_id_cells(particle_count);
+    Int32UniqueArray particles_lid(particle_count);
+    IParticleFamily* pf = m_particle_family->toParticleFamily();
+    Int64UniqueArray rng(particle_count);
+    int particle_index_g = 0;
+
+    ENUMERATE_CELL(icell, ownCells())
+    {
+      double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
+      double cell_num_particles_float = cell_weight_particles / source_particle_weight;
+      int cell_num_particles = (int)cell_num_particles_float;
+
+      for ( int particle_index = 0; particle_index < cell_num_particles; particle_index++ )
+      {
+        int64_t random_number_seed;
+        int64_t rns;
+        int64_t id;
+
+        ATOMIC_CAPTURE( m_sourceTally[icell], 1, random_number_seed );
+
+        if(particle_index != random_number_seed) ARCANE_FATAL("aaaa");
+
+        random_number_seed += (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
+
+        rns = rngSpawn_Random_Number_Seed(&random_number_seed);
+        id = random_number_seed;
+
+        rng[particle_index_g] = rns;
+        uids[particle_index_g] = id;
+        local_id_cells[particle_index_g] = icell.localId();
+
+
+        // Particle p = Particle(particles[particle_index_g].internal());
+
+        // if(p.uniqueId().asInt64() != id) 
+        // {
+        //   info() << particle_index_g << " " << particles.size();
+        //   ARCANE_FATAL("bbb");
+        // }
+        particle_index_g++;
+      }
+    }
+
+    m_particles = pf->addParticles(uids, local_id_cells, particles_lid);
+
+    cout << m_particles.size() << endl;
+
+    m_particle_family->endUpdate();
+    m_particles = m_particle_family->view();
+
+    cout << m_particles.size() << endl;
+
+    exit(23);
+    particle_index_g = 0;
+
+    m_particleCoord.resize(3);
+    m_particleVelocity.resize(3);
+    m_particleDirCos.resize(3);
 
     ENUMERATE_CELL(icell, ownCells())
     {
@@ -897,68 +975,94 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
       double cell_num_particles_float = cell_weight_particles / source_particle_weight;
       int cell_num_particles = (int)cell_num_particles_float;
 
+      // ENUMERATE_PARTICLE(ipartic, m_particles)
+      // {
+      //   int64_t random_number_seed = ipartic.index();
+      //   random_number_seed += cell.uniqueId().asInt64() * INT64_C(0x0100000000);
+
+      //   int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
+      //   int64_t id = random_number_seed;
+
+      //   if((*ipartic).uniqueId().asInt64() != id) 
+      //   {
+      //     info() << (*ipartic).uniqueId().asInt64() << " " << id << " " << ipartic.index();
+      //     ARCANE_FATAL("Pb index");
+      //   }
+      // }
       for ( int particle_index = 0; particle_index < cell_num_particles; particle_index++ )
       {
-        MC_Particle particle;
-        uint64_t random_number_seed;
+        int64_t random_number_seed = particle_index;
+        random_number_seed += cell.uniqueId().asInt64() * INT64_C(0x0100000000);
 
-        // TODO : Voir si c'est utile de faire des atomics (non ?).
-        ATOMIC_CAPTURE( m_sourceTally[icell], 1, random_number_seed );
-        random_number_seed += cell.uniqueId().asInt64() * UINT64_C(0x0100000000); // Voir à quoi sert la mult (MC_Domain::MC_Domain).
+        int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
+        int64_t id = random_number_seed;
 
-        particle.random_number_seed = rngSpawn_Random_Number_Seed(&random_number_seed);
-        particle.identifier = random_number_seed;
+        Particle p = Particle(m_particles[particle_index_g].internal());
+
+        if(p.uniqueId().asInt64() != id || rns != rng[particle_index_g]) 
+        {
+          info() << particle_index_g << " " << m_particles.size();
+          ARCANE_FATAL("Pb index");
+        }
+
+        m_particleRNS[p] = rns; // TODO : Utiliser aray rng ?.
 
         // cout << "particle.identifier : " << particle.identifier << endl;
 
-        MCT_Generate_Coordinate_3D_GArc(&particle.random_number_seed, cell, particle.coordinate, monteCarlo);
+        MCT_Generate_Coordinate_3D_GArc(p, monteCarlo);
 
         // if(particle_index < 11)
         // {
-        //   cout << "particle.identifier : " << particle.identifier << endl;
-        //   cout << particle.coordinate.x << " x " << particle.coordinate.y << " x " << particle.coordinate.z << endl;
+        //   cout << "particle.identifier : " << p.uniqueId().asInt64() << endl;
+        //   cout << m_particleCoord[p][MD_DirX] << " x " << m_particleCoord[p][MD_DirY] << " x " << m_particleCoord[p][MD_DirZ] << endl;
         // }
         // else
         // {
-        //   exit(123);
+        //   exit(45);
         // }
 
-        particle.direction_cosine.Sample_Isotropic(&particle.random_number_seed);
-        particle.kinetic_energy = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
-                                rngSample(&particle.random_number_seed) + monteCarlo->_params.simulationParams.eMin;
+        Sample_Isotropic(p);
+        m_particleKinEne[p] = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
+                                rngSample(&m_particleRNS[p]) + monteCarlo->_params.simulationParams.eMin;
 
-        double speed = Get_Speed_From_Energy(particle.kinetic_energy);
+        Real speed = Get_Speed_From_Energy(p);
 
-        particle.velocity.x = speed * particle.direction_cosine.alpha;
-        particle.velocity.y = speed * particle.direction_cosine.beta;
-        particle.velocity.z = speed * particle.direction_cosine.gamma;
+        m_particleVelocity[p][MD_DirX] = speed * m_particleDirCos[p][0];
+        m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][1];
+        m_particleVelocity[p][MD_DirZ] = speed * m_particleDirCos[p][2];
 
-        particle.domain = mesh()->subDomain()->subDomainId();
-        particle.cell   = cell.localId(); // TODO : Localid ou uniqueId ?
-        particle.cellArc= cell;
-        particle.task   = task_index;
-        particle.weight = source_particle_weight;
+        m_particleTask[p] = task_index;
+        m_particleWeight[p] = source_particle_weight;
 
-        double randomNumber = rngSample(&particle.random_number_seed);
-        particle.num_mean_free_paths = -1.0*std::log(randomNumber);
+        double randomNumber = rngSample(&m_particleRNS[p]);
+        m_particleNumMeanFreeP[p] = -1.0*std::log(randomNumber);
 
-        randomNumber = rngSample(&particle.random_number_seed);
-        particle.time_to_census = monteCarlo->time_info->time_step * randomNumber;
-
-        MC_Base_Particle base_particle( particle );
-
-        monteCarlo->_particleVaultContainer->addProcessingParticle( base_particle, processing_index );
-
-        particle_count++;
+        randomNumber = rngSample(&m_particleRNS[p]);
+        m_particleTimeCensus[p] = monteCarlo->time_info->time_step * randomNumber;
 
         m_source = m_source() + 1; // TODO : Voir si besoin atomic.
+        particle_index_g++;
       }
     }
+    if(particle_index_g != m_particles.size()) ARCANE_FATAL("Bizarre...");
+    //exit(123);
 }
 
-double QSModule::
-Get_Speed_From_Energy(double energy)
+void QSModule::
+Sample_Isotropic(Particle p)
 {
+  m_particleDirCos[p][2] = 1.0 - 2.0*rngSample(&m_particleRNS[p]);
+  double sine_gamma  = sqrt((1.0 - (m_particleDirCos[p][2]*m_particleDirCos[p][2])));
+  double phi         = PhysicalConstants::_pi*(2.0*rngSample(&m_particleRNS[p]) - 1.0);
+
+  m_particleDirCos[p][0]  = sine_gamma * cos(phi);
+  m_particleDirCos[p][1]   = sine_gamma * sin(phi);
+}
+
+Real QSModule::
+Get_Speed_From_Energy(Particle p)
+{
+  Real energy = m_particleKinEne[p];
   static const double rest_mass_energy = PhysicalConstants::_neutronRestMassEnergy;
   static const double speed_of_light  = PhysicalConstants::_speedOfLight;
 
@@ -968,13 +1072,17 @@ Get_Speed_From_Energy(double energy)
 }
 
 void QSModule::
-MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
-                                  Cell &cell,
-                                  MC_Vector &coordinate,  
+MCT_Generate_Coordinate_3D_GArc(  Particle p,
+                                  // uint64_t *random_number_seed,
+                                  // Cell &cell,
+                                  // MC_Vector &coordinate,  
                                   MonteCarlo* monteCarlo )
 {
+  Cell cell = p.cell();
+  int64_t* random_number_seed = &m_particleRNS[p];
+
   // Determine the cell-center nodal point coordinates.
-  MC_Vector center(m_coordCenter[cell][0], m_coordCenter[cell][1], m_coordCenter[cell][2]);
+  MC_Vector center(m_coordCenter[cell][MD_DirX], m_coordCenter[cell][MD_DirY], m_coordCenter[cell][MD_DirZ]);
 
   int num_facets = 24;
 
@@ -1055,10 +1163,9 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
   MC_Vector point1(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]);
   MC_Vector point2(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]);
 
-  // TODO : Pourrai ne pas être identique à QS_ori (pas le même ordre d'exploration).
-  coordinate.x = ( r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x );
-  coordinate.y = ( r4 * center.y + r1 * point0.y + r2 * point1.y + r3 * point2.y );
-  coordinate.z = ( r4 * center.z + r1 * point0.z + r2 * point1.z + r3 * point2.z );
+  m_particleCoord[p][MD_DirX] = ( r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x );
+  m_particleCoord[p][MD_DirY] = ( r4 * center.y + r1 * point0.y + r2 * point1.y + r3 * point2.y );
+  m_particleCoord[p][MD_DirZ] = ( r4 * center.z + r1 * point0.z + r2 * point1.z + r3 * point2.z );
 }
 
 ///  \return 6 times the volume of the tet.
@@ -1089,7 +1196,7 @@ PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance)
 
     uint64_t targetNumParticles = monteCarlo->_params.simulationParams.nParticles;
     uint64_t globalNumParticles = 0;
-    uint64_t localNumParticles = monteCarlo->_particleVaultContainer->sizeProcessing();
+    uint64_t localNumParticles = m_particles.size();
    
     if (loadBalance)
     {
@@ -1125,111 +1232,142 @@ PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance)
 
     // On augmente ou diminue la population selon splitRRFactor (si > 1, on augmente en splittant ; si < 1, on diminue en killant ou en augmentant le poids (rand))
     if (splitRRFactor != 1.0)  // no need to split if population is already correct.
-        PopulationControlGutsArc(splitRRFactor, localNumParticles, monteCarlo->_particleVaultContainer);
-
-    monteCarlo->_particleVaultContainer->collapseProcessing();
+        PopulationControlGutsArc(splitRRFactor, localNumParticles);
 
     return;
 }
 
 void QSModule::
-PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles, ParticleVaultContainer* my_particle_vault)
+PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles)
 {
-    uint64_t vault_size = my_particle_vault->getVaultSize();
-    uint64_t fill_vault_index = currentNumParticles / vault_size;
+    Int32UniqueArray supprP;
+    Int64UniqueArray addIdP;
+    Int32UniqueArray addCellIdP;
+    Int64UniqueArray addRnsP;
+    Int32UniqueArray addSrcP;
+    Int32UniqueArray particles_lid;
 
     // March backwards through the vault so killed particles doesn't mess up the indexing
+    // TODO : Voir pour mettre un ENUMERATOR_PARTICLE.
     for (int particleIndex = currentNumParticles-1; particleIndex >= 0; particleIndex--)
     {
-        uint64_t vault_index = particleIndex / vault_size; 
+      cout << particleIndex << " " << m_particles.size() << endl;
+      Particle p = Particle(m_particles[particleIndex].internal());
 
-        ParticleVault& taskProcessingVault = *( my_particle_vault->getTaskProcessingVault(vault_index) );
-
-        uint64_t taskParticleIndex = particleIndex%vault_size;
-
-        MC_Base_Particle &currentParticle = taskProcessingVault[taskParticleIndex];
-        double randomNumber = rngSample(&currentParticle.random_number_seed);
-        if (splitRRFactor < 1)
+      double randomNumber = rngSample(&m_particleRNS[p]);
+      if (splitRRFactor < 1)
+      {
+        if (randomNumber > splitRRFactor)
         {
-            if (randomNumber > splitRRFactor)
-            {
-                // Kill
-	            taskProcessingVault.eraseSwapParticle(taskParticleIndex);
-	            m_rr = m_rr() + 1; 
-	        }
-	        else
-	        {
-	            currentParticle.weight /= splitRRFactor;
-	        }
+          // Kill
+          supprP.add(p.localId());
+
+          m_rr = m_rr() + 1; 
         }
-        else if (splitRRFactor > 1)
+        else
         {
-            // Split
-	        int splitFactor = (int)floor(splitRRFactor);
-	        if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
-	  
-	        currentParticle.weight /= splitRRFactor;
-	        MC_Base_Particle splitParticle = currentParticle;
-	  
-	        for (int splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
-	        {
-	            m_split = m_split() + 1;
-	     
-	            splitParticle.random_number_seed = rngSpawn_Random_Number_Seed(
-			        &currentParticle.random_number_seed);
-	            splitParticle.identifier = splitParticle.random_number_seed;
-
-                my_particle_vault->addProcessingParticle( splitParticle, fill_vault_index );
-
-	        }
+          m_particleWeight[p] /= splitRRFactor;
         }
+      }
+      else if (splitRRFactor > 1)
+      {
+        // Split
+        int splitFactor = (int)floor(splitRRFactor);
+        if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
+  
+        m_particleWeight[p] /= splitRRFactor;
+  
+        for (int splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
+        {
+          m_split = m_split() + 1;
+
+          int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[p]);
+          addRnsP.add(rns);
+          addIdP.add(rns);
+          addCellIdP.add(p.cell().localId());
+          addSrcP.add(p.localId());
+        }
+      }
     }
+    particles_lid.resize(addIdP.size());
+    m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
+    m_particle_family->toParticleFamily()->endUpdate();
+    m_particles = m_particle_family->view();
+
+    ParticleVectorView viewSrcP = m_particle_family->view(addSrcP);
+    ParticleVectorView viewNewP = m_particle_family->view(particles_lid);
+    for (int i = 0; i < addIdP.size(); i++)
+    {
+      Particle pSrc = Particle(viewSrcP[i].internal());
+      Particle pNew = Particle(viewNewP[i].internal());
+      m_particleCoord[pNew][0] = m_particleCoord[pSrc][0];
+      m_particleCoord[pNew][1] = m_particleCoord[pSrc][1];
+      m_particleCoord[pNew][2] = m_particleCoord[pSrc][2];
+
+      m_particleVelocity[pNew][0] = m_particleVelocity[pSrc][0];
+      m_particleVelocity[pNew][1] = m_particleVelocity[pSrc][1];
+      m_particleVelocity[pNew][2] = m_particleVelocity[pSrc][2];
+
+      m_particleKinEne[pNew] = m_particleKinEne[pSrc];
+      m_particleWeight[pNew] = m_particleWeight[pSrc];
+      m_particleTimeCensus[pNew] = m_particleTimeCensus[pSrc];
+      m_particleAge[pNew] = m_particleAge[pSrc];
+      m_particleNumMeanFreeP[pNew] = m_particleNumMeanFreeP[pSrc];
+      m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
+      m_particleRNS[pNew] = addRnsP[i];
+      m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
+      m_particleNumColl[pNew] = m_particleNumColl[pSrc];
+      m_particleBreed[pNew] = m_particleBreed[pSrc];
+      m_particleSpecies[pNew] = m_particleSpecies[pSrc];
+    }
+    m_particle_family->toParticleFamily()->removeParticles(supprP);
+    m_particle_family->toParticleFamily()->endUpdate();
+    
+
 }
 
 void QSModule::
 RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo)
 {
-    NVTX_Range range("RouletteLowWeightParticles");
+  NVTX_Range range("RouletteLowWeightParticles");
+  Int32UniqueArray supprP;
 
-    const double lowWeightCutoff = monteCarlo->_params.simulationParams.lowWeightCutoff;
+  const double lowWeightCutoff = monteCarlo->_params.simulationParams.lowWeightCutoff;
 
-    if (lowWeightCutoff > 0.0)
+  if (lowWeightCutoff > 0.0)
+  {
+
+    uint64_t currentNumParticles = m_particles.size();
+
+
+    // March backwards through the vault so killed particles don't mess up the indexing
+    const double source_particle_weight = monteCarlo->source_particle_weight;
+    const double weightCutoff = lowWeightCutoff*source_particle_weight;
+
+    for ( int64_t particleIndex = currentNumParticles-1; particleIndex >= 0; particleIndex--)
     {
+      Particle p = Particle(m_particles[particleIndex].internal());
 
-        uint64_t currentNumParticles = monteCarlo->_particleVaultContainer->sizeProcessing();
-        uint64_t vault_size          = monteCarlo->_particleVaultContainer->getVaultSize();
-
-
-	    // March backwards through the vault so killed particles don't mess up the indexing
-	    const double source_particle_weight = monteCarlo->source_particle_weight;
-	    const double weightCutoff = lowWeightCutoff*source_particle_weight;
-
-	    for ( int64_t particleIndex = currentNumParticles-1; particleIndex >= 0; particleIndex--)
-	    {
-            uint64_t vault_index = particleIndex / vault_size; 
-
-            ParticleVault& taskProcessingVault = *(monteCarlo->_particleVaultContainer->getTaskProcessingVault(vault_index));
-            uint64_t taskParticleIndex = particleIndex%vault_size;
-	        MC_Base_Particle &currentParticle = taskProcessingVault[taskParticleIndex];
-
-	        if (currentParticle.weight <= weightCutoff)
-	        {
-	            double randomNumber = rngSample(&currentParticle.random_number_seed);
-	            if (randomNumber <= lowWeightCutoff)
-	            {
-		            // The particle history continues with an increased weight.
-		            currentParticle.weight /= lowWeightCutoff;
-	            }
-	            else
-	            {
-		            // Kill
-		            taskProcessingVault.eraseSwapParticle(taskParticleIndex);
-		            m_rr = m_rr() + 1;
-	            } 
-	        }
-	    }
-        monteCarlo->_particleVaultContainer->collapseProcessing();
+      if (m_particleWeight[p] <= weightCutoff)
+      {
+        double randomNumber = rngSample(&m_particleRNS[p]);
+        if (randomNumber <= lowWeightCutoff)
+        {
+          // The particle history continues with an increased weight.
+          m_particleWeight[p] /= lowWeightCutoff;
+        }
+        else
+        {
+          // Kill
+          supprP.add(p.localId());
+          m_rr = m_rr() + 1;
+        } 
+      }
     }
+    m_particle_family->toParticleFamily()->removeParticles(supprP);
+    m_particle_family->toParticleFamily()->endUpdate();
+    m_particles = m_particle_family->view();
+  }
 }
 
 void QSModule::

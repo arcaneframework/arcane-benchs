@@ -94,7 +94,9 @@ HOST_DEVICE
       pseudo_des( front_bits, back_bits );
       
       // put the hashed parts together into 1 64 bit int
-      return reconstruct_uint64( front_bits, back_bits );
+      uint64_t fin = reconstruct_uint64( front_bits, back_bits );
+      fin &= ~(1UL << 63);
+      return fin;
    }
 HOST_DEVICE_END
 }
@@ -107,6 +109,17 @@ HOST_DEVICE
 uint64_t rngSpawn_Random_Number_Seed(uint64_t *parent_seed)
 {
   uint64_t spawned_seed = hash_state(*parent_seed);
+  // Bump the parent seed as that is what is expected from the interface.
+  rngSample(parent_seed);
+  return spawned_seed;
+}
+
+HOST_DEVICE_END
+
+HOST_DEVICE
+int64_t rngSpawn_Random_Number_Seed(int64_t *parent_seed)
+{
+  int64_t spawned_seed = hash_state(*parent_seed);
   // Bump the parent seed as that is what is expected from the interface.
   rngSample(parent_seed);
   return spawned_seed;
