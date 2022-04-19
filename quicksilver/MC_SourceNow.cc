@@ -96,7 +96,19 @@ void MC_SourceNow(MonteCarlo *monteCarlo)
                 particle.random_number_seed = rngSpawn_Random_Number_Seed(&random_number_seed);
                 particle.identifier = random_number_seed;
 
+                // cout << "particle.identifier : " << particle.identifier << endl;
+
                 MCT_Generate_Coordinate_3D_G(&particle.random_number_seed, domain_index, cell_index, particle.coordinate, monteCarlo);
+
+                // if(particle_index < 11)
+                // {
+                // cout << "particle.identifier : " << particle.identifier << endl;
+                // cout << particle.coordinate.x << " x " << particle.coordinate.y << " x " << particle.coordinate.z << endl;
+                // }
+                // else
+                // {
+                // exit(123);
+                // }
 
                 particle.direction_cosine.Sample_Isotropic(&particle.random_number_seed);
 

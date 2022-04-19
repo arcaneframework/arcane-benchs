@@ -909,7 +909,19 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
         particle.random_number_seed = rngSpawn_Random_Number_Seed(&random_number_seed);
         particle.identifier = random_number_seed;
 
+        // cout << "particle.identifier : " << particle.identifier << endl;
+
         MCT_Generate_Coordinate_3D_GArc(&particle.random_number_seed, cell, particle.coordinate, monteCarlo);
+
+        // if(particle_index < 11)
+        // {
+        //   cout << "particle.identifier : " << particle.identifier << endl;
+        //   cout << particle.coordinate.x << " x " << particle.coordinate.y << " x " << particle.coordinate.z << endl;
+        // }
+        // else
+        // {
+        //   exit(123);
+        // }
 
         particle.direction_cosine.Sample_Isotropic(&particle.random_number_seed);
         particle.kinetic_energy = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
@@ -984,8 +996,8 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
     {
       facet_index++;
 
-      int first_pos_node = QS2ArcaneNode[i*6 + j];
-      int second_pos_node = QS2ArcaneNode[i*6 + ((j == 3) ? 0 : j+1)];
+      int first_pos_node = QS2ArcaneNode[i*4 + j];
+      int second_pos_node = QS2ArcaneNode[i*4 + ((j == 3) ? 0 : j+1)];
 
       first_node = face.node(first_pos_node);
       second_node = face.node(second_pos_node);
@@ -994,9 +1006,12 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
       MC_Vector point1(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]);
       MC_Vector point2(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]);
 
-      //cout << point0.x << " x " << point0.y << " x " << point0.z << endl;
-      //cout << point1.x << " x " << point1.y << " x " << point1.z << endl;
-      //cout << point2.x << " x " << point2.y << " x " << point2.z << endl;
+      // cout << "i : " << i << " j : " << j << endl;
+      // cout << "first_node[] : " << i*4 + j << " second_node[] : " << i*4 + ((j == 3) ? 0 : j+1) << endl;
+      // cout << "first_node : " << first_pos_node << " second_node : " << second_pos_node << endl;
+      // cout << point0.x << " x " << point0.y << " x " << point0.z << endl;
+      // cout << point1.x << " x " << point1.y << " x " << point1.z << endl;
+      // cout << point2.x << " x " << point2.y << " x " << point2.z << endl << endl;
 
       double subvolume = MCT_Cell_Volume_3D_G_vector_tetDetArc(point0, point1, point2, center);
       current_volume += subvolume;
@@ -1005,7 +1020,8 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
     }
     if(current_volume >= which_volume) { break; }
   }
-  //exit(1);
+  //cout << "current_volume : " << current_volume << endl;
+  //exit(123);
 
   // Sample from the tet.
   double r1 = rngSample(random_number_seed);
@@ -1330,6 +1346,8 @@ tracking(MonteCarlo* monteCarlo)
         particle_count += numParticles;
 
         MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
+        
+        ARCANE_FATAL("youpi");
 
         MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
 
@@ -1535,7 +1553,15 @@ CycleTrackingGutsArc( MonteCarlo *monteCarlo, int particle_index, ParticleVault 
 
     // loop over this particle until we cannot do anything more with it on this processor
     CycleTrackingFunctionArc( monteCarlo, mc_particle, particle_index, processingVault, processedVault );
-
+    // if(particle_index < 11)
+    // {
+    // cout << "particle.identifier : " << mc_particle.identifier << endl;
+    // cout << mc_particle.coordinate.x << " x " << mc_particle.coordinate.y << " x " << mc_particle.coordinate.z << endl;
+    // }
+    // else
+    // {
+    // exit(123);
+    // }
     //Make sure this particle is marked as completed
     processingVault->invalidateParticle( particle_index );
 }
@@ -1547,10 +1573,10 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
     unsigned int tally_index = 0;
     unsigned int flux_tally_index = 0;
     unsigned int cell_tally_index = 0;
-    int DEBUG_compt = -1;
+    //int DEBUG_compt = -1;
     do
     {
-      DEBUG_compt++;
+      //DEBUG_compt++;
         // Determine the outcome of a particle at the end of this segment such as:
         //
         //   (0) Undergo a collision within the current cell,
@@ -1560,10 +1586,10 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
 
         // Collision ou Census ou Facet crossing
         MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(monteCarlo, mc_particle, flux_tally_index);
-        if(particle_index == 11 && DEBUG_compt < 10)
-        {
-          info() << "Passe ici !" << segment_outcome;
-        }
+        // if(particle_index == 11 && DEBUG_compt < 10)
+        // {
+        //   info() << "Passe ici !" << segment_outcome;
+        // }
 
         m_numSegments = m_numSegments() + 1;
 
@@ -1590,10 +1616,10 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
             {
                 // The particle has reached a cell facet.
                 MC_Tally_Event::Enum facet_crossing_type = MC_Facet_Crossing_EventArc(mc_particle, monteCarlo, particle_index, processingVault);
-                if(particle_index == 11 && DEBUG_compt < 10)
-                {
-                  info() << "   Passe ici !" << facet_crossing_type;
-                }
+                // if(particle_index == 11 && DEBUG_compt < 10)
+                // {
+                //   info() << "   Passe ici !" << facet_crossing_type;
+                // }
                 if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Transit_Exit)
                 {
                     keepTrackingThisParticle = true;  // Transit Event

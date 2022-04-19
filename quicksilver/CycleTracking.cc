@@ -25,6 +25,16 @@ void CycleTrackingGuts( MonteCarlo *monteCarlo, int particle_index, ParticleVaul
     // loop over this particle until we cannot do anything more with it on this processor
     CycleTrackingFunction( monteCarlo, mc_particle, particle_index, processingVault, processedVault );
 
+    // if(particle_index < 11)
+    // {
+    // cout << "particle.identifier : " << mc_particle.identifier << endl;
+    // cout << mc_particle.coordinate.x << " x " << mc_particle.coordinate.y << " x " << mc_particle.coordinate.z << endl;
+    // }
+    // else
+    // {
+    // exit(123);
+    // }
+
     //Make sure this particle is marked as completed
     processingVault->invalidateParticle( particle_index );
 }

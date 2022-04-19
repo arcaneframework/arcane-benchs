@@ -179,10 +179,16 @@ void MCT_Generate_Coordinate_3D_G(uint64_t *random_number_seed,
         point1 = &domain.mesh._node[facet_points[1]];
         point2 = &domain.mesh._node[facet_points[2]];
 
+         // cout << point0->x << " x " << point0->y << " x " << point0->z << endl;
+         // cout << point1->x << " x " << point1->y << " x " << point1->z << endl;
+         // cout << point2->x << " x " << point2->y << " x " << point2->z << endl;
+
         double subvolume = MCT_Cell_Volume_3D_G_vector_tetDet(*point0, *point1, *point2, center);
         current_volume += subvolume;
 
     }
+   //  cout << "current_volume : " << current_volume << endl;
+   //  exit(123);
 
     // Sample from the tet.
     double r1 = rngSample(random_number_seed);
