@@ -44,7 +44,7 @@
   <qt>
     <dt>2e-09</dt>
     <fMax>0.1</fMax>
-    <!-- <nParticles>1000000</nParticles> -->
+    <nParticles>1</nParticles>
     <nSteps>1</nSteps>
     <seed>1029384756</seed>
     <lx>100.0</lx>

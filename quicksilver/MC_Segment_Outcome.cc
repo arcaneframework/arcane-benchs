@@ -119,7 +119,8 @@ MC_Segment_Outcome_type::Enum MC_Segment_Outcome(MonteCarlo* monteCarlo, MC_Part
     mc_particle.normal_dot = nearest_facet.dot_product;
 
     distance[MC_Segment_Outcome_type::Facet_Crossing] = nearest_facet.distance_to_facet;
-
+    //cout << "Distance : " << nearest_facet.distance_to_facet << " " << nearest_facet.facet << endl;
+    //exit(1);
 
     // Get out of here if the tracker failed to bound this particle's volume.
     if (mc_particle.last_event == MC_Tally_Event::Facet_Crossing_Tracking_Error)

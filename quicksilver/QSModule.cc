@@ -37,6 +37,25 @@ using namespace Arcane;
 using namespace std;
 
 #define MAX_PRODUCTION_SIZE 4
+
+bool ordre_qs[]  = {true, true, false, false, false, true};
+
+int QS2ArcaneFacet[] = {16, 17, 18, 19, 
+                        7 , 6 , 5 , 4 , 
+                        20, 23, 22, 21, 
+                        8 , 9 , 10, 11, 
+                        12, 13, 14, 15, 
+                        3 , 2 , 1 , 0 };
+
+int QS2ArcaneFace[] = {4, 1, 5, 2, 3, 0};
+
+int QS2ArcaneNode[] = {0, 1, 2, 3,
+                       0, 3, 2, 1,
+                       1, 0, 3, 2,
+                       0, 1, 2, 3,
+                       0, 1, 2, 3,
+                       0, 3, 2, 1};
+
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
@@ -431,9 +450,13 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
 
     double volume = 0;
     MC_Vector cellCenter(m_coordCenter[icell][0], m_coordCenter[icell][1], m_coordCenter[icell][2]);
+
     ENUMERATE_FACE(iface, cell.faces())
     {
       Face face = *iface;
+
+      m_indexArc[iface] = iface.index();
+
       m_coordMid[iface][0] = offset[compt].x() + x;
       m_coordMid[iface][1] = offset[compt].y() + y;
       m_coordMid[iface][2] = offset[compt].z() + z;
@@ -459,9 +482,11 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
         m_coordMidCm[iface][1] += dy / 2;
       }
 
-      m_coordFace[iface][0] = std::max(std::min(0, faceTupleOffset[compt].x() + x), nx-1); // MinMax pour éviter pos négatives.
-      m_coordFace[iface][1] = std::max(std::min(0, faceTupleOffset[compt].y() + y), ny-1);
-      m_coordFace[iface][2] = std::max(std::min(0, faceTupleOffset[compt].z() + z), nz-1);
+      int compt2 = compt - 8;
+
+      m_coordFace[iface][0] = std::min(std::max(0, faceTupleOffset[compt2].x() + x), nx-1); // MinMax pour éviter pos négatives.
+      m_coordFace[iface][1] = std::min(std::max(0, faceTupleOffset[compt2].y() + y), ny-1);
+      m_coordFace[iface][2] = std::min(std::max(0, faceTupleOffset[compt2].z() + z), nz-1);
 
 
       // Définir les conditions boundary.
@@ -472,7 +497,7 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
       // Si la face est au bord du domaine entier.
       if(m_coordFace[iface][0] == x && m_coordFace[iface][1] == y && m_coordFace[iface][2] == z)
       {
-        m_boundaryCond[iface] = condiBound[faceTupleOffset[compt].b()];
+        m_boundaryCond[iface] = condiBound[faceTupleOffset[compt2].b()];
       }
       else
       {
@@ -480,6 +505,8 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
         // Si la face est au bord du sous-domaine.
         if(face.isSubDomainBoundary())
         {
+          info() <<  "x : " << x << " y: " << y << " z: " << z << " xx : " << faceTupleOffset[compt2].x() << " yy : "<< faceTupleOffset[compt2].y() << " zz : " << faceTupleOffset[compt2].z() << " compt : "<< compt2;
+          ARCANE_FATAL("TODO Impossible");
           m_boundaryCond[iface] = MC_Subfacet_Adjacency_Event::Transit_Off_Processor;
         }
         
@@ -495,8 +522,11 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
 
       for (int i = 0; i < 4; i++)
       {
-        Node first_node = face.node(i);
-        Node second_node = face.node( ((i == 3) ? 0 : i+1) );
+        int first_pos_node = (ordre_qs[iface.index()] ? ((i == 3) ? 0 : i+1) : i);
+        int second_pos_node = (ordre_qs[iface.index()] ? i : ((i == 3) ? 0 : i+1));
+
+        Node first_node = face.node(first_pos_node);
+        Node second_node = face.node(second_pos_node);
 
         MC_Vector aa = MC_Vector(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]) - cellCenter;
         MC_Vector bb = MC_Vector(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]) - cellCenter;
@@ -946,20 +976,27 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
   Node second_node;
   Face face;
 
-  ENUMERATE_FACE(iface, cell.faces())
+  for(int i = 0; i < 6; i++)
   {
-    face = *iface;
+    face = cell.face(QS2ArcaneFace[i]);
 
-    for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
     {
       facet_index++;
 
-      first_node = face.node(i);
-      second_node = face.node( ((i == 3) ? 0 : i+1) );
+      int first_pos_node = QS2ArcaneNode[i*6 + j];
+      int second_pos_node = QS2ArcaneNode[i*6 + ((j == 3) ? 0 : j+1)];
 
-      MC_Vector point0 = MC_Vector(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]) - center;
-      MC_Vector point1 = MC_Vector(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]) - center;
-      MC_Vector point2 = MC_Vector(m_coordMidCm[iface][0], m_coordMidCm[iface][1], m_coordMidCm[iface][2]) - center;
+      first_node = face.node(first_pos_node);
+      second_node = face.node(second_pos_node);
+
+      MC_Vector point0(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]);
+      MC_Vector point1(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]);
+      MC_Vector point2(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]);
+
+      //cout << point0.x << " x " << point0.y << " x " << point0.z << endl;
+      //cout << point1.x << " x " << point1.y << " x " << point1.z << endl;
+      //cout << point2.x << " x " << point2.y << " x " << point2.z << endl;
 
       double subvolume = MCT_Cell_Volume_3D_G_vector_tetDetArc(point0, point1, point2, center);
       current_volume += subvolume;
@@ -968,7 +1005,7 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
     }
     if(current_volume >= which_volume) { break; }
   }
-  
+  //exit(1);
 
   // Sample from the tet.
   double r1 = rngSample(random_number_seed);
@@ -998,10 +1035,11 @@ MCT_Generate_Coordinate_3D_GArc(uint64_t *random_number_seed,
   // numbers 1-4 are the barycentric coordinates of the random point.
   double r4 = 1.0 - r1 - r2 - r3;
 
-  MC_Vector point0 = MC_Vector(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]) - center;
-  MC_Vector point1 = MC_Vector(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]) - center;
-  MC_Vector point2 = MC_Vector(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]) - center;
+  MC_Vector point0(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]);
+  MC_Vector point1(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]);
+  MC_Vector point2(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]);
 
+  // TODO : Pourrai ne pas être identique à QS_ori (pas le même ordre d'exploration).
   coordinate.x = ( r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x );
   coordinate.y = ( r4 * center.y + r1 * point0.y + r2 * point1.y + r3 * point2.y );
   coordinate.z = ( r4 * center.z + r1 * point0.z + r2 * point1.z + r3 * point2.z );
@@ -1404,15 +1442,20 @@ trackingArc(MonteCarlo* monteCarlo)
           for (int particle_index = 0; particle_index < numParticles;
                 particle_index++) 
           {
+            //cout << particle_index;
+            //flush(cout);
             // Tracking
             CycleTrackingGutsArc(monteCarlo, particle_index, processingVault,
                               processedVault);
+
           }
         }
 
         particle_count += numParticles;
 
         MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
+
+        ARCANE_FATAL("youpi");
 
         MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
 
@@ -1504,8 +1547,10 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
     unsigned int tally_index = 0;
     unsigned int flux_tally_index = 0;
     unsigned int cell_tally_index = 0;
+    int DEBUG_compt = -1;
     do
     {
+      DEBUG_compt++;
         // Determine the outcome of a particle at the end of this segment such as:
         //
         //   (0) Undergo a collision within the current cell,
@@ -1515,6 +1560,10 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
 
         // Collision ou Census ou Facet crossing
         MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(monteCarlo, mc_particle, flux_tally_index);
+        if(particle_index == 11 && DEBUG_compt < 10)
+        {
+          info() << "Passe ici !" << segment_outcome;
+        }
 
         m_numSegments = m_numSegments() + 1;
 
@@ -1541,7 +1590,10 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
             {
                 // The particle has reached a cell facet.
                 MC_Tally_Event::Enum facet_crossing_type = MC_Facet_Crossing_EventArc(mc_particle, monteCarlo, particle_index, processingVault);
-
+                if(particle_index == 11 && DEBUG_compt < 10)
+                {
+                  info() << "   Passe ici !" << facet_crossing_type;
+                }
                 if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Transit_Exit)
                 {
                     keepTrackingThisParticle = true;  // Transit Event
@@ -1669,7 +1721,8 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     mc_particle.normal_dot = nearest_facet.dot_product;
 
     distance[MC_Segment_Outcome_type::Facet_Crossing] = nearest_facet.distance_to_facet;
-
+    //info() << "Distance : " << nearest_facet.distance_to_facet << " " << nearest_facet.facet;
+    //ARCANE_FATAL("aaa");
 
     // Get out of here if the tracker failed to bound this particle's volume.
     if (mc_particle.last_event == MC_Tally_Event::Facet_Crossing_Tracking_Error)
@@ -1762,6 +1815,7 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     mc_particle.time_to_census -= segment_path_time;
     mc_particle.age += segment_path_time;
 
+      //info() << "Drap" << mc_particle.age;
     // Ensure mc_particle.time_to_census is non-negative.
     if (mc_particle.time_to_census < 0.0)
     {
@@ -1849,7 +1903,9 @@ MCT_Nearest_FacetArc( MC_Particle *mc_particle,
     MC_Nearest_Facet nearest_facet =
        MCT_Nearest_Facet_3D_GArc(mc_particle, coordinate, direction_cosine);
 
-    if (nearest_facet.distance_to_facet < 0) { nearest_facet.distance_to_facet = 0; }
+    if (nearest_facet.distance_to_facet < 0) {
+      nearest_facet.distance_to_facet = 0; 
+    }
 
     if (nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble)
     {
@@ -1882,8 +1938,7 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
 
       MC_Distance_To_Facet distance_to_facet[24];
 
-      MC_Vector cellCenter(m_coordCenter[cell][0], m_coordCenter[cell][1], m_coordCenter[cell][2]);
-      int facet_index = 0;
+      int facet_index = -1;
       ENUMERATE_FACE(iface, cell.faces())
       {
         Face face = *iface;
@@ -1891,12 +1946,20 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
 
         for (int i = 0; i < 4; i++)
         {
-          Node first_node = face.node(i);
-          Node second_node = face.node( ((i == 3) ? 0 : i+1) );
+          facet_index++;
+          if((int)facet_index/4 != iface.index())
+          {
+            ARCANE_FATAL("Erreur facet index");
+          }
+          int first_pos_node = (ordre_qs[iface.index()] ? ((i == 3) ? 0 : i+1) : i);
+          int second_pos_node = (ordre_qs[iface.index()] ? i : ((i == 3) ? 0 : i+1));
 
-          MC_Vector point0 = MC_Vector(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]) - cellCenter;
-          MC_Vector point1 = MC_Vector(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]) - cellCenter;
-          MC_Vector point2 = MC_Vector(m_coordMidCm[iface][0], m_coordMidCm[iface][1], m_coordMidCm[iface][2]) - cellCenter;
+          Node first_node = face.node(first_pos_node);
+          Node second_node = face.node(second_pos_node);
+
+          MC_Vector point0(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]);
+          MC_Vector point1(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]);
+          MC_Vector point2(m_coordMidCm[iface][0], m_coordMidCm[iface][1], m_coordMidCm[iface][2]);
 
           distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
 
@@ -1907,26 +1970,46 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
               plane.B * direction_cosine->beta +
               plane.C * direction_cosine->gamma);
 
+          // info() << " Facet : " << point0.x << "x" << point0.y << "x" << point0.z;
+          // info()                << point1.x << "x" << point1.y << "x" << point1.z;
+          // info()                << point2.x << "x" << point2.y << "x" << point2.z;
+          // info() << " Coord : " << m_coord[first_node][0] << "x" << m_coord[first_node][1] << "x" << m_coord[first_node][2];
+          // info()                << m_coord[second_node][0] << "x" << m_coord[second_node][1] << "x" << m_coord[second_node][2];
+          // info()                << m_coordMid[iface][0] << "x" << m_coordMid[iface][1] << "x" << m_coordMid[iface][2];
+          //info() << " CooCm : " << m_coordCm[first_node][0] << "x" << m_coordCm[first_node][1] << "x" << m_coordCm[first_node][2];
+          //info()                << m_coordCm[second_node][0] << "x" << m_coordCm[second_node][1] << "x" << m_coordCm[second_node][2];
+          //info()                << m_coordMidCm[iface][0] << "x" << m_coordMidCm[iface][1] << "x" << m_coordMidCm[iface][2];
+          //info() << " Center : " << m_coordCenter[cell][0] << "x" << m_coordCenter[cell][1] << "x" << m_coordCenter[cell][2];
+          //info() << " Plane : " << plane.A << "x" << plane.B << "x" << plane.C << " " << plane.D;
+          //info() << "facet_normal_dot_direction_cosine : " << facet_normal_dot_direction_cosine;
+          // info() << " Facet : " << m_coordCm[first_node][0] << "x" << m_coordCm[first_node][1] << "x" << m_coordCm[first_node][2];
+          // info()                << m_coordCm[second_node][0] << "x" << m_coordCm[second_node][1] << "x" << m_coordCm[second_node][2];
+          // info()                << m_coordMidCm[iface][0] << "x" << m_coordMidCm[iface][1] << "x" << m_coordMidCm[iface][2];
+          // info();
+          // info();
+          //info() << "Coord : " << coordinate.x << "x" << coordinate.y << "x" << coordinate.z;
+          
+
           // Consider only those facets whose outer normals have
           // a positive dot product with the direction cosine.
           // I.e. the particle is LEAVING the cell.
           if (facet_normal_dot_direction_cosine <= 0.0) { continue; }
 
-          facet_coords[0] = &point0;
-          facet_coords[1] = &point1;
-          facet_coords[2] = &point2;
-
           double t = MCT_Nearest_Facet_3D_G_Distance_To_Segment(
               plane_tolerance,
               facet_normal_dot_direction_cosine, plane.A, plane.B, plane.C, plane.D,
-              *facet_coords[0], *facet_coords[1], *facet_coords[2],
+              point0, point1, point2,
               coordinate, direction_cosine, false);
 
           distance_to_facet[facet_index].distance = t;
+          //info() << "distance_to_facet : facet_index :" << facet_index << " distance : " << t;
+          //info() << "mcp :" << mc_particle->identifier;
+          //info() << "direction_cosine : " << direction_cosine->alpha << " x "<< direction_cosine->beta << " x "<< direction_cosine->gamma;
+          //info() << "\n";
 
-          facet_index++;
         }
       }
+      //ARCANE_FATAL("aaa");
 
       int retry = 0;
 
@@ -1944,14 +2027,14 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
 
 double QSModule::
 MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
-                                                     double facet_normal_dot_direction_cosine,
-                                                     double A, double B, double C, double D,
-                                                     const MC_Vector &facet_coords0,
-                                                     const MC_Vector &facet_coords1,
-                                                     const MC_Vector &facet_coords2,
+                                                     double facet_normal_dot_direction_cosine,//=
+                                                     double A, double B, double C, double D,//=
+                                                     const MC_Vector &facet_coords0,//=
+                                                     const MC_Vector &facet_coords1,//=
+                                                     const MC_Vector &facet_coords2,//=
                                                      const MC_Vector &coordinate,
-                                                     const DirectionCosine *direction_cosine,
-                                                     bool allow_enter)
+                                                     const DirectionCosine *direction_cosine,//=
+                                                     bool allow_enter) //=
    {
     double boundingBox_tolerance = 1e-9;
     double numerator = -1.0*(A * coordinate.x +
@@ -2094,6 +2177,9 @@ MCT_Nearest_Facet_Find_NearestArc(MC_Particle *mc_particle,
 
         if ( iteration == max_iterations )
         {
+          //info() << (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble) << (move_factor > 0) << 
+          //(mc_particle->num_segments > max_allowed_segments) << (nearest_facet.distance_to_facet <= 0.0);
+
             qs_assert(false); // If we start hitting this assertion we can
             // come up with a better mitigation plan. - dfr
             retry = 0;
@@ -2320,15 +2406,19 @@ MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int
     {
         // The particle will enter into an adjacent cell.
         //mc_particle.domain     = facet_adjacency.adjacent.domain;
-        int id_face = mc_particle.facet / 4;
-        Cell cell;
-        if(id_face < 3)
+        Cell cell = face.frontCell();
+
+        if(cell == mc_particle.cellArc)
         {
           cell = face.backCell();
         }
-        else
+        if(cell == mc_particle.cellArc)
         {
-          cell = face.frontCell();
+          if(face.frontCell() == face.backCell())
+          {
+            ARCANE_FATAL("hhhhhhhhhhhaaaaaaaaaaaaaa");
+          }
+          ARCANE_FATAL("Erreur deplace");
         }
         mc_particle.cellArc = cell;
         mc_particle.cell       = cell.localId();
@@ -2351,6 +2441,7 @@ MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int
         // The neighboring domain is on another processor. Set domain local domain on neighbor proc
         
         //mc_particle.domain     = facet_adjacency.adjacent.domain;
+        ARCANE_FATAL("TODO non supporté");
         int id_face = mc_particle.facet / 4;
         Cell cell;
         if(id_face < 3)
@@ -2389,14 +2480,16 @@ MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, MC_Particle &particle)
     Cell cell = particle.cellArc;
     Face face = particle.faceArc;
 
-    Node first_node = face.node(truc);
-    Node second_node = face.node( ((truc == 3) ? 0 : truc+1) );
+    int first_pos_node = (ordre_qs[m_indexArc[face]] ? ((truc == 3) ? 0 : truc+1) : truc);
+    int second_pos_node = (ordre_qs[m_indexArc[face]] ? truc : ((truc == 3) ? 0 : truc+1));
 
-    MC_Vector cellCenter(m_coordCenter[cell][0], m_coordCenter[cell][1], m_coordCenter[cell][2]);
+    Node first_node = face.node(first_pos_node);
+    Node second_node = face.node(second_pos_node);
 
-    MC_Vector point0 = MC_Vector(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]) - cellCenter;
-    MC_Vector point1 = MC_Vector(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]) - cellCenter;
-    MC_Vector point2 = MC_Vector(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]) - cellCenter;
+
+    MC_Vector point0(m_coordCm[first_node][0], m_coordCm[first_node][1], m_coordCm[first_node][2]);
+    MC_Vector point1(m_coordCm[second_node][0], m_coordCm[second_node][1], m_coordCm[second_node][2]);
+    MC_Vector point2(m_coordMidCm[face][0], m_coordMidCm[face][1], m_coordMidCm[face][2]);
 
 
     MC_General_Plane plane(point0, point1, point2);

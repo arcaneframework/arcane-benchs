@@ -83,8 +83,10 @@ void GlobalFccGrid::getNodeGids(Long64 cellGid, vector<Long64>& nodeGid) const
    Tuple tt = _cellIndexToTuple(cellGid);
    Tuple4 baseNodeTuple = Tuple4(tt.x(), tt.y(), tt.z(), 0);
    const vector<Tuple4>& cornerTupleOffset = cornerTupleOffsets();
-   for (unsigned ii=0; ii<14; ++ii)
+   for (unsigned ii=0; ii<14; ++ii){
       nodeGid[ii] = _nodeTupleToIndex(baseNodeTuple + cornerTupleOffset[ii]);
+
+   }
 }
 
 // for faces on the outer surface of the global grid, the returned cell

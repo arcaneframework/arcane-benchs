@@ -584,6 +584,18 @@ namespace
                 plane.B * direction_cosine->beta +
                 plane.C * direction_cosine->gamma);
 
+            int *point = domain.mesh._cellConnectivity[location.cell]._facet[facet_index].point;
+            facet_coords[0] = &domain.mesh._node[point[0]];
+            facet_coords[1] = &domain.mesh._node[point[1]];
+            facet_coords[2] = &domain.mesh._node[point[2]];
+
+            //cout << " CooCm : " << facet_coords[0]->x << "x" << facet_coords[0]->y << "x" << facet_coords[0]->z<<endl;
+            //cout                << facet_coords[1]->x << "x" << facet_coords[1]->y << "x" << facet_coords[1]->z<<endl;
+            //cout                << facet_coords[2]->x << "x" << facet_coords[2]->y << "x" << facet_coords[2]->z<<endl;
+            //cout << " Plane : " << plane.A << "x" << plane.B << "x" << plane.C << " " << plane.D<<endl;
+           // cout << "facet_normal_dot_direction_cosine : " << facet_normal_dot_direction_cosine << endl;
+            //cout << "Coord : " << coordinate.x << "x" << coordinate.y << "x" << coordinate.z << endl;
+
             // Consider only those facets whose outer normals have
             // a positive dot product with the direction cosine.
             // I.e. the particle is LEAVING the cell.
@@ -591,10 +603,6 @@ namespace
 
             /* profiling with gprof showed that putting a call to MC_Facet_Coordinates_3D_G
                slowed down the code by about 10%, so we get the facet coords "by hand." */
-            int *point = domain.mesh._cellConnectivity[location.cell]._facet[facet_index].point;
-            facet_coords[0] = &domain.mesh._node[point[0]];
-            facet_coords[1] = &domain.mesh._node[point[1]];
-            facet_coords[2] = &domain.mesh._node[point[2]];
 
             double t = MCT_Nearest_Facet_3D_G_Distance_To_Segment(
                plane_tolerance,
@@ -604,8 +612,12 @@ namespace
 
 //to-do        monteCarlo->distance_to_facet->task[my_task_num].facet[facet_index].distance = t;
             distance_to_facet[facet_index].distance = t;
-         } // for facet_index
+            //cout << "distance_to_facet : facet_index : " << facet_index << " distance : " << t << endl;
+            //cout << "mcp :" << mc_particle->identifier<< endl;
+            //cout << "direction_cosine : " << direction_cosine->alpha << " x "<< direction_cosine->beta << " x "<< direction_cosine->gamma<< endl;
 
+         } // for facet_index
+         // exit(1);
          int retry = 0;
 
          MC_Nearest_Facet nearest_facet = MCT_Nearest_Facet_Find_Nearest(

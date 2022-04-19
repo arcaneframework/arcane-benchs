@@ -80,6 +80,15 @@
         need-sync="true" />
 
     <variable
+        field-name="indexArc"
+        name="IndexArc"
+        data-type="integer"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
         field-name="material"
         name="Material"
         data-type="integer"
@@ -259,7 +268,14 @@
         dump="true"
         need-sync="true" />
 
-
+    <variable
+        field-name="particle_temperature"
+        name="Temperature"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
   </variables>
 
   <entry-points>
@@ -353,10 +369,10 @@
       </description>
     </simple>
 
-    <!-- <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
+    <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
 		 <name lang="fr">echangeur-particule</name>
 		 <description>Service utilisé pour échanger les particules.</description>
-	 </service-instance> -->
+	 </service-instance>
   </options>
 
 </module>
