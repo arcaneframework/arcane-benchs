@@ -53,7 +53,7 @@ HOST_DEVICE
 
 void NuclearDataReaction::sampleCollision(
    double incidentEnergy, double material_mass, double* energyOut,
-   double* angleOut, int &nOut, uint64_t* seed, int max_production_size)
+   double* angleOut, int &nOut, int64_t* seed, int max_production_size)
 {
    double randomNumber;
    switch(_reactionType)

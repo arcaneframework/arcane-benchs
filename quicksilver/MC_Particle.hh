@@ -54,10 +54,10 @@ class MC_Particle
     double segment_path_length;
 
     // the random number seed for the random number generator for this particle
-    uint64_t random_number_seed;
+    int64_t random_number_seed;
 
     // unique identifier used to identify and track individual particles in the simulation
-    uint64_t identifier;
+    int64_t identifier;
 
    // the last event this particle underwent
     MC_Tally_Event::Enum last_event;

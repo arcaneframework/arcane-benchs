@@ -18,7 +18,7 @@
     else if ( mode == MC_Data_Member_Operation::Unpack ) { MC_Char8_To_Long(&member, &buffer[(index)]); (index) += 8; } \
     else if ( mode == MC_Data_Member_Operation::Reset )  { (index) += 8; member = 0; }}
 
-void MC_Char8_To_Long(uint64_t *long_out, char char_in[8])
+void MC_Char8_To_Long(int64_t *long_out, char char_in[8])
 {
     *long_out = 0 ;
 
@@ -33,11 +33,11 @@ void MC_Char8_To_Long(uint64_t *long_out, char char_in[8])
 
 }
 
-void MC_Long_To_Char8(const uint64_t *long_in,
+void MC_Long_To_Char8(const int64_t *long_in,
                       char char_out[8])
 {
-    uint64_t long_tmp;
-    uint64_t mask = 0xffff;
+    int64_t long_tmp;
+    int64_t mask = 0xffff;
 
     // Examine long_in from Right > Left, byte by byte.
     long_tmp = *long_in;

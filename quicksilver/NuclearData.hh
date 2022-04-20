@@ -49,8 +49,7 @@ class NuclearDataReaction
    double getCrossSection(unsigned int group);
    HOST_DEVICE_CUDA
    void sampleCollision(double incidentEnergy, double material_mass, double* energyOut,
-                        double* angleOut, int &nOut, uint64_t* seed, int max_production_size);
-   
+                        double* angleOut, int &nOut, int64_t* seed, int max_production_size);
    
    qs_vector<double> _crossSection; //!< tabular data for microscopic cross section
    Enum _reactionType;                //!< What type of reaction is this

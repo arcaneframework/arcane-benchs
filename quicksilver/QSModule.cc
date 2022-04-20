@@ -68,13 +68,20 @@ startInit()
 
   // m_particle_family = mesh()->createItemFamily(IK_Particle,"ArcaneParticles");
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
+
+  m_particle_family_extra = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesExtra");
+  m_particle_family_processed = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesProcessed");
+
   m_particle_family_with_ghost = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesWithGhost");
+
   m_particle_family_with_ghost->toParticleFamily()->setEnableGhostItems(true) ;
 
   info() << "Name of IParticleExchanger=" << options()->particleExchanger.name();
   IParticleExchanger* pe = options()->particleExchanger();
   pe->initialize(m_particle_family);
+
   m_particle_family->setHasUniqueIdMap(false);
+  m_particle_family_extra->setHasUniqueIdMap(false);
 
   // mpiInit(&argc, &argv);
   printBanner(GIT_VERS, GIT_HASH);
@@ -118,17 +125,20 @@ cycleInit()
 
   monteCarlo->particle_buffer->Initialize();
 
+  m_local_ids_processing.clear();
+  m_local_ids_processing.swap(m_local_ids_processed);
+
   MC_SourceNow(monteCarlo);
   MC_SourceNowArc(monteCarloArc);
 
   // Réduction ou augmentation du nombre de particules.
   PopulationControl(monteCarlo, loadBalance); // controls particle population
   PopulationControlArc(monteCarloArc, loadBalance); // controls particle population
-  exit(54);
 
   // Roulette sur les particules avec faible poids.
   RouletteLowWeightParticles(monteCarlo); // Delete particles with low statistical weight
   RouletteLowWeightParticlesArc(monteCarloArc); // Delete particles with low statistical weight
+  //exit(54);
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleInit);
 }
 
@@ -953,20 +963,41 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
     }
 
     m_particles = pf->addParticles(uids, local_id_cells, particles_lid);
-
-    cout << m_particles.size() << endl;
-
     m_particle_family->endUpdate();
     m_particles = m_particle_family->view();
 
-    cout << m_particles.size() << endl;
+    int debug_size = m_local_ids_processing.size();
+    m_local_ids_processing.copy(particles_lid);
+    if(m_local_ids_processing.size() != debug_size + particles_lid.size()) ARCANE_FATAL("Copie remplace !");
 
-    exit(23);
+    // exit(23);
     particle_index_g = 0;
 
     m_particleCoord.resize(3);
     m_particleVelocity.resize(3);
     m_particleDirCos.resize(3);
+
+    // ENUMERATE_PARTICLE(ipartic, m_particles)
+    // {
+    //   int64_t random_number_seed = ipartic.index(); // TODO : normalement, doit être = à particle_index (donc index partics par cell);
+    //   random_number_seed += (*ipartic).cell().uniqueId().asInt64() * INT64_C(0x0100000000);
+
+    //   int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
+    //   int64_t id = random_number_seed;
+
+    //   if((*ipartic).uniqueId().asInt64() != id) 
+    //   {
+
+    //     info() << (*ipartic).uniqueId().asInt64() << " " << id << " " 
+    //     << ipartic.index() << " " << (*ipartic).cell().uniqueId().asInt64()
+    //     << " " << rns ;
+    //     ARCANE_FATAL("Pb index");
+    //   }
+    //   else
+    //   {
+    //     //cout << ipartic.index() << " ";
+    //   }
+    // }
 
     ENUMERATE_CELL(icell, ownCells())
     {
@@ -975,20 +1006,6 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
       double cell_num_particles_float = cell_weight_particles / source_particle_weight;
       int cell_num_particles = (int)cell_num_particles_float;
 
-      // ENUMERATE_PARTICLE(ipartic, m_particles)
-      // {
-      //   int64_t random_number_seed = ipartic.index();
-      //   random_number_seed += cell.uniqueId().asInt64() * INT64_C(0x0100000000);
-
-      //   int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
-      //   int64_t id = random_number_seed;
-
-      //   if((*ipartic).uniqueId().asInt64() != id) 
-      //   {
-      //     info() << (*ipartic).uniqueId().asInt64() << " " << id << " " << ipartic.index();
-      //     ARCANE_FATAL("Pb index");
-      //   }
-      // }
       for ( int particle_index = 0; particle_index < cell_num_particles; particle_index++ )
       {
         int64_t random_number_seed = particle_index;
@@ -998,14 +1015,14 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
         int64_t id = random_number_seed;
 
         Particle p = Particle(m_particles[particle_index_g].internal());
-
+        
         if(p.uniqueId().asInt64() != id || rns != rng[particle_index_g]) 
         {
           info() << particle_index_g << " " << m_particles.size();
           ARCANE_FATAL("Pb index");
         }
 
-        m_particleRNS[p] = rns; // TODO : Utiliser aray rng ?.
+        initParticle(p, rns);// TODO : Utiliser array rng ?.
 
         // cout << "particle.identifier : " << particle.identifier << endl;
 
@@ -1049,11 +1066,47 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
 }
 
 void QSModule::
+initParticle(Particle p, int64_t rns)
+{
+  m_particleRNS[p] = rns;
+  m_particleCoord[p][0] = 0.0;
+  m_particleCoord[p][1] = 0.0;
+  m_particleCoord[p][2] = 0.0;
+
+  m_particleVelocity[p][0] = 0.0;
+  m_particleVelocity[p][1] = 0.0;
+  m_particleVelocity[p][2] = 0.0;
+
+  m_particleDirCos[p][0] = 0.0;
+  m_particleDirCos[p][1] = 0.0;
+  m_particleDirCos[p][2] = 0.0;
+
+  m_particleKinEne[p] = 0.0;
+  m_particleWeight[p] = 0.0;
+  m_particleTimeCensus[p] = 0.0;
+  m_particleTotalCrossSection[p] = 0.0;
+  m_particleAge[p] = 0.0;
+  m_particleNumMeanFreeP[p] = 0.0;
+  m_particleMeanFreeP[p] = 0.0;
+  m_particleSegPathLength[p] = 0.0;
+  m_particleLastEvent[p] = MC_Tally_Event::Census;
+  m_particleNumColl[p] = 0;
+  m_particleNumSeg[p] = 0.0;
+  m_particleTask[p] = 0;
+  m_particleSpecies[p] = 0;
+  m_particleBreed[p] = 0;
+  m_particleEneGrp[p] = 0;
+  m_particleFace[p] = 0;
+  m_particleFacet[p] = 0;
+  m_particleNormalDot[p] = 0.0;
+}
+
+void QSModule::
 Sample_Isotropic(Particle p)
 {
-  m_particleDirCos[p][2] = 1.0 - 2.0*rngSample(&m_particleRNS[p]);
+  m_particleDirCos[p][2] = 1.0 - 2.0*(uint64_t)rngSample(&m_particleRNS[p]);
   double sine_gamma  = sqrt((1.0 - (m_particleDirCos[p][2]*m_particleDirCos[p][2])));
-  double phi         = PhysicalConstants::_pi*(2.0*rngSample(&m_particleRNS[p]) - 1.0);
+  double phi         = PhysicalConstants::_pi*(2.0*(uint64_t)rngSample(&m_particleRNS[p]) - 1.0);
 
   m_particleDirCos[p][0]  = sine_gamma * cos(phi);
   m_particleDirCos[p][1]   = sine_gamma * sin(phi);
@@ -1240,133 +1293,166 @@ PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance)
 void QSModule::
 PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles)
 {
-    Int32UniqueArray supprP;
-    Int64UniqueArray addIdP;
-    Int32UniqueArray addCellIdP;
-    Int64UniqueArray addRnsP;
-    Int32UniqueArray addSrcP;
-    Int32UniqueArray particles_lid;
+  Int32UniqueArray supprP;
+  Int64UniqueArray addIdP;
+  Int32UniqueArray addCellIdP;
+  Int32UniqueArray addSrcP;
 
-    // March backwards through the vault so killed particles doesn't mess up the indexing
-    // TODO : Voir pour mettre un ENUMERATOR_PARTICLE.
-    for (int particleIndex = currentNumParticles-1; particleIndex >= 0; particleIndex--)
+  // March backwards through the vault so killed particles doesn't mess up the indexing
+  ENUMERATE_PARTICLE(iparticle, m_particles)
+  {
+    Particle particle = (*iparticle);
+    double randomNumber = rngSample(&m_particleRNS[iparticle]);
+    if (splitRRFactor < 1)
     {
-      cout << particleIndex << " " << m_particles.size() << endl;
-      Particle p = Particle(m_particles[particleIndex].internal());
-
-      double randomNumber = rngSample(&m_particleRNS[p]);
-      if (splitRRFactor < 1)
+      if (randomNumber > splitRRFactor)
       {
-        if (randomNumber > splitRRFactor)
-        {
-          // Kill
-          supprP.add(p.localId());
+        // Kill
+        supprP.add(particle.localId());
 
-          m_rr = m_rr() + 1; 
-        }
-        else
-        {
-          m_particleWeight[p] /= splitRRFactor;
-        }
+        m_rr = m_rr() + 1; 
       }
-      else if (splitRRFactor > 1)
+      else
       {
-        // Split
-        int splitFactor = (int)floor(splitRRFactor);
-        if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
-  
-        m_particleWeight[p] /= splitRRFactor;
-  
-        for (int splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
-        {
-          m_split = m_split() + 1;
+        m_particleWeight[iparticle] /= splitRRFactor;
+      }
+    }
+    else if (splitRRFactor > 1)
+    {
+      // Split
+      int splitFactor = (int)floor(splitRRFactor);
+      if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
 
-          int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[p]);
-          addRnsP.add(rns);
-          addIdP.add(rns);
-          addCellIdP.add(p.cell().localId());
-          addSrcP.add(p.localId());
+      m_particleWeight[iparticle] /= splitRRFactor;
+
+      for (int splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
+      {
+        m_split = m_split() + 1; // TODO Voir si besoin atomic.
+
+        int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[iparticle]);
+        addIdP.add(rns);
+        addCellIdP.add(particle.cell().localId());
+        addSrcP.add(particle.localId());
+      }
+    }
+  }
+  if (splitRRFactor < 1)
+  {
+    m_particle_family->toParticleFamily()->removeParticles(supprP);
+    m_particle_family->toParticleFamily()->endUpdate();
+    m_particles = m_particle_family->view();
+
+    for(int i = 0; i < supprP.size(); i++)
+    {
+      for(int j = 0; j < m_local_ids_processing.size(); j++)
+      {
+        if(m_local_ids_processing[j] == supprP[i])
+        {
+          m_local_ids_processing.remove(j);
+          break;
         }
       }
     }
-    particles_lid.resize(addIdP.size());
+
+  }
+  else if (splitRRFactor > 1)
+  {
+    Int32UniqueArray particles_lid(addIdP.size());
     m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
     m_particle_family->toParticleFamily()->endUpdate();
     m_particles = m_particle_family->view();
 
+    int debug_size = m_local_ids_processing.size();
+    m_local_ids_processing.copy(particles_lid);
+    if(m_local_ids_processing.size() != debug_size + particles_lid.size()) ARCANE_FATAL("Copie remplace !");
+
+
     ParticleVectorView viewSrcP = m_particle_family->view(addSrcP);
     ParticleVectorView viewNewP = m_particle_family->view(particles_lid);
-    for (int i = 0; i < addIdP.size(); i++)
+    for (int i = 0; i < particles_lid.size(); i++)
     {
       Particle pSrc = Particle(viewSrcP[i].internal());
       Particle pNew = Particle(viewNewP[i].internal());
-      m_particleCoord[pNew][0] = m_particleCoord[pSrc][0];
-      m_particleCoord[pNew][1] = m_particleCoord[pSrc][1];
-      m_particleCoord[pNew][2] = m_particleCoord[pSrc][2];
-
-      m_particleVelocity[pNew][0] = m_particleVelocity[pSrc][0];
-      m_particleVelocity[pNew][1] = m_particleVelocity[pSrc][1];
-      m_particleVelocity[pNew][2] = m_particleVelocity[pSrc][2];
-
-      m_particleKinEne[pNew] = m_particleKinEne[pSrc];
-      m_particleWeight[pNew] = m_particleWeight[pSrc];
-      m_particleTimeCensus[pNew] = m_particleTimeCensus[pSrc];
-      m_particleAge[pNew] = m_particleAge[pSrc];
-      m_particleNumMeanFreeP[pNew] = m_particleNumMeanFreeP[pSrc];
-      m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
-      m_particleRNS[pNew] = addRnsP[i];
-      m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
-      m_particleNumColl[pNew] = m_particleNumColl[pSrc];
-      m_particleBreed[pNew] = m_particleBreed[pSrc];
-      m_particleSpecies[pNew] = m_particleSpecies[pSrc];
+      copyParticle(pSrc, pNew);
     }
-    m_particle_family->toParticleFamily()->removeParticles(supprP);
-    m_particle_family->toParticleFamily()->endUpdate();
-    
+  }
+}
 
+void QSModule::
+copyParticle(Particle pSrc, Particle pNew)
+{
+  m_particleCoord[pNew][0] = m_particleCoord[pSrc][0];
+  m_particleCoord[pNew][1] = m_particleCoord[pSrc][1];
+  m_particleCoord[pNew][2] = m_particleCoord[pSrc][2];
+
+  m_particleVelocity[pNew][0] = m_particleVelocity[pSrc][0];
+  m_particleVelocity[pNew][1] = m_particleVelocity[pSrc][1];
+  m_particleVelocity[pNew][2] = m_particleVelocity[pSrc][2];
+
+  m_particleDirCos[pNew][0] = m_particleDirCos[pSrc][0];
+  m_particleDirCos[pNew][1] = m_particleDirCos[pSrc][1];
+  m_particleDirCos[pNew][2] = m_particleDirCos[pSrc][2];
+
+  m_particleKinEne[pNew] = m_particleKinEne[pSrc];
+  m_particleWeight[pNew] = m_particleWeight[pSrc];
+  m_particleTimeCensus[pNew] = m_particleTimeCensus[pSrc];
+  m_particleTotalCrossSection[pNew] = m_particleTotalCrossSection[pSrc];
+  m_particleAge[pNew] = m_particleAge[pSrc];
+  m_particleNumMeanFreeP[pNew] = m_particleNumMeanFreeP[pSrc];
+  m_particleMeanFreeP[pNew] = m_particleMeanFreeP[pSrc];
+  m_particleSegPathLength[pNew] = m_particleSegPathLength[pSrc];
+  m_particleRNS[pNew] = pNew.uniqueId().asInt64();
+  m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
+  m_particleNumColl[pNew] = m_particleNumColl[pSrc];
+  m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
+  m_particleTask[pNew] = m_particleTask[pSrc];
+  m_particleSpecies[pNew] = m_particleSpecies[pSrc];
+  m_particleBreed[pNew] = m_particleBreed[pSrc];
+  m_particleEneGrp[pNew] = m_particleEneGrp[pSrc];
+  m_particleFace[pNew] = m_particleFace[pSrc];
+  m_particleFacet[pNew] = m_particleFacet[pSrc];
+  m_particleNormalDot[pNew] = m_particleNormalDot[pSrc];
 }
 
 void QSModule::
 RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo)
 {
   NVTX_Range range("RouletteLowWeightParticles");
-  Int32UniqueArray supprP;
 
   const double lowWeightCutoff = monteCarlo->_params.simulationParams.lowWeightCutoff;
 
   if (lowWeightCutoff > 0.0)
   {
-
-    uint64_t currentNumParticles = m_particles.size();
-
+    Int32UniqueArray supprP;
 
     // March backwards through the vault so killed particles don't mess up the indexing
     const double source_particle_weight = monteCarlo->source_particle_weight;
     const double weightCutoff = lowWeightCutoff*source_particle_weight;
 
-    for ( int64_t particleIndex = currentNumParticles-1; particleIndex >= 0; particleIndex--)
+    ENUMERATE_PARTICLE(iparticle, m_particles)
     {
-      Particle p = Particle(m_particles[particleIndex].internal());
+      Particle particle = (*iparticle);
 
-      if (m_particleWeight[p] <= weightCutoff)
+      if (m_particleWeight[iparticle] <= weightCutoff)
       {
-        double randomNumber = rngSample(&m_particleRNS[p]);
+        double randomNumber = rngSample(&m_particleRNS[iparticle]);
         if (randomNumber <= lowWeightCutoff)
         {
           // The particle history continues with an increased weight.
-          m_particleWeight[p] /= lowWeightCutoff;
+          m_particleWeight[iparticle] /= lowWeightCutoff;
         }
         else
         {
           // Kill
-          supprP.add(p.localId());
+          supprP.add(particle.localId());
           m_rr = m_rr() + 1;
         } 
       }
+      m_particle_family->toParticleFamily()->removeParticles(supprP);
+      m_particle_family->toParticleFamily()->endUpdate();
+      m_particles = m_particle_family->view();
     }
-    m_particle_family->toParticleFamily()->removeParticles(supprP);
-    m_particle_family->toParticleFamily()->endUpdate();
-    m_particles = m_particle_family->view();
+
   }
 }
 
@@ -1387,6 +1473,8 @@ tracking(MonteCarlo* monteCarlo)
   monteCarlo->particle_buffer->Post_Receive_Particle_Buffer(
       my_particle_vault.getVaultSize());
 
+  //info() << "sizeProcessing " << my_particle_vault.sizeProcessing();
+  //exit(24);
   // Get Test For Done Method (Blocking or non-blocking
   MC_New_Test_Done_Method::Enum new_test_done_method =
       monteCarlo->particle_buffer->new_test_done_method;
@@ -1482,6 +1570,7 @@ tracking(MonteCarlo* monteCarlo)
         }
 
         particle_count += numParticles;
+        info() << "numParticles : " << numParticles;
 
         MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
         
@@ -1556,17 +1645,15 @@ void QSModule::
 trackingArc(MonteCarlo* monteCarlo)
 {
   bool done = false;
+  info() << "sizeProcessing " << m_particles.size();
+  //exit(24);
 
-  ParticleVaultContainer &my_particle_vault =
-      *(monteCarlo->_particleVaultContainer);
+  ParticleVectorView processing_view = m_particle_family->view();
 
-  // Post Inital Receives for Particle Buffer
-  monteCarlo->particle_buffer->Post_Receive_Particle_Buffer(
-      my_particle_vault.getVaultSize());
-
-  // Get Test For Done Method (Blocking or non-blocking
-  MC_New_Test_Done_Method::Enum new_test_done_method =
-      monteCarlo->particle_buffer->new_test_done_method;
+  if(mesh()->parallelMng()->commSize() > 1)
+  {
+    m_local_ids_in.clear();
+  }
 
   do 
   {
@@ -1576,93 +1663,152 @@ trackingArc(MonteCarlo* monteCarlo)
     {
       uint64_t fill_vault = 0;
 
-      for (uint64_t processing_vault = 0;
-           processing_vault < my_particle_vault.processingSize();
-           processing_vault++) 
+      ENUMERATE_PARTICLE(iparticle, processing_view)
       {
-        MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_Kernel);
-        uint64_t processed_vault =
-            my_particle_vault.getFirstEmptyProcessedVault();
+        Particle particle = (*iparticle);
 
-        ParticleVault *processingVault = my_particle_vault.getTaskProcessingVault(processing_vault);
-        ParticleVault *processedVault = my_particle_vault.getTaskProcessedVault(processed_vault);
-
-        int numParticles = processingVault->size();
-
-        if (numParticles != 0) 
+        if(iparticle.index() % 1000 == 0)
         {
-          NVTX_Range trackingKernel(
-              "cycleTracking_TrackingKernel"); // range ends at end of scope
+          info() << "--------";
+          info() << iparticle.index() << "/" << processing_view.size();
+          info() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
+          info() << "--------";
+        }
+        CycleTrackingGutsArc(monteCarlo, particle);
 
-          #include "mc_omp_parallel_for_schedule_static.hh"
-          for (int particle_index = 0; particle_index < numParticles;
-                particle_index++) 
-          {
-            //cout << particle_index;
-            //flush(cout);
-            // Tracking
-            CycleTrackingGutsArc(monteCarlo, particle_index, processingVault,
-                              processedVault);
+        // if(iparticle.index() < 11)
+        // {
+        //   cout << "particle.identifier : " << particle.uniqueId().asInt64() << endl;
+        //   cout << m_particleCoord[particle][0] << " x " << m_particleCoord[particle][1] << " x " << m_particleCoord[particle][2] << endl;
+        // }
+        // else
+        // {
+        //   exit(123);
+        // }
+        if(iparticle.index() == 10000) //DEBUG
+        {
+          break;
+        }
+      }
+      m_particle_family->toParticleFamily()->endUpdate();
 
-          }
+      ARCANE_FATAL("youpi");
+      if(mesh()->parallelMng()->commSize() > 1)
+      {
+        ParticleVectorView in_view = m_particle_family->view(m_local_ids_in);
+
+        ENUMERATE_PARTICLE(iparticle, in_view)
+        {
+          Particle particle = (*iparticle);
+          CycleTrackingGutsArc(monteCarlo, particle);
         }
 
-        particle_count += numParticles;
+        m_local_ids_in.clear();
 
-        MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
+        // Echange particles.
+        IParticleExchanger* pe = options()->particleExchanger();
+        pe->beginNewExchange(m_local_ids_out.size());
+        pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &m_local_ids_in, 0);
+      }
+      
+      if(m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0)
+      {
+        done = true;
+      }
+      else
+      {
+        processing_view = m_particle_family->view(m_local_ids_extra);
+      }
 
-        ARCANE_FATAL("youpi");
 
-        MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
 
-        // Next, communicate particles that have crossed onto
-        // other MPI ranks.
-        NVTX_Range cleanAndComm("cycleTracking_clean_and_comm");
 
-        SendQueue &sendQueue = *(my_particle_vault.getSendQueue());
-        monteCarlo->particle_buffer->Allocate_Send_Buffer(sendQueue);
+      // for (uint64_t processing_vault = 0;
+      //      processing_vault < my_particle_vault.processingSize();
+      //      processing_vault++) 
+      // {
+      //   MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_Kernel);
+      //   uint64_t processed_vault =
+      //       my_particle_vault.getFirstEmptyProcessedVault();
 
-        // Move particles from send queue to the send buffers
-        for (int index = 0; index < sendQueue.size(); index++) 
-        {
-          sendQueueTuple &sendQueueT = sendQueue.getTuple(index);
-          MC_Base_Particle mcb_particle;
+      //   ParticleVault *processingVault = my_particle_vault.getTaskProcessingVault(processing_vault);
+      //   ParticleVault *processedVault = my_particle_vault.getTaskProcessedVault(processed_vault);
 
-          processingVault->getBaseParticleComm(mcb_particle,
-                                               sendQueueT._particleIndex);
+      //   int numParticles = processingVault->size();
 
-          int buffer = monteCarlo->particle_buffer->Choose_Buffer(sendQueueT._neighbor);
-          monteCarlo->particle_buffer->Buffer_Particle(mcb_particle, buffer);
-        }
+      //   if (numParticles != 0) 
+      //   {
+      //     NVTX_Range trackingKernel(
+      //         "cycleTracking_TrackingKernel"); // range ends at end of scope
 
-        monteCarlo->particle_buffer->Send_Particle_Buffers(); // post MPI sends
+      //     #include "mc_omp_parallel_for_schedule_static.hh"
+      //     for (int particle_index = 0; particle_index < numParticles;
+      //           particle_index++) 
+      //     {
+      //       //cout << particle_index;
+      //       //flush(cout);
+      //       // Tracking
+      //       CycleTrackingGutsArc(monteCarlo, particle_index, processingVault, processedVault);
 
-        processingVault->clear(); // remove the invalid particles
-        sendQueue.clear();
+      //     }
+      //   }
 
-        // Move particles in "extra" vaults into the regular vaults.
-        my_particle_vault.cleanExtraVaults();
+      //   particle_count += numParticles;
 
-        // receive any particles that have arrived from other ranks
-        monteCarlo->particle_buffer->Receive_Particle_Buffers(fill_vault);
+      //   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
 
-        MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_MPI);
+      //   ARCANE_FATAL("youpi");
 
-      } // for loop on vaults
+      //   MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
 
-      MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
+      //   // Next, communicate particles that have crossed onto
+      //   // other MPI ranks.
+      //   NVTX_Range cleanAndComm("cycleTracking_clean_and_comm");
 
-      NVTX_Range collapseRange("cycleTracking_Collapse_ProcessingandProcessed");
-      my_particle_vault.collapseProcessing();
-      my_particle_vault.collapseProcessed();
-      collapseRange.endRange();
+      //   SendQueue &sendQueue = *(my_particle_vault.getSendQueue());
+      //   monteCarlo->particle_buffer->Allocate_Send_Buffer(sendQueue);
 
-      // Test for done - blocking on all MPI ranks
-      NVTX_Range doneRange("cycleTracking_Test_Done_New");
-      done = monteCarlo->particle_buffer->Test_Done_New(new_test_done_method);
-      doneRange.endRange();
+      //   // Move particles from send queue to the send buffers
+      //   for (int index = 0; index < sendQueue.size(); index++) 
+      //   {
+      //     sendQueueTuple &sendQueueT = sendQueue.getTuple(index);
+      //     MC_Base_Particle mcb_particle;
 
-      MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_MPI);
+      //     processingVault->getBaseParticleComm(mcb_particle,
+      //                                          sendQueueT._particleIndex);
+
+      //     int buffer = monteCarlo->particle_buffer->Choose_Buffer(sendQueueT._neighbor);
+      //     monteCarlo->particle_buffer->Buffer_Particle(mcb_particle, buffer);
+      //   }
+
+      //   monteCarlo->particle_buffer->Send_Particle_Buffers(); // post MPI sends
+
+      //   processingVault->clear(); // remove the invalid particles
+      //   sendQueue.clear();
+
+      //   // Move particles in "extra" vaults into the regular vaults.
+      //   my_particle_vault.cleanExtraVaults();
+
+      //   // receive any particles that have arrived from other ranks
+      //   monteCarlo->particle_buffer->Receive_Particle_Buffers(fill_vault);
+
+      //   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_MPI);
+
+      // } // for loop on vaults
+
+      // MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
+
+      // NVTX_Range collapseRange("cycleTracking_Collapse_ProcessingandProcessed");
+      // my_particle_vault.collapseProcessing();
+      // my_particle_vault.collapseProcessed();
+      // collapseRange.endRange();
+
+      // // Test for done - blocking on all MPI ranks
+      // NVTX_Range doneRange("cycleTracking_Test_Done_New");
+      // done = monteCarlo->particle_buffer->Test_Done_New(new_test_done_method);
+      // doneRange.endRange();
+
+      // MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_MPI);
 
     } // while not done: Test_Done_New()
 
@@ -1679,18 +1825,18 @@ trackingArc(MonteCarlo* monteCarlo)
 }
 
 void QSModule::
-CycleTrackingGutsArc( MonteCarlo *monteCarlo, int particle_index, ParticleVault *processingVault, ParticleVault *processedVault )
+moveProcessingProcessed()
 {
-    MC_Particle mc_particle;
+}
 
-    // Copy a single particle from the particle vault into mc_particle
-    MC_Load_Particle(monteCarlo, mc_particle, processingVault, particle_index);
-
+void QSModule::
+CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle )
+{
     // set the particle.task to the index of the processed vault the particle will census into.
-    mc_particle.task = 0;//processed_vault;
+    m_particleTask[particle] = 0;//processed_vault;
 
     // loop over this particle until we cannot do anything more with it on this processor
-    CycleTrackingFunctionArc( monteCarlo, mc_particle, particle_index, processingVault, processedVault );
+    CycleTrackingFunctionArc( monteCarlo, particle );
     // if(particle_index < 11)
     // {
     // cout << "particle.identifier : " << mc_particle.identifier << endl;
@@ -1700,21 +1846,21 @@ CycleTrackingGutsArc( MonteCarlo *monteCarlo, int particle_index, ParticleVault 
     // {
     // exit(123);
     // }
+
+
     //Make sure this particle is marked as completed
-    processingVault->invalidateParticle( particle_index );
+    m_particleSpecies[particle] = -1;
 }
 
 void QSModule::
-CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int particle_index, ParticleVault* processingVault, ParticleVault* processedVault)
+CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
 {
     bool keepTrackingThisParticle = false;
     unsigned int tally_index = 0;
     unsigned int flux_tally_index = 0;
     unsigned int cell_tally_index = 0;
-    //int DEBUG_compt = -1;
     do
     {
-      //DEBUG_compt++;
         // Determine the outcome of a particle at the end of this segment such as:
         //
         //   (0) Undergo a collision within the current cell,
@@ -1723,15 +1869,11 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
         //
 
         // Collision ou Census ou Facet crossing
-        MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(monteCarlo, mc_particle, flux_tally_index);
-        // if(particle_index == 11 && DEBUG_compt < 10)
-        // {
-        //   info() << "Passe ici !" << segment_outcome;
-        // }
-
+        MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(monteCarlo, particle, flux_tally_index);
         m_numSegments = m_numSegments() + 1;
 
-        mc_particle.num_segments += 1.;  /* Track the number of segments this particle has
+
+        m_particleNumSeg[particle] += 1.;  /* Track the number of segments this particle has
                                             undergone this cycle on all processes. */
         switch (segment_outcome) {
         case MC_Segment_Outcome_type::Collision:
@@ -1739,7 +1881,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
             // The particle undergoes a collision event producing:
             //   (0) Other-than-one same-species secondary particle, or
             //   (1) Exactly one same-species secondary particle.
-            if (CollisionEventArc(monteCarlo, mc_particle ) == MC_Collision_Event_Return::Continue_Tracking)
+            if (CollisionEventArc(monteCarlo, particle ) == MC_Collision_Event_Return::Continue_Tracking)
             {
                 keepTrackingThisParticle = true;
             }
@@ -1753,7 +1895,8 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
         case MC_Segment_Outcome_type::Facet_Crossing:
             {
                 // The particle has reached a cell facet.
-                MC_Tally_Event::Enum facet_crossing_type = MC_Facet_Crossing_EventArc(mc_particle, monteCarlo, particle_index, processingVault);
+                MC_Tally_Event::Enum facet_crossing_type = MC_Facet_Crossing_EventArc(particle, monteCarlo);
+
                 // if(particle_index == 11 && DEBUG_compt < 10)
                 // {
                 //   info() << "   Passe ici !" << facet_crossing_type;
@@ -1765,13 +1908,14 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
                 else if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Escape)
                 {
                     m_escape = m_escape() + 1;
-                    mc_particle.last_event = MC_Tally_Event::Facet_Crossing_Escape;
-                    mc_particle.species = -1;
+                    m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Escape;
+                    m_particleSpecies[particle] = -1;
                     keepTrackingThisParticle = false;
                 }
                 else if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Reflection)
                 {
-                    MCT_Reflect_ParticleArc(monteCarlo, mc_particle);
+                    MCT_Reflect_ParticleArc(monteCarlo, particle);
+
                     keepTrackingThisParticle = true;
                 }
                 else
@@ -1786,8 +1930,9 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
         case MC_Segment_Outcome_type::Census:
             {
                 // The particle has reached the end of the time step.
-                processedVault->pushParticle(mc_particle);
-                m_census = m_census() + 1;
+                //processedVault->pushParticle(mc_particle);
+                m_local_ids_processed.add(particle.localId());
+                m_census = m_census() + 1; // TODO : Voir atomic.
                 keepTrackingThisParticle = false;
                 break;
             }
@@ -1801,7 +1946,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int 
 }
 
 MC_Segment_Outcome_type::Enum QSModule::
-MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned int &flux_tally_index)
+MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &flux_tally_index)
 {
     // initialize distances to large number
     int number_of_events = 3;
@@ -1809,44 +1954,45 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     distance[0] = distance[1] = distance[2] = 1e80; // +inf
 
     // Calculate the particle speed
-    double particle_speed = mc_particle.Get_Velocity()->Length();
+    MC_Vector velo = MC_Vector(m_particleVelocity[particle][0], m_particleVelocity[particle][1], m_particleVelocity[particle][2]);
+    double particle_speed = velo.Length();
 
     // Force collision if a census event narrowly preempts a collision
     int force_collision = 0 ;
-    if ( mc_particle.num_mean_free_paths < 0.0 )
+    if ( m_particleNumMeanFreeP[particle] < 0.0 )
     {
         force_collision = 1 ;
 
-        if ( mc_particle.num_mean_free_paths > -900.0 )
+        if ( m_particleNumMeanFreeP[particle] > -900.0 )
         {
-          printf(" MC_Segment_Outcome: mc_particle.num_mean_free_paths > -900.0 \n");
+          printf(" MC_Segment_Outcome: m_particleNumMeanFreeP[particle] > -900.0 \n");
         }
 
-        mc_particle.num_mean_free_paths = PhysicalConstants::_smallDouble;
+        m_particleNumMeanFreeP[particle] = PhysicalConstants::_smallDouble;
     }
 
     // Randomly determine the distance to the next collision
     // based upon the composition of the current cell.
-    double macroscopic_total_cross_section = weightedMacroscopicCrossSectionArc(monteCarlo, mc_particle.cellArc, mc_particle.energy_group);
+    double macroscopic_total_cross_section = weightedMacroscopicCrossSectionArc(monteCarlo, particle.cell(), m_particleEneGrp[particle]);
 
     // Cache the cross section
-    mc_particle.totalCrossSection = macroscopic_total_cross_section;
+    m_particleTotalCrossSection[particle] = macroscopic_total_cross_section;
     if (macroscopic_total_cross_section == 0.0)
     {
-        mc_particle.mean_free_path = PhysicalConstants::_hugeDouble;
+        m_particleMeanFreeP[particle] = PhysicalConstants::_hugeDouble;
     }
     else
     {
-        mc_particle.mean_free_path = 1.0 / macroscopic_total_cross_section;
+        m_particleMeanFreeP[particle] = 1.0 / macroscopic_total_cross_section;
     }
 
-    if ( mc_particle.num_mean_free_paths == 0.0)
+    if ( m_particleNumMeanFreeP[particle] == 0.0)
     {
         // Sample the number of mean-free-paths remaining before
         // the next collision from an exponential distribution.
-        double random_number = rngSample(&mc_particle.random_number_seed);
+        double random_number = rngSample(&m_particleRNS[particle]);
 
-        mc_particle.num_mean_free_paths = -1.0*std::log(random_number);
+        m_particleNumMeanFreeP[particle] = -1.0*std::log(random_number);
     }
 
     // Calculate the distances to collision, nearest facet, and census.
@@ -1858,11 +2004,11 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     }
     else
     {
-        distance[MC_Segment_Outcome_type::Collision] = mc_particle.num_mean_free_paths*mc_particle.mean_free_path;
+        distance[MC_Segment_Outcome_type::Collision] = m_particleNumMeanFreeP[particle] * m_particleMeanFreeP[particle];
     }
 
     // process census
-    distance[MC_Segment_Outcome_type::Census] = particle_speed*mc_particle.time_to_census;
+    distance[MC_Segment_Outcome_type::Census] = particle_speed*m_particleTimeCensus[particle];
 
 
     //  DEBUG  Turn off threshold for now
@@ -1870,26 +2016,22 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     // Get the current winning distance.
     double current_best_distance = PhysicalConstants::_hugeDouble;
 
-    DirectionCosine *direction_cosine = mc_particle.Get_Direction_Cosine();
 
-    bool new_segment =  (mc_particle.num_segments == 0 ||
-                         mc_particle.last_event == MC_Tally_Event::Collision);
+    bool new_segment =  (m_particleNumSeg[particle] == 0 ||
+                         m_particleLastEvent[particle] == MC_Tally_Event::Collision);
 
     // Calculate the minimum distance to each facet of the cell.
     MC_Nearest_Facet nearest_facet;
-        nearest_facet = MCT_Nearest_FacetArc(&mc_particle, mc_particle.coordinate,
-                                  direction_cosine, distance_threshold, current_best_distance, new_segment, monteCarlo);
+        nearest_facet = MCT_Nearest_FacetArc(particle, distance_threshold, current_best_distance, new_segment, monteCarlo);
 
-    Face faceOfFacet = mc_particle.cellArc.face(nearest_facet.facet / 4);
-
-    mc_particle.normal_dot = nearest_facet.dot_product;
+    m_particleNormalDot[particle] = nearest_facet.dot_product;
 
     distance[MC_Segment_Outcome_type::Facet_Crossing] = nearest_facet.distance_to_facet;
     //info() << "Distance : " << nearest_facet.distance_to_facet << " " << nearest_facet.facet;
     //ARCANE_FATAL("aaa");
 
     // Get out of here if the tracker failed to bound this particle's volume.
-    if (mc_particle.last_event == MC_Tally_Event::Facet_Crossing_Tracking_Error)
+    if (m_particleLastEvent[particle] == MC_Tally_Event::Facet_Crossing_Tracking_Error)
     {
         return MC_Segment_Outcome_type::Facet_Crossing;
     }
@@ -1920,9 +2062,9 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
                        distance[MC_Segment_Outcome_type::Facet_Crossing],
                        distance[MC_Segment_Outcome_type::Census]);
     }
-    mc_particle.segment_path_length = distance[segment_outcome];
+    m_particleSegPathLength[particle] = distance[segment_outcome];
 
-    mc_particle.num_mean_free_paths -= mc_particle.segment_path_length / mc_particle.mean_free_path;
+    m_particleNumMeanFreeP[particle] -= m_particleSegPathLength[particle] / m_particleMeanFreeP[particle];
 
     // Before using segment_outcome as an index, verify it is valid
     if (segment_outcome < 0 || segment_outcome >= MC_Segment_Outcome_type::Max_Number)
@@ -1937,7 +2079,7 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
         MC_Tally_Event::Census,
     };
 
-    mc_particle.last_event = SegmentOutcome_to_LastEvent[segment_outcome];
+    m_particleLastEvent[particle] = SegmentOutcome_to_LastEvent[segment_outcome];
 
     // Set the segment path length to be the minimum of
     //   (i)   the distance to collision in the cell, or
@@ -1945,25 +2087,25 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     //   (iii) the distance to census at the end of the time step
     if (segment_outcome == MC_Segment_Outcome_type::Collision)
     {
-        mc_particle.num_mean_free_paths = 0.0;
+        m_particleNumMeanFreeP[particle] = 0.0;
     }
     else if (segment_outcome == MC_Segment_Outcome_type::Facet_Crossing)
     {
-        mc_particle.facet = nearest_facet.facet;
-        mc_particle.faceArc = faceOfFacet;
+        m_particleFace[particle] = nearest_facet.facet / 4;
+        m_particleFacet[particle] = nearest_facet.facet; // TODO : pos global ([0, 24[), voir pour mettre pos local ([0, 4[)
     }
     else if (segment_outcome == MC_Segment_Outcome_type::Census)
     {
-        mc_particle.time_to_census = MC_MIN(mc_particle.time_to_census, 0.0);
+        m_particleTimeCensus[particle] = MC_MIN(m_particleTimeCensus[particle], 0.0);
     }
 
     // If collision was forced, set mc_particle.num_mean_free_paths = 0
     // so that a new value is randomly selected on next pass.
-    if (force_collision == 1) { mc_particle.num_mean_free_paths = 0.0; }
+    if (force_collision == 1) { m_particleNumMeanFreeP[particle] = 0.0; }
 
     // Do not perform any tallies if the segment path length is zero.
     //   This only introduces roundoff errors.
-    if (mc_particle.segment_path_length == 0.0)
+    if (m_particleSegPathLength[particle] == 0.0)
     {
         return segment_outcome;
     }
@@ -1971,29 +2113,33 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned
     // Move particle to end of segment, accounting for some physics processes along the segment.
 
     // Project the particle trajectory along the segment path length.
-    mc_particle.Move_Particle(mc_particle.direction_cosine, mc_particle.segment_path_length);
 
-    double segment_path_time = (mc_particle.segment_path_length/particle_speed);
+    //mc_particle.Move_Particle(mc_particle.direction_cosine, mc_particle.segment_path_length);
+    m_particleCoord[particle][MD_DirX] += (m_particleDirCos[particle][0] * m_particleSegPathLength[particle]);
+    m_particleCoord[particle][MD_DirY] += (m_particleDirCos[particle][1] * m_particleSegPathLength[particle]);
+    m_particleCoord[particle][MD_DirZ] += (m_particleDirCos[particle][2] * m_particleSegPathLength[particle]);
+
+    double segment_path_time = (m_particleSegPathLength[particle]/particle_speed);
 
     // Decrement the time to census and increment age.
-    mc_particle.time_to_census -= segment_path_time;
-    mc_particle.age += segment_path_time;
+    m_particleTimeCensus[particle] -= segment_path_time;
+    m_particleAge[particle] += segment_path_time;
 
       //info() << "Drap" << mc_particle.age;
     // Ensure mc_particle.time_to_census is non-negative.
-    if (mc_particle.time_to_census < 0.0)
+    if (m_particleTimeCensus[particle] < 0.0)
     {
-        mc_particle.time_to_census = 0.0;
+        m_particleTimeCensus[particle] = 0.0;
     }
 
     // Accumulate the particle's contribution to the scalar flux.
-    m_scalarFluxTally[mc_particle.cellArc][mc_particle.energy_group] += mc_particle.segment_path_length * mc_particle.weight;
+    m_scalarFluxTally[particle.cell()][m_particleEneGrp[particle]] += m_particleSegPathLength[particle] * m_particleWeight[particle];
 
     return segment_outcome;
 }
 
 double QSModule::
-weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell &cell, int energyGroup)
+weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell cell, int energyGroup)
 {
    double precomputedCrossSection = m_total[cell][energyGroup];
 
@@ -2021,7 +2167,7 @@ weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell &cell, int energ
 //----------------------------------------------------------------------------------------------------------------------
 
 double QSModule::
-macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell& cell, int isoIndex, int energyGroup)
+macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell cell, int isoIndex, int energyGroup)
 {
    // Initialize various data items.
    int globalMatIndex = m_material[cell];
@@ -2055,36 +2201,31 @@ macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell& cell
 }
 
 MC_Nearest_Facet QSModule::
-MCT_Nearest_FacetArc( MC_Particle *mc_particle,
-                      MC_Vector &coordinate,
-                      const DirectionCosine *direction_cosine,
+MCT_Nearest_FacetArc( Particle particle,
                       double distance_threshold,
                       double current_best_distance,
                       bool new_segment,
                       MonteCarlo* monteCarlo )
 {
 
-    MC_Nearest_Facet nearest_facet =
-       MCT_Nearest_Facet_3D_GArc(mc_particle, coordinate, direction_cosine);
+  MC_Nearest_Facet nearest_facet = MCT_Nearest_Facet_3D_GArc(particle);
 
-    if (nearest_facet.distance_to_facet < 0) {
-      nearest_facet.distance_to_facet = 0; 
-    }
+  if (nearest_facet.distance_to_facet < 0) {
+    nearest_facet.distance_to_facet = 0; 
+  }
 
-    if (nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble)
-    {
-       qs_assert(false);
-    }
+  if (nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble)
+  {
+    qs_assert(false);
+  }
 
-    return nearest_facet;
+  return nearest_facet;
 }  // End MCT_Nearest_Facet
 
 MC_Nearest_Facet QSModule::
-MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
-                          MC_Vector &coordinate,
-                          const DirectionCosine *direction_cosine)
+MCT_Nearest_Facet_3D_GArc(Particle particle)
 {
-  Cell cell = mc_particle->cellArc;
+  Cell cell = particle.cell();
   MC_Vector *facet_coords[3];
   int iteration = 0;
   double move_factor = 0.5 * PhysicalConstants::_smallDouble;
@@ -2096,9 +2237,9 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
   {
       // Determine the distance to each facet of the cell.
       // (1e-8 * Radius)^2
-      double plane_tolerance = 1e-16*(coordinate.x*coordinate.x +
-                                      coordinate.y*coordinate.y +
-                                      coordinate.z*coordinate.z);
+      double plane_tolerance = 1e-16*(m_particleCoord[particle][MD_DirX]*m_particleCoord[particle][MD_DirX] +
+                                      m_particleCoord[particle][MD_DirY]*m_particleCoord[particle][MD_DirY] +
+                                      m_particleCoord[particle][MD_DirZ]*m_particleCoord[particle][MD_DirZ]);
 
       MC_Distance_To_Facet distance_to_facet[24];
 
@@ -2130,9 +2271,9 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
           MC_General_Plane plane(point0, point1, point2);
 
           double facet_normal_dot_direction_cosine =
-              (plane.A * direction_cosine->alpha +
-              plane.B * direction_cosine->beta +
-              plane.C * direction_cosine->gamma);
+              (plane.A * m_particleDirCos[particle][0] +
+              plane.B * m_particleDirCos[particle][1] +
+              plane.C * m_particleDirCos[particle][2]);
 
           // info() << " Facet : " << point0.x << "x" << point0.y << "x" << point0.z;
           // info()                << point1.x << "x" << point1.y << "x" << point1.z;
@@ -2163,7 +2304,7 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
               plane_tolerance,
               facet_normal_dot_direction_cosine, plane.A, plane.B, plane.C, plane.D,
               point0, point1, point2,
-              coordinate, direction_cosine, false);
+              particle, false);
 
           distance_to_facet[facet_index].distance = t;
           //info() << "distance_to_facet : facet_index :" << facet_index << " distance : " << t;
@@ -2178,7 +2319,7 @@ MCT_Nearest_Facet_3D_GArc(MC_Particle *mc_particle,
       int retry = 0;
 
       MC_Nearest_Facet nearest_facet = MCT_Nearest_Facet_Find_NearestArc(
-        mc_particle, coordinate,
+        particle,
         iteration, move_factor, num_facets_per_cell,
 //to-do       monteCarlo->distance_to_facet->task[my_task_num].facet,
         distance_to_facet,
@@ -2196,14 +2337,13 @@ MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
                                                      const MC_Vector &facet_coords0,//=
                                                      const MC_Vector &facet_coords1,//=
                                                      const MC_Vector &facet_coords2,//=
-                                                     const MC_Vector &coordinate,
-                                                     const DirectionCosine *direction_cosine,//=
+                                                     Particle particle,//=
                                                      bool allow_enter) //=
    {
     double boundingBox_tolerance = 1e-9;
-    double numerator = -1.0*(A * coordinate.x +
-                             B * coordinate.y +
-                             C * coordinate.z +
+    double numerator = -1.0*(A * m_particleCoord[particle][MD_DirX] +
+                             B * m_particleCoord[particle][MD_DirY] +
+                             C * m_particleCoord[particle][MD_DirZ] +
                              D);
 
     /* Plane equation: numerator = -P(x,y,z) = -(Ax + By + Cz + D)
@@ -2221,9 +2361,9 @@ MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
 
     // see if the intersection point of the ray and the plane is within the triangular facet
     MC_Vector intersection_pt;
-    intersection_pt.x = coordinate.x + distance * direction_cosine->alpha;
-    intersection_pt.y = coordinate.y + distance * direction_cosine->beta;
-    intersection_pt.z = coordinate.z + distance * direction_cosine->gamma;
+    intersection_pt.x = m_particleCoord[particle][MD_DirX] + distance * m_particleDirCos[particle][0];
+    intersection_pt.y = m_particleCoord[particle][MD_DirY] + distance * m_particleDirCos[particle][1];
+    intersection_pt.z = m_particleCoord[particle][MD_DirZ] + distance * m_particleDirCos[particle][2];
 
     // if the point is completely below the triangle, it is not in the triangle
 #define IF_POINT_BELOW_CONTINUE(axis)                                    \
@@ -2305,11 +2445,10 @@ MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
         return distance;
     }
     return PhysicalConstants::_hugeDouble;
-   }
+}
 
 MC_Nearest_Facet QSModule::
-MCT_Nearest_Facet_Find_NearestArc(MC_Particle *mc_particle,
-                                  MC_Vector &coordinate,
+MCT_Nearest_Facet_Find_NearestArc(Particle particle,
                                   int &iteration, // input/output
                                   double &move_factor, // input/output
                                   int num_facets_per_cell,
@@ -2322,40 +2461,37 @@ MCT_Nearest_Facet_Find_NearestArc(MC_Particle *mc_particle,
 
   retry = 0;
 
-  if ( mc_particle )
+  if ( (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble && move_factor > 0) ||
+      ( m_particleNumSeg[particle] > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0 ) )
   {
-      if ( (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble && move_factor > 0) ||
-          ( mc_particle->num_segments > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0 ) )
-      {
-        // Could not find a solution, so move the particle towards the center of the cell
-        // and try again.
-        MCT_Nearest_Facet_3D_G_Move_ParticleArc(mc_particle->cellArc, coordinate, move_factor);
+    // Could not find a solution, so move the particle towards the center of the cell
+    // and try again.
+    MCT_Nearest_Facet_3D_G_Move_ParticleArc(particle, move_factor);
 
-        iteration++;
-        move_factor *= 2.0;
+    iteration++;
+    move_factor *= 2.0;
 
-        if ( move_factor > 1.0e-2 )
-            move_factor = 1.0e-2;
+    if ( move_factor > 1.0e-2 )
+        move_factor = 1.0e-2;
 
-        int max_iterations = 10000;
+    int max_iterations = 10000;
 
-        if ( iteration == max_iterations )
-        {
-          //info() << (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble) << (move_factor > 0) << 
-          //(mc_particle->num_segments > max_allowed_segments) << (nearest_facet.distance_to_facet <= 0.0);
+    if ( iteration == max_iterations )
+    {
+      //info() << (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble) << (move_factor > 0) << 
+      //(mc_particle->num_segments > max_allowed_segments) << (nearest_facet.distance_to_facet <= 0.0);
 
-            qs_assert(false); // If we start hitting this assertion we can
-            // come up with a better mitigation plan. - dfr
-            retry = 0;
+        qs_assert(false); // If we start hitting this assertion we can
+        // come up with a better mitigation plan. - dfr
+        retry = 0;
 
-        }
-        else
-            retry = 1;
+    }
+    else
+        retry = 1;
 
-        // Allow the distance to the current facet
-        //location->facet = -1;
+    // Allow the distance to the current facet
+    //location->facet = -1;
 
-      }
   }
   return nearest_facet;
 }
@@ -2407,16 +2543,16 @@ MCT_Nearest_Facet_Find_Nearest( int num_facets_per_cell,
    }
 
 void QSModule::
-MCT_Nearest_Facet_3D_G_Move_ParticleArc( Cell& cell,
-                                      MC_Vector &coordinate, // input/output: move this coordinate
+MCT_Nearest_Facet_3D_G_Move_ParticleArc( Particle particle, // input/output: move this coordinate
                                       double move_factor)      // input: multiplication factor for move
-   {
-      MC_Vector move_to(m_coordCenter[cell][0], m_coordCenter[cell][1], m_coordCenter[cell][2]);
+{
+  Cell cell = particle.cell();
+  MC_Vector move_to(m_coordCenter[cell][0], m_coordCenter[cell][1], m_coordCenter[cell][2]);
 
-      coordinate.x += move_factor * ( move_to.x - coordinate.x );
-      coordinate.y += move_factor * ( move_to.y - coordinate.y );
-      coordinate.z += move_factor * ( move_to.z - coordinate.z );
-   }
+  m_particleCoord[particle][MD_DirX] += move_factor * ( move_to.x - m_particleCoord[particle][MD_DirX] );
+  m_particleCoord[particle][MD_DirY] += move_factor * ( move_to.y - m_particleCoord[particle][MD_DirY] );
+  m_particleCoord[particle][MD_DirZ] += move_factor * ( move_to.z - m_particleCoord[particle][MD_DirZ] );
+}
 
 unsigned int QSModule::
 MC_Find_Min(const double *array, int num_elements)
@@ -2437,134 +2573,189 @@ MC_Find_Min(const double *array, int num_elements)
 }
 
 bool QSModule::
-CollisionEventArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle)
+CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
 {
-  Cell cell = mc_particle.cellArc;
-   int globalMatIndex = m_material[cell];
+  Cell cell = particle.cell();
+  int globalMatIndex = m_material[cell];
 
-   //------------------------------------------------------------------------------------------------------------------
-   //    Pick the isotope and reaction.
-   //------------------------------------------------------------------------------------------------------------------
-   double randomNumber = rngSample(&mc_particle.random_number_seed);
-   double totalCrossSection = mc_particle.totalCrossSection;
-   double currentCrossSection = totalCrossSection * randomNumber;
-   int selectedIso = -1;
-   int selectedUniqueNumber = -1;
-   int selectedReact = -1;
-   int numIsos = (int)monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso.size();
-   
-   for (int isoIndex = 0; isoIndex < numIsos && currentCrossSection >= 0; isoIndex++)
-   {
-      int uniqueNumber = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._gid;
-      int numReacts = monteCarlo->_nuclearData->getNumberReactions(uniqueNumber);
-      for (int reactIndex = 0; reactIndex < numReacts; reactIndex++)
+  //------------------------------------------------------------------------------------------------------------------
+  //    Pick the isotope and reaction.
+  //------------------------------------------------------------------------------------------------------------------
+  double randomNumber = rngSample(&m_particleRNS[particle]);
+  double totalCrossSection = m_particleTotalCrossSection[particle];
+  double currentCrossSection = totalCrossSection * randomNumber;
+  int selectedIso = -1;
+  int selectedUniqueNumber = -1;
+  int selectedReact = -1;
+  int numIsos = (int)monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso.size();
+  
+  for (int isoIndex = 0; isoIndex < numIsos && currentCrossSection >= 0; isoIndex++)
+  {
+    int uniqueNumber = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._gid;
+    int numReacts = monteCarlo->_nuclearData->getNumberReactions(uniqueNumber);
+    for (int reactIndex = 0; reactIndex < numReacts; reactIndex++)
+    {
+      currentCrossSection -= macroscopicCrossSectionArc(monteCarlo, reactIndex, cell,
+                isoIndex, m_particleEneGrp[particle]); // TODO : Editer methode pour mettre juste particle.
+      if (currentCrossSection < 0)
       {
-         currentCrossSection -= macroscopicCrossSectionArc(monteCarlo, reactIndex, mc_particle.cellArc,
-                   isoIndex, mc_particle.energy_group);
-         if (currentCrossSection < 0)
-         {
-            selectedIso = isoIndex;
-            selectedUniqueNumber = uniqueNumber;
-            selectedReact = reactIndex;
-            break;
-         }
+        selectedIso = isoIndex;
+        selectedUniqueNumber = uniqueNumber;
+        selectedReact = reactIndex;
+        break;
       }
-   }
-   qs_assert(selectedIso != -1);
+    }
+  }
+  qs_assert(selectedIso != -1);
 
-   //------------------------------------------------------------------------------------------------------------------
-   //    Do the collision.
-   //------------------------------------------------------------------------------------------------------------------
-   double energyOut[MAX_PRODUCTION_SIZE];
-   double angleOut[MAX_PRODUCTION_SIZE];
-   int nOut = 0;
-   double mat_mass = monteCarlo->_materialDatabase->_mat[globalMatIndex]._mass;
+  //------------------------------------------------------------------------------------------------------------------
+  //    Do the collision.
+  //------------------------------------------------------------------------------------------------------------------
+  double energyOut[MAX_PRODUCTION_SIZE];
+  double angleOut[MAX_PRODUCTION_SIZE];
+  int nOut = 0;
+  double mat_mass = monteCarlo->_materialDatabase->_mat[globalMatIndex]._mass;
 
-   monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact].sampleCollision(
-      mc_particle.kinetic_energy, mat_mass, &energyOut[0], &angleOut[0], nOut, &(mc_particle.random_number_seed), MAX_PRODUCTION_SIZE );
+  monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact].sampleCollision(
+    m_particleKinEne[particle], mat_mass, &energyOut[0], &angleOut[0], nOut, &(m_particleRNS[particle]), MAX_PRODUCTION_SIZE );
 
-   //--------------------------------------------------------------------------------------------------------------
-   //  Post-Collision Phase 1:
-   //    Tally the collision
-   //--------------------------------------------------------------------------------------------------------------
+  //--------------------------------------------------------------------------------------------------------------
+  //  Post-Collision Phase 1:
+  //    Tally the collision
+  //--------------------------------------------------------------------------------------------------------------
 
-   // Set the reaction for this particle.
-   m_collision = m_collision() + 1;
-   NuclearDataReaction::Enum reactionType = monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
-           _reactions[selectedReact]._reactionType;
+  // Set the reaction for this particle.
+  m_collision = m_collision() + 1; // TODO voir atomic.
+  NuclearDataReaction::Enum reactionType = monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
+          _reactions[selectedReact]._reactionType;
 
-   switch (reactionType)
-   {
-      case NuclearDataReaction::Scatter:
-         m_scatter = m_scatter() + 1;
-         break;
-      case NuclearDataReaction::Absorption:
-         m_absorb = m_absorb() + 1;
-         break;
-      case NuclearDataReaction::Fission:
-         m_fission = m_fission() + 1;
-         m_produce = m_produce() + nOut;
-         break;
-      case NuclearDataReaction::Undefined:
-         printf("reactionType invalid\n");
-         qs_assert(false);
-   }
+  switch (reactionType)
+  {
+    case NuclearDataReaction::Scatter:// TODO voir atomic.
+        m_scatter = m_scatter() + 1;
+        break;
+    case NuclearDataReaction::Absorption:// TODO voir atomic.
+        m_absorb = m_absorb() + 1;
+        break;
+    case NuclearDataReaction::Fission:// TODO voir atomic.
+        m_fission = m_fission() + 1;
+        m_produce = m_produce() + nOut;
+        break;
+    case NuclearDataReaction::Undefined:
+        printf("reactionType invalid\n");
+        qs_assert(false);
+  }
 
-   if( nOut == 0 ) return false;
+  if( nOut == 0 ) return false;
 
-   for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
-   {
-        // Newly created particles start as copies of their parent
-        MC_Particle secondaryParticle = mc_particle;
-        secondaryParticle.random_number_seed = rngSpawn_Random_Number_Seed(&mc_particle.random_number_seed);
-        secondaryParticle.identifier = secondaryParticle.random_number_seed;
-        updateTrajectory( energyOut[secondaryIndex], angleOut[secondaryIndex], secondaryParticle );
-        monteCarlo->_particleVaultContainer->addExtraParticle(secondaryParticle);
-   }
 
-   updateTrajectory( energyOut[0], angleOut[0], mc_particle);
 
-   // If a fission reaction produces secondary particles we also add the original
-   // particle to the "extras" that we will handle later.  This avoids the 
-   // possibility of a particle doing multiple fission reactions in a single
-   // kernel invocation and overflowing the extra storage with secondary particles.
-   if ( nOut > 1 ) 
-       monteCarlo->_particleVaultContainer->addExtraParticle(mc_particle);
 
-   //If we are still tracking this particle the update its energy group
-   mc_particle.energy_group = monteCarlo->_nuclearData->getEnergyGroup(mc_particle.kinetic_energy);
 
-   return nOut == 1;
+  Int64UniqueArray addIdP(nOut - 1);
+  Int32UniqueArray addCellIdP(nOut - 1);
+  Int32UniqueArray particles_lid(nOut - 1);
+
+  for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
+  {
+    int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[particle]);
+    addIdP.add(rns);
+    addCellIdP.add(particle.cell().localId());
+  }
+
+  m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
+  m_particle_family->toParticleFamily()->endUpdate();
+
+  ParticleVectorView viewNewP = m_particle_family->view(particles_lid);
+  for (int i = 0; i < particles_lid.size(); i++)
+  {
+    Particle pNew = Particle(viewNewP[i].internal());
+    copyParticle(particle, pNew);
+    m_local_ids_extra.add(particles_lid[i]);
+  }
+  for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
+  {
+      // Newly created particles start as copies of their parent
+      // MC_Particle secondaryParticle = mc_particle;
+      // secondaryParticle.random_number_seed = rngSpawn_Random_Number_Seed(&mc_particle.random_number_seed);
+      // secondaryParticle.identifier = secondaryParticle.random_number_seed;
+      Particle pNew = Particle(viewNewP[secondaryIndex-1].internal());
+
+      updateTrajectory( energyOut[secondaryIndex], angleOut[secondaryIndex], pNew );
+  }
+
+  updateTrajectory( energyOut[0], angleOut[0], particle);
+
+  // If a fission reaction produces secondary particles we also add the original
+  // particle to the "extras" that we will handle later.  This avoids the 
+  // possibility of a particle doing multiple fission reactions in a single
+  // kernel invocation and overflowing the extra storage with secondary particles.
+  if ( nOut > 1 ) 
+    m_local_ids_extra.add(particle.localId());
+  //     monteCarlo->_particleVaultContainer->addExtraParticle(mc_particle);
+
+  //If we are still tracking this particle the update its energy group
+  m_particleEneGrp[particle] = monteCarlo->_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+
+  return nOut == 1;
 }
 
 void QSModule::
-updateTrajectory( double energy, double angle, MC_Particle& particle )
+updateTrajectory( double energy, double angle, Particle particle )
 {
-    particle.kinetic_energy = energy;
+    m_particleKinEne[particle] = energy;
     double cosTheta = angle;
-    double randomNumber = rngSample(&particle.random_number_seed);
+    double randomNumber = rngSample(&m_particleRNS[particle]);
     double phi = 2 * 3.14159265 * randomNumber;
     double sinPhi = sin(phi);
     double cosPhi = cos(phi);
     double sinTheta = sqrt((1.0 - (cosTheta*cosTheta)));
-    particle.direction_cosine.Rotate3DVector(sinTheta, cosTheta, sinPhi, cosPhi);
+
+    Rotate3DVector(particle, sinTheta, cosTheta, sinPhi, cosPhi);
+
     double speed = (PhysicalConstants::_speedOfLight *
             sqrt((1.0 - ((PhysicalConstants::_neutronRestMassEnergy *
             PhysicalConstants::_neutronRestMassEnergy) /
             ((energy + PhysicalConstants::_neutronRestMassEnergy) *
             (energy + PhysicalConstants::_neutronRestMassEnergy))))));
-    particle.velocity.x = speed * particle.direction_cosine.alpha;
-    particle.velocity.y = speed * particle.direction_cosine.beta;
-    particle.velocity.z = speed * particle.direction_cosine.gamma;
-    randomNumber = rngSample(&particle.random_number_seed);
-    particle.num_mean_free_paths = -1.0*std::log(randomNumber);
+    m_particleVelocity[particle][MD_DirX] = speed * m_particleDirCos[particle][0];
+    m_particleVelocity[particle][MD_DirY] = speed * m_particleDirCos[particle][1];
+    m_particleVelocity[particle][MD_DirZ] = speed * m_particleDirCos[particle][2];
+    randomNumber = rngSample(&m_particleRNS[particle]);
+    m_particleNumMeanFreeP[particle] = -1.0*std::log(randomNumber);
+}
+
+void QSModule::
+Rotate3DVector(Particle particle, double sin_Theta, double cos_Theta, double sin_Phi, double cos_Phi)
+{
+    // Calculate additional variables in the rotation matrix.
+    double cos_theta = m_particleDirCos[particle][2];
+    double sin_theta = sqrt((1.0 - (cos_theta*cos_theta)));
+
+    double cos_phi;
+    double sin_phi;
+    if (sin_theta < 1e-6) // Order of sqrt(PhysicalConstants::tiny_double)
+    {
+        cos_phi = 1.0; // assume phi  = 0.0;
+        sin_phi = 0.0;
+    }
+    else
+    {
+        cos_phi = m_particleDirCos[particle][0]/sin_theta;
+        sin_phi = m_particleDirCos[particle][1]/sin_theta;
+    }
+
+    // Calculate the rotated direction cosine
+    m_particleDirCos[particle][0] =  cos_theta*cos_phi*(sin_Theta*cos_Phi) - sin_phi*(sin_Theta*sin_Phi) + sin_theta*cos_phi*cos_Theta;
+    m_particleDirCos[particle][1] =  cos_theta*sin_phi*(sin_Theta*cos_Phi) + cos_phi*(sin_Theta*sin_Phi) + sin_theta*sin_phi*cos_Theta;
+    m_particleDirCos[particle][2] = -sin_theta        *(sin_Theta*cos_Phi) +                               cos_theta        *cos_Theta;
 }
 
 MC_Tally_Event::Enum QSModule::
-MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int particle_index, ParticleVault* processingVault)
+MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo)
 {
      //Subfacet_Adjacency &facet_adjacency = MCT_Adjacent_Facet(location, mc_particle, monteCarlo);
-    Face face = mc_particle.faceArc;
+    Face face = particle.cell().face(m_particleFace[particle]);
 
     if ( m_boundaryCond[face] == MC_Subfacet_Adjacency_Event::Transit_On_Processor )
     {
@@ -2572,11 +2763,11 @@ MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int
         //mc_particle.domain     = facet_adjacency.adjacent.domain;
         Cell cell = face.frontCell();
 
-        if(cell == mc_particle.cellArc)
+        if(cell == particle.cell())
         {
           cell = face.backCell();
         }
-        if(cell == mc_particle.cellArc)
+        if(cell == particle.cell())
         {
           if(face.frontCell() == face.backCell())
           {
@@ -2584,20 +2775,20 @@ MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int
           }
           ARCANE_FATAL("Erreur deplace");
         }
-        mc_particle.cellArc = cell;
-        mc_particle.cell       = cell.localId();
-        mc_particle.facet      = (mc_particle.facet < 12 ? mc_particle.facet + 12 : mc_particle.facet - 12);
-        mc_particle.last_event = MC_Tally_Event::Facet_Crossing_Transit_Exit;
+        m_particleFacet[particle]     = (m_particleFacet[particle] < 12 ? m_particleFacet[particle] + 12 : m_particleFacet[particle] - 12);
+        m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Transit_Exit;
+
+        m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
     }
     else if ( m_boundaryCond[face] == MC_Subfacet_Adjacency_Event::Boundary_Escape )
     {
         // The particle will escape across the system boundary.
-        mc_particle.last_event = MC_Tally_Event::Facet_Crossing_Escape;
+        m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Escape;
     }
     else if ( m_boundaryCond[face] == MC_Subfacet_Adjacency_Event::Boundary_Reflection )
     {
         // The particle will reflect off of the system boundary.
-        mc_particle.last_event = MC_Tally_Event::Facet_Crossing_Reflection;
+        m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Reflection;
     }
     else if ( m_boundaryCond[face] == MC_Subfacet_Adjacency_Event::Transit_Off_Processor )
     {
@@ -2605,44 +2796,49 @@ MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int
         // The neighboring domain is on another processor. Set domain local domain on neighbor proc
         
         //mc_particle.domain     = facet_adjacency.adjacent.domain;
-        ARCANE_FATAL("TODO non supporté");
-        int id_face = mc_particle.facet / 4;
-        Cell cell;
-        if(id_face < 3)
+        //ARCANE_FATAL("TODO non supporté encore");
+
+        Cell cell = face.frontCell();
+
+        if(cell == particle.cell())
         {
           cell = face.backCell();
         }
-        else
+        if(cell == particle.cell())
         {
-          cell = face.frontCell();
+          if(face.frontCell() == face.backCell())
+          {
+            ARCANE_FATAL("hhhhhhhhhhhaaaaaaaaaaaaaa");
+          }
+          ARCANE_FATAL("Erreur deplace");
         }
-        mc_particle.cellArc = cell;
-        mc_particle.facet      = (mc_particle.facet < 12 ? mc_particle.facet + 12 : mc_particle.facet - 12);
-        mc_particle.last_event = MC_Tally_Event::Facet_Crossing_Communication;
+        m_particleFacet[particle]     = (m_particleFacet[particle] < 12 ? m_particleFacet[particle] + 12 : m_particleFacet[particle] - 12);
+        m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Communication;
+
+        m_local_ids_out.add(particle.localId());
+        m_rank_out.add(cell.owner());
 
         // Select particle buffer
         // TODO Gérer transfert particles.
         //int neighbor_rank = monteCarlo->domain[facet_adjacency.current.domain].mesh._nbrRank[facet_adjacency.neighbor_index];
 
-        processingVault->putParticle( mc_particle, particle_index );
+        // processingVault->putParticle( mc_particle, particle_index );
 
         //Push neighbor rank and mc_particle onto the send queue
         //monteCarlo->_particleVaultContainer->getSendQueue()->push( neighbor_rank, particle_index );
 
     }
 
-    return mc_particle.last_event;
+    return (MC_Tally_Event::Enum) m_particleLastEvent[particle];
 }
 
 void QSModule::
-MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, MC_Particle &particle)
+MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, Particle particle)
 {
-    DirectionCosine *direction_cosine = particle.Get_Direction_Cosine();
+    int truc = m_particleFacet[particle] % 4;
 
-    int truc = particle.facet % 4;
-
-    Cell cell = particle.cellArc;
-    Face face = particle.faceArc;
+    Cell cell = particle.cell();
+    Face face = cell.face(m_particleFace[particle]);
 
     int first_pos_node = (ordre_qs[m_indexArc[face]] ? ((truc == 3) ? 0 : truc+1) : truc);
     int second_pos_node = (ordre_qs[m_indexArc[face]] ? truc : ((truc == 3) ? 0 : truc+1));
@@ -2661,21 +2857,22 @@ MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, MC_Particle &particle)
     MC_Vector facet_normal(plane.A, plane.B, plane.C);
 
 
-    double dot = 2.0*( direction_cosine->alpha * facet_normal.x +
-                       direction_cosine->beta  * facet_normal.y +
-                       direction_cosine->gamma * facet_normal.z );
+    double dot = 2.0*( m_particleDirCos[particle][0] * facet_normal.x +
+                       m_particleDirCos[particle][1] * facet_normal.y +
+                       m_particleDirCos[particle][2] * facet_normal.z );
 
     if ( dot > 0 ) // do not reflect a particle that is ALREADY pointing inward
     {
         // reflect the particle
-        direction_cosine->alpha -= dot * facet_normal.x;
-        direction_cosine->beta  -= dot * facet_normal.y;
-        direction_cosine->gamma -= dot * facet_normal.z;
+        m_particleDirCos[particle][0] -= dot * facet_normal.x;
+        m_particleDirCos[particle][1] -= dot * facet_normal.y;
+        m_particleDirCos[particle][2] -= dot * facet_normal.z;
     }
 
     // Calculate the reflected, velocity components.
-    double particle_speed = particle.velocity.Length();
-    particle.velocity.x = particle_speed * particle.direction_cosine.alpha;
-    particle.velocity.y = particle_speed * particle.direction_cosine.beta;
-    particle.velocity.z = particle_speed * particle.direction_cosine.gamma;
+    MC_Vector velo = MC_Vector(m_particleVelocity[particle][0], m_particleVelocity[particle][1], m_particleVelocity[particle][2]);
+    double particle_speed = velo.Length();
+    m_particleVelocity[particle][0] = particle_speed * m_particleDirCos[particle][0];
+    m_particleVelocity[particle][1] = particle_speed * m_particleDirCos[particle][1];
+    m_particleVelocity[particle][2] = particle_speed * m_particleDirCos[particle][2];
 }

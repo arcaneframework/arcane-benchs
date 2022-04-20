@@ -87,7 +87,7 @@ void MC_SourceNow(MonteCarlo *monteCarlo)
             {
                 MC_Particle particle;
 
-                uint64_t random_number_seed;
+                int64_t random_number_seed;
 
                 ATOMIC_CAPTURE( cell._sourceTally, 1, random_number_seed );
 

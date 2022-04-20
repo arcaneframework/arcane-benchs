@@ -81,8 +81,8 @@ class MC_Base_Particle
     double                             num_mean_free_paths;
     double                             num_segments;
 
-    uint64_t                           random_number_seed;
-    uint64_t                           identifier;
+    int64_t                           random_number_seed;
+    int64_t                           identifier;
 
     MC_Tally_Event::Enum               last_event;
     int                                num_collisions;
@@ -149,8 +149,8 @@ inline MC_Base_Particle::MC_Base_Particle( ) :
         age(0.0),
         num_mean_free_paths(0.0),
         num_segments(0.0),
-        random_number_seed((uint64_t)0),
-        identifier((uint64_t)0),
+        random_number_seed((int64_t)0),
+        identifier((int64_t)0),
         last_event(MC_Tally_Event::Census),
         num_collisions(0),
         breed(0),

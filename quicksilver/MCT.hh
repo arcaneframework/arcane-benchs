@@ -29,7 +29,7 @@ HOST_DEVICE_END
 
 HOST_DEVICE
 void MCT_Generate_Coordinate_3D_G(
-   uint64_t *random_number_seed,
+   int64_t *random_number_seed,
    int domain_num,
    int cell,
    MC_Vector &coordinate,

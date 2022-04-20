@@ -431,6 +431,15 @@
         dump="true"/>
 
     <variable
+        field-name="particleFacet"
+        name="ParticleFacet"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"/>
+
+    <variable
         field-name="particleFace"
         name="ParticleFace"
         family-name="ArcaneParticles"

@@ -65,6 +65,8 @@ public:
   ArcaneQSObject(mbi)
 , m_mesh(mbi.mesh())
 , m_particle_family(nullptr)
+, m_particle_family_processed(nullptr)
+, m_particle_family_extra(nullptr)
 , m_particle_family_with_ghost(nullptr)
 , m_first_uid(0) 
 {
@@ -86,7 +88,19 @@ public:
 
   IMesh* m_mesh;
   IItemFamily* m_particle_family;
+  IItemFamily* m_particle_family_processed;
+  IItemFamily* m_particle_family_extra;
   IItemFamily* m_particle_family_with_ghost;
+
+  Int32UniqueArray m_local_ids_processing;
+  Int32UniqueArray m_local_ids_processed;
+  Int32UniqueArray m_local_ids_extra;
+
+  Int32UniqueArray m_local_ids_out;
+  Int32UniqueArray m_rank_out;
+
+  Int32UniqueArray m_local_ids_in;
+
   Int64 m_first_uid;
   SharedArray< SharedArray<Integer> > m_extra_ghost_particles_to_send;
 
@@ -135,33 +149,28 @@ public:
 
   void tracking(MonteCarlo* monteCarlo);
   void trackingArc(MonteCarlo* monteCarlo);
-  void CycleTrackingGutsArc( MonteCarlo *monteCarlo, int particle_index, ParticleVault *processingVault, ParticleVault *processedVault );
-  void CycleTrackingFunctionArc( MonteCarlo *monteCarlo, MC_Particle &mc_particle, int particle_index, ParticleVault* processingVault, ParticleVault* processedVault);
-  MC_Segment_Outcome_type::Enum MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle, unsigned int &flux_tally_index);
-  double weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell &cell, int energyGroup);
-  double macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell& cell, int isoIndex, int energyGroup);
-  MC_Nearest_Facet MCT_Nearest_FacetArc(MC_Particle *mc_particle,
-                                      MC_Vector &coordinate,
-                                      const DirectionCosine *direction_cosine,
+  void moveProcessingProcessed();
+  void CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle );
+  void CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle);
+  MC_Segment_Outcome_type::Enum MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &flux_tally_index);
+  double weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell cell, int energyGroup);
+  double macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell cell, int isoIndex, int energyGroup);
+  MC_Nearest_Facet MCT_Nearest_FacetArc(Particle particle,
                                       double distance_threshold,
                                       double current_best_distance,
                                       bool new_segment,
                                       MonteCarlo* monteCarlo );
-  MC_Nearest_Facet MCT_Nearest_Facet_3D_GArc( MC_Particle *mc_particle,
-                                      MC_Vector &coordinate,
-                                      const DirectionCosine *direction_cosine);
+  MC_Nearest_Facet MCT_Nearest_Facet_3D_GArc( Particle particle);
   double MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
                                                      double facet_normal_dot_direction_cosine,
                                                      double A, double B, double C, double D,
                                                      const MC_Vector &facet_coords0,
                                                      const MC_Vector &facet_coords1,
                                                      const MC_Vector &facet_coords2,
-                                                     const MC_Vector &coordinate,
-                                                     const DirectionCosine *direction_cosine,
+                                                     Particle particle,
                                                      bool allow_enter);
 
-  MC_Nearest_Facet MCT_Nearest_Facet_Find_NearestArc(MC_Particle *mc_particle,
-                                  MC_Vector &coordinate,
+  MC_Nearest_Facet MCT_Nearest_Facet_Find_NearestArc(Particle particle,
                                   int &iteration, // input/output
                                   double &move_factor, // input/output
                                   int num_facets_per_cell,
@@ -170,15 +179,17 @@ public:
   MC_Nearest_Facet MCT_Nearest_Facet_Find_Nearest(int num_facets_per_cell,
                                                    MC_Distance_To_Facet *distance_to_facet);
 
-  void MCT_Nearest_Facet_3D_G_Move_ParticleArc(Cell& cell,
-                                          MC_Vector &coordinate, // input/output: move this coordinate
+  void MCT_Nearest_Facet_3D_G_Move_ParticleArc(Particle particle, // input/output: move this coordinate
                                           double move_factor);
-  bool CollisionEventArc(MonteCarlo* monteCarlo, MC_Particle &mc_particle);
-  void updateTrajectory( double energy, double angle, MC_Particle& particle );
-  MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(MC_Particle &mc_particle, MonteCarlo* monteCarlo, int particle_index, ParticleVault* processingVault);
-  void MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, MC_Particle &particle);
+  bool CollisionEventArc(MonteCarlo* monteCarlo, Particle particle);
+  void updateTrajectory( double energy, double angle, Particle particle );
+  MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo);
+  void MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, Particle particle);
   unsigned int MC_Find_Min(const double *array, int num_elements);
   void Sample_Isotropic(Particle p);
+  void copyParticle(Particle pSrc, Particle pNew);
+  void Rotate3DVector(Particle particle, double sin_Theta, double cos_Theta, double sin_Phi, double cos_Phi);
+  void initParticle(Particle p, int64_t rns);
 };
 
 /*---------------------------------------------------------------------------*/

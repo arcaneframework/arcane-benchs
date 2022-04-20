@@ -140,7 +140,7 @@ HOST_DEVICE_END
 
 ///  Generates a random coordinate inside a polyhedral cell.
    HOST_DEVICE_CUDA
-void MCT_Generate_Coordinate_3D_G(uint64_t *random_number_seed,
+void MCT_Generate_Coordinate_3D_G(int64_t *random_number_seed,
                                   int domain_num,
                                   int cell,
                                   MC_Vector &coordinate,  

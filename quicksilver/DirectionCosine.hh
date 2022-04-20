@@ -4,6 +4,7 @@
 #include <cmath>
 #include "portability.hh"
 #include "DeclareMacro.hh"
+#include <iostream>
 
 HOST_DEVICE_CLASS
 class DirectionCosine
@@ -28,7 +29,7 @@ public:
        return *this;
     }
 
-   void Sample_Isotropic(uint64_t *seed);
+   void Sample_Isotropic(int64_t *seed);
 
    // rotate a direction cosine given the sine/cosine of theta and phi
    HOST_DEVICE_CUDA
@@ -143,6 +144,7 @@ inline void DirectionCosine::Rotate3DVector(double sin_Theta, double cos_Theta, 
     this->alpha =  cos_theta*cos_phi*(sin_Theta*cos_Phi) - sin_phi*(sin_Theta*sin_Phi) + sin_theta*cos_phi*cos_Theta;
     this->beta  =  cos_theta*sin_phi*(sin_Theta*cos_Phi) + cos_phi*(sin_Theta*sin_Phi) + sin_theta*sin_phi*cos_Theta;
     this->gamma = -sin_theta        *(sin_Theta*cos_Phi) +                               cos_theta        *cos_Theta;
+    if(this->gamma > 1) exit(32);
 }
 HOST_DEVICE_END
 
