@@ -92,9 +92,18 @@ public:
   IItemFamily* m_particle_family_extra;
   IItemFamily* m_particle_family_with_ghost;
 
-  Int32UniqueArray m_local_ids_processing;
+  Int32UniqueArray m_local_ids_exit;
   Int32UniqueArray m_local_ids_processed;
+
   Int32UniqueArray m_local_ids_extra;
+
+  Int32UniqueArray m_local_ids_extra_srcP;   //Particle localId source
+  Int32UniqueArray m_local_ids_extra_cellId; //Cell localId dst
+  Int64UniqueArray m_local_ids_extra_gId;    //Futur globalId
+  RealUniqueArray  m_local_ids_extra_energyOut;    //updateTrajectory
+  RealUniqueArray  m_local_ids_extra_angleOut;    //updateTrajectory
+  RealUniqueArray  m_local_ids_extra_energyOut_pSrc;    //updateTrajectory
+  RealUniqueArray  m_local_ids_extra_angleOut_pSrc;    //updateTrajectory
 
   Int32UniqueArray m_local_ids_out;
   Int32UniqueArray m_rank_out;
@@ -149,7 +158,7 @@ public:
 
   void tracking(MonteCarlo* monteCarlo);
   void trackingArc(MonteCarlo* monteCarlo);
-  void moveProcessingProcessed();
+  void CollisionEventSuite();
   void CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle );
   void CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle);
   MC_Segment_Outcome_type::Enum MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &flux_tally_index);
@@ -181,13 +190,14 @@ public:
 
   void MCT_Nearest_Facet_3D_G_Move_ParticleArc(Particle particle, // input/output: move this coordinate
                                           double move_factor);
-  bool CollisionEventArc(MonteCarlo* monteCarlo, Particle particle);
+  int CollisionEventArc(MonteCarlo* monteCarlo, Particle particle);
   void updateTrajectory( double energy, double angle, Particle particle );
   MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo);
   void MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, Particle particle);
   unsigned int MC_Find_Min(const double *array, int num_elements);
   void Sample_Isotropic(Particle p);
   void copyParticle(Particle pSrc, Particle pNew);
+  void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
   void Rotate3DVector(Particle particle, double sin_Theta, double cos_Theta, double sin_Phi, double cos_Phi);
   void initParticle(Particle p, int64_t rns);
 };

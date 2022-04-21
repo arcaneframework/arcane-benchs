@@ -125,9 +125,6 @@ cycleInit()
 
   monteCarlo->particle_buffer->Initialize();
 
-  m_local_ids_processing.clear();
-  m_local_ids_processing.swap(m_local_ids_processed);
-
   MC_SourceNow(monteCarlo);
   MC_SourceNowArc(monteCarloArc);
 
@@ -149,12 +146,12 @@ cycleTracking()
 
   MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking);
 
-  //tracking(monteCarlo);
+  tracking(monteCarlo);
 
   info() << "Module Quicksilver cycleTrackingArc";
 
   trackingArc(monteCarloArc);
-
+  exit(21);
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking);
 }
 
@@ -966,10 +963,6 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
     m_particle_family->endUpdate();
     m_particles = m_particle_family->view();
 
-    int debug_size = m_local_ids_processing.size();
-    m_local_ids_processing.copy(particles_lid);
-    if(m_local_ids_processing.size() != debug_size + particles_lid.size()) ARCANE_FATAL("Copie remplace !");
-
     // exit(23);
     particle_index_g = 0;
 
@@ -1341,19 +1334,6 @@ PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticle
     m_particle_family->toParticleFamily()->removeParticles(supprP);
     m_particle_family->toParticleFamily()->endUpdate();
     m_particles = m_particle_family->view();
-
-    for(int i = 0; i < supprP.size(); i++)
-    {
-      for(int j = 0; j < m_local_ids_processing.size(); j++)
-      {
-        if(m_local_ids_processing[j] == supprP[i])
-        {
-          m_local_ids_processing.remove(j);
-          break;
-        }
-      }
-    }
-
   }
   else if (splitRRFactor > 1)
   {
@@ -1362,25 +1342,28 @@ PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticle
     m_particle_family->toParticleFamily()->endUpdate();
     m_particles = m_particle_family->view();
 
-    int debug_size = m_local_ids_processing.size();
-    m_local_ids_processing.copy(particles_lid);
-    if(m_local_ids_processing.size() != debug_size + particles_lid.size()) ARCANE_FATAL("Copie remplace !");
+    copyParticles(addSrcP, particles_lid);
+  }
+}
 
-
-    ParticleVectorView viewSrcP = m_particle_family->view(addSrcP);
-    ParticleVectorView viewNewP = m_particle_family->view(particles_lid);
-    for (int i = 0; i < particles_lid.size(); i++)
-    {
-      Particle pSrc = Particle(viewSrcP[i].internal());
-      Particle pNew = Particle(viewNewP[i].internal());
-      copyParticle(pSrc, pNew);
-    }
+void QSModule::
+copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew)
+{
+  ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
+  ParticleVectorView viewNewP = m_particle_family->view(idsNew);
+  for (int i = 0; i < idsSrc.size(); i++)
+  {
+    Particle pSrc = Particle(viewSrcP[i].internal());
+    Particle pNew = Particle(viewNewP[i].internal());
+    copyParticle(pSrc, pNew);
   }
 }
 
 void QSModule::
 copyParticle(Particle pSrc, Particle pNew)
 {
+  m_particleRNS[pNew] = pNew.uniqueId().asInt64();
+
   m_particleCoord[pNew][0] = m_particleCoord[pSrc][0];
   m_particleCoord[pNew][1] = m_particleCoord[pSrc][1];
   m_particleCoord[pNew][2] = m_particleCoord[pSrc][2];
@@ -1401,7 +1384,6 @@ copyParticle(Particle pSrc, Particle pNew)
   m_particleNumMeanFreeP[pNew] = m_particleNumMeanFreeP[pSrc];
   m_particleMeanFreeP[pNew] = m_particleMeanFreeP[pSrc];
   m_particleSegPathLength[pNew] = m_particleSegPathLength[pSrc];
-  m_particleRNS[pNew] = pNew.uniqueId().asInt64();
   m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
   m_particleNumColl[pNew] = m_particleNumColl[pSrc];
   m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
@@ -1478,6 +1460,8 @@ tracking(MonteCarlo* monteCarlo)
   // Get Test For Done Method (Blocking or non-blocking
   MC_New_Test_Done_Method::Enum new_test_done_method =
       monteCarlo->particle_buffer->new_test_done_method;
+
+  info() << "sizeProcessing " << my_particle_vault.sizeProcessing();
 
   do 
   {
@@ -1574,7 +1558,6 @@ tracking(MonteCarlo* monteCarlo)
 
         MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
         
-        ARCANE_FATAL("youpi");
 
         MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
 
@@ -1618,6 +1601,9 @@ tracking(MonteCarlo* monteCarlo)
       NVTX_Range collapseRange("cycleTracking_Collapse_ProcessingandProcessed");
       my_particle_vault.collapseProcessing();
       my_particle_vault.collapseProcessed();
+
+      
+
       collapseRange.endRange();
 
       // Test for done - blocking on all MPI ranks
@@ -1634,7 +1620,9 @@ tracking(MonteCarlo* monteCarlo)
         MC_New_Test_Done_Method::Blocking);
 
   } while (!done);
-
+  info() << "--------";
+  info() << "m_local_ids_processed : " << my_particle_vault.sizeProcessed();
+  info() << "--------";
   // Make sure to cancel all pending receive requests
   monteCarlo->particle_buffer->Cancel_Receive_Buffer_Requests();
   // Make sure Buffers Memory is Free
@@ -1648,6 +1636,7 @@ trackingArc(MonteCarlo* monteCarlo)
   info() << "sizeProcessing " << m_particles.size();
   //exit(24);
 
+  // A partir d'ici, toutes les particles de m_particle_family sont à suivre.
   ParticleVectorView processing_view = m_particle_family->view();
 
   if(mesh()->parallelMng()->commSize() > 1)
@@ -1667,11 +1656,11 @@ trackingArc(MonteCarlo* monteCarlo)
       {
         Particle particle = (*iparticle);
 
-        if(iparticle.index() % 1000 == 0)
+        if(iparticle.index() % 10000 == 0)
         {
           info() << "--------";
           info() << iparticle.index() << "/" << processing_view.size();
-          info() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
+          info() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size();
           info() << "--------";
         }
         CycleTrackingGutsArc(monteCarlo, particle);
@@ -1685,14 +1674,12 @@ trackingArc(MonteCarlo* monteCarlo)
         // {
         //   exit(123);
         // }
-        if(iparticle.index() == 10000) //DEBUG
-        {
-          break;
-        }
+        // if(iparticle.index() == 10000) //DEBUG
+        // {
+        //   break;
+        // }
       }
-      m_particle_family->toParticleFamily()->endUpdate();
 
-      ARCANE_FATAL("youpi");
       if(mesh()->parallelMng()->commSize() > 1)
       {
         ParticleVectorView in_view = m_particle_family->view(m_local_ids_in);
@@ -1710,123 +1697,81 @@ trackingArc(MonteCarlo* monteCarlo)
         pe->beginNewExchange(m_local_ids_out.size());
         pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &m_local_ids_in, 0);
       }
-      
+      info() << "========";
+      info() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
+      info() << "m_local_ids_processed : " << m_local_ids_processed.size();
+      info() << "========";
+      m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
+      m_local_ids_exit.clear();
+      // endUpdate fait par CollisionEventSuite;
+      CollisionEventSuite();
+
       if(m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0)
       {
         done = true;
+        ARCANE_FATAL("youpi");
       }
       else
       {
+        // TODO Faire extra + in pour parallelisation !!!
         processing_view = m_particle_family->view(m_local_ids_extra);
+        m_local_ids_extra.clear();
       }
 
-
-
-
-      // for (uint64_t processing_vault = 0;
-      //      processing_vault < my_particle_vault.processingSize();
-      //      processing_vault++) 
-      // {
-      //   MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_Kernel);
-      //   uint64_t processed_vault =
-      //       my_particle_vault.getFirstEmptyProcessedVault();
-
-      //   ParticleVault *processingVault = my_particle_vault.getTaskProcessingVault(processing_vault);
-      //   ParticleVault *processedVault = my_particle_vault.getTaskProcessedVault(processed_vault);
-
-      //   int numParticles = processingVault->size();
-
-      //   if (numParticles != 0) 
-      //   {
-      //     NVTX_Range trackingKernel(
-      //         "cycleTracking_TrackingKernel"); // range ends at end of scope
-
-      //     #include "mc_omp_parallel_for_schedule_static.hh"
-      //     for (int particle_index = 0; particle_index < numParticles;
-      //           particle_index++) 
-      //     {
-      //       //cout << particle_index;
-      //       //flush(cout);
-      //       // Tracking
-      //       CycleTrackingGutsArc(monteCarlo, particle_index, processingVault, processedVault);
-
-      //     }
-      //   }
-
-      //   particle_count += numParticles;
-
-      //   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
-
-      //   ARCANE_FATAL("youpi");
-
-      //   MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
-
-      //   // Next, communicate particles that have crossed onto
-      //   // other MPI ranks.
-      //   NVTX_Range cleanAndComm("cycleTracking_clean_and_comm");
-
-      //   SendQueue &sendQueue = *(my_particle_vault.getSendQueue());
-      //   monteCarlo->particle_buffer->Allocate_Send_Buffer(sendQueue);
-
-      //   // Move particles from send queue to the send buffers
-      //   for (int index = 0; index < sendQueue.size(); index++) 
-      //   {
-      //     sendQueueTuple &sendQueueT = sendQueue.getTuple(index);
-      //     MC_Base_Particle mcb_particle;
-
-      //     processingVault->getBaseParticleComm(mcb_particle,
-      //                                          sendQueueT._particleIndex);
-
-      //     int buffer = monteCarlo->particle_buffer->Choose_Buffer(sendQueueT._neighbor);
-      //     monteCarlo->particle_buffer->Buffer_Particle(mcb_particle, buffer);
-      //   }
-
-      //   monteCarlo->particle_buffer->Send_Particle_Buffers(); // post MPI sends
-
-      //   processingVault->clear(); // remove the invalid particles
-      //   sendQueue.clear();
-
-      //   // Move particles in "extra" vaults into the regular vaults.
-      //   my_particle_vault.cleanExtraVaults();
-
-      //   // receive any particles that have arrived from other ranks
-      //   monteCarlo->particle_buffer->Receive_Particle_Buffers(fill_vault);
-
-      //   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_MPI);
-
-      // } // for loop on vaults
-
-      // MC_FASTTIMER_START(MC_Fast_Timer::cycleTracking_MPI);
-
-      // NVTX_Range collapseRange("cycleTracking_Collapse_ProcessingandProcessed");
-      // my_particle_vault.collapseProcessing();
-      // my_particle_vault.collapseProcessed();
-      // collapseRange.endRange();
-
-      // // Test for done - blocking on all MPI ranks
-      // NVTX_Range doneRange("cycleTracking_Test_Done_New");
-      // done = monteCarlo->particle_buffer->Test_Done_New(new_test_done_method);
-      // doneRange.endRange();
-
-      // MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_MPI);
-
-    } // while not done: Test_Done_New()
-
-    // Everything should be done normally.
-    done = monteCarlo->particle_buffer->Test_Done_New(
-        MC_New_Test_Done_Method::Blocking);
+    }
 
   } while (!done);
-
-  // Make sure to cancel all pending receive requests
-  monteCarlo->particle_buffer->Cancel_Receive_Buffer_Requests();
-  // Make sure Buffers Memory is Free
-  monteCarlo->particle_buffer->Free_Buffers();
 }
 
 void QSModule::
-moveProcessingProcessed()
+CollisionEventSuite()
 {
+  Int32UniqueArray particles_lid(m_local_ids_extra_gId.size());
+  m_particle_family->toParticleFamily()->addParticles(m_local_ids_extra_gId, m_local_ids_extra_cellId, particles_lid);
+  m_particle_family->toParticleFamily()->endUpdate();
+
+  copyParticles(m_local_ids_extra_srcP, particles_lid);
+
+  ParticleVectorView viewP = m_particle_family->view(particles_lid);
+
+  for(Integer i = 0; i < particles_lid.size(); i++)
+  {
+    Particle particle = Particle(viewP[i].internal());
+    if(particle.uniqueId().asInt64() != m_local_ids_extra_gId[i]) ARCANE_FATAL("Erreur ordre particle");
+    updateTrajectory(m_local_ids_extra_energyOut[i], m_local_ids_extra_angleOut[i], particle);
+  }
+
+  viewP = m_particle_family->view(m_local_ids_extra);
+
+  for(Integer i = 0; i < m_local_ids_extra.size(); i++)
+  {
+    Particle particle = Particle(viewP[i].internal());
+    updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
+    m_particleEneGrp[particle] = monteCarlo->_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+  }
+
+  Integer debug_size = m_local_ids_extra.size();
+  //m_local_ids_extra.copy(particles_lid);
+
+  //m_local_ids_extra.resize(m_local_ids_extra.size() + particles_lid.size());
+  for(Integer i = 0; i < particles_lid.size(); i++)
+  {
+    m_local_ids_extra.add(particles_lid[i]);
+  }
+
+  if(m_local_ids_extra.size() != debug_size + particles_lid.size()) 
+  {
+    error() << "m_local_ids_extra.size() : " << m_local_ids_extra.size() << " debug_size : " << debug_size << " particles_lid.size() : " << particles_lid.size();
+    ARCANE_FATAL("TODO A modifier");
+  }
+
+  m_local_ids_extra_gId.clear();
+  m_local_ids_extra_cellId.clear();
+  m_local_ids_extra_srcP.clear();
+  m_local_ids_extra_energyOut.clear();
+  m_local_ids_extra_angleOut.clear();
+  m_local_ids_extra_energyOut_pSrc.clear();
+  m_local_ids_extra_angleOut_pSrc.clear();
 }
 
 void QSModule::
@@ -1881,13 +1826,14 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
             // The particle undergoes a collision event producing:
             //   (0) Other-than-one same-species secondary particle, or
             //   (1) Exactly one same-species secondary particle.
-            if (CollisionEventArc(monteCarlo, particle ) == MC_Collision_Event_Return::Continue_Tracking)
+            if (CollisionEventArc(monteCarlo, particle ) == 0)
             {
-                keepTrackingThisParticle = true;
+              m_local_ids_exit.add(particle.localId());
+              keepTrackingThisParticle = false;
             }
             else
             {
-                keepTrackingThisParticle = false;
+              keepTrackingThisParticle = false;
             }
             }
             break;
@@ -1911,6 +1857,8 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
                     m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Escape;
                     m_particleSpecies[particle] = -1;
                     keepTrackingThisParticle = false;
+                    m_local_ids_exit.add(particle.localId());
+
                 }
                 else if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Reflection)
                 {
@@ -1923,6 +1871,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
                     // Enters an adjacent cell in an off-processor domain.
                     //mc_particle.species = -1;
                     keepTrackingThisParticle = false;
+                    // Pas de m_local_ids_exit car la particle sera retiré de la famille par ExchangeParticles.
                 }
             }
             break;
@@ -2572,7 +2521,7 @@ MC_Find_Min(const double *array, int num_elements)
     return min_index;
 }
 
-bool QSModule::
+int QSModule::
 CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
 {
   Cell cell = particle.cell();
@@ -2646,58 +2595,32 @@ CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
         qs_assert(false);
   }
 
-  if( nOut == 0 ) return false;
+  if( nOut == 0 ) return 0;
 
 
 
 
 
-  Int64UniqueArray addIdP(nOut - 1);
-  Int32UniqueArray addCellIdP(nOut - 1);
-  Int32UniqueArray particles_lid(nOut - 1);
 
   for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
   {
     int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[particle]);
-    addIdP.add(rns);
-    addCellIdP.add(particle.cell().localId());
+    m_local_ids_extra_gId.add(rns);
+    m_local_ids_extra_cellId.add(particle.cell().localId());
+    m_local_ids_extra_srcP.add(particle.localId());
+    m_local_ids_extra_energyOut.add(energyOut[secondaryIndex]);
+    m_local_ids_extra_angleOut.add(angleOut[secondaryIndex]);
   }
-
-  m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
-  m_particle_family->toParticleFamily()->endUpdate();
-
-  ParticleVectorView viewNewP = m_particle_family->view(particles_lid);
-  for (int i = 0; i < particles_lid.size(); i++)
-  {
-    Particle pNew = Particle(viewNewP[i].internal());
-    copyParticle(particle, pNew);
-    m_local_ids_extra.add(particles_lid[i]);
-  }
-  for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
-  {
-      // Newly created particles start as copies of their parent
-      // MC_Particle secondaryParticle = mc_particle;
-      // secondaryParticle.random_number_seed = rngSpawn_Random_Number_Seed(&mc_particle.random_number_seed);
-      // secondaryParticle.identifier = secondaryParticle.random_number_seed;
-      Particle pNew = Particle(viewNewP[secondaryIndex-1].internal());
-
-      updateTrajectory( energyOut[secondaryIndex], angleOut[secondaryIndex], pNew );
-  }
-
-  updateTrajectory( energyOut[0], angleOut[0], particle);
 
   // If a fission reaction produces secondary particles we also add the original
   // particle to the "extras" that we will handle later.  This avoids the 
   // possibility of a particle doing multiple fission reactions in a single
   // kernel invocation and overflowing the extra storage with secondary particles.
-  if ( nOut > 1 ) 
-    m_local_ids_extra.add(particle.localId());
-  //     monteCarlo->_particleVaultContainer->addExtraParticle(mc_particle);
+  m_local_ids_extra.add(particle.localId());
+  m_local_ids_extra_energyOut_pSrc.add(energyOut[0]); // Pour particle
+  m_local_ids_extra_angleOut_pSrc.add(angleOut[0]);   // Pour particle
 
-  //If we are still tracking this particle the update its energy group
-  m_particleEneGrp[particle] = monteCarlo->_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
-
-  return nOut == 1;
+  return nOut;
 }
 
 void QSModule::
