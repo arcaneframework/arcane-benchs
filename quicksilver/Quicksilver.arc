@@ -10,7 +10,7 @@
       <generator name="Cartesian3D" >
         <face-numbering-version>1</face-numbering-version>
 
-        <nb-part-x>1</nb-part-x> 
+        <nb-part-x>2</nb-part-x> 
         <nb-part-y>1</nb-part-y>
         <nb-part-z>1</nb-part-z>
 
@@ -19,19 +19,19 @@
         <!-- lx = lenght * n -->
         <x>
           <length>10.0</length>
-          <n>3</n>
+          <n>4</n>
         </x>
 
         <!-- ly = lenght * n -->
         <y>
           <length>10.0</length>
-          <n>3</n>
+          <n>4</n>
         </y>
 
         <!-- lz = lenght * n -->
         <z>
           <length>10.0</length>
-          <n>3</n>
+          <n>4</n>
         </z>
 
       </generator>
@@ -42,10 +42,13 @@
   </meshes>
 
   <qt>
+    <xDom>2</xDom>
+    <yDom>1</yDom>
+    <zDom>1</zDom>
     <dt>2e-09</dt>
     <fMax>0.1</fMax>
     <nParticles>1</nParticles>
-    <nSteps>1</nSteps>
+    <nSteps>2</nSteps>
     <seed>1029384756</seed>
     <lx>100.0</lx>
     <ly>100.0</ly>

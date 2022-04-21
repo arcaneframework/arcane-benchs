@@ -480,6 +480,24 @@
 
   <options>
 
+    <simple name="xDom" type="integer" default="1">
+      <description>
+        xDom
+      </description>
+    </simple>
+    
+    <simple name="yDom" type="integer" default="1">
+      <description>
+        yDom
+      </description>
+    </simple>
+    
+    <simple name="zDom" type="integer" default="1">
+      <description>
+        zDom
+      </description>
+    </simple>
+
     <simple name="dt" type="real" default="1e-8">
       <description>
         time step (seconds)

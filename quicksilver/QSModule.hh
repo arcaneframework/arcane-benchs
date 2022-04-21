@@ -65,8 +65,6 @@ public:
   ArcaneQSObject(mbi)
 , m_mesh(mbi.mesh())
 , m_particle_family(nullptr)
-, m_particle_family_processed(nullptr)
-, m_particle_family_extra(nullptr)
 , m_particle_family_with_ghost(nullptr)
 , m_first_uid(0) 
 {
@@ -88,8 +86,6 @@ public:
 
   IMesh* m_mesh;
   IItemFamily* m_particle_family;
-  IItemFamily* m_particle_family_processed;
-  IItemFamily* m_particle_family_extra;
   IItemFamily* m_particle_family_with_ghost;
 
   Int32UniqueArray m_local_ids_exit;
@@ -113,16 +109,31 @@ public:
   Int64 m_first_uid;
   SharedArray< SharedArray<Integer> > m_extra_ghost_particles_to_send;
 
-  ParticleVectorView m_particles;
+  ParticleVectorView m_processingView;
 
   MonteCarlo *monteCarlo = NULL;
   MonteCarlo *monteCarloArc = NULL;
   Parameters params;
 
+  std::atomic<Int64> m_absorb_a{0};
+  std::atomic<Int64> m_census_a{0};
+  std::atomic<Int64> m_escape_a{0};
+  std::atomic<Int64> m_collision_a{0};
+  std::atomic<Int64> m_end_a{0};
+  std::atomic<Int64> m_fission_a{0};
+  std::atomic<Int64> m_produce_a{0};
+  std::atomic<Int64> m_scatter_a{0};
+  std::atomic<Int64> m_start_a{0};
+  std::atomic<Int64> m_source_a{0};
+  std::atomic<Int64> m_rr_a{0};
+  std::atomic<Int64> m_split_a{0};
+  std::atomic<Int64> m_numSegments_a{0};
+
 protected:
   ICartesianMesh* cartesian_mesh;
 
 public:
+  void CycleFinalizeTallies();
   void getParametersAxl();
   MonteCarlo* initMCArc(const Parameters& params);
   void initNuclearData(MonteCarlo* monteCarlo, const Parameters& params);

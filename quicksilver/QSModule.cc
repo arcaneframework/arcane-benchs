@@ -69,9 +69,6 @@ startInit()
   // m_particle_family = mesh()->createItemFamily(IK_Particle,"ArcaneParticles");
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
 
-  m_particle_family_extra = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesExtra");
-  m_particle_family_processed = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesProcessed");
-
   m_particle_family_with_ghost = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesWithGhost");
 
   m_particle_family_with_ghost->toParticleFamily()->setEnableGhostItems(true) ;
@@ -81,7 +78,6 @@ startInit()
   pe->initialize(m_particle_family);
 
   m_particle_family->setHasUniqueIdMap(false);
-  m_particle_family_extra->setHasUniqueIdMap(false);
 
   // mpiInit(&argc, &argv);
   printBanner(GIT_VERS, GIT_HASH);
@@ -119,6 +115,11 @@ cycleInit()
   monteCarlo->_particleVaultContainer->collapseProcessed();
   monteCarlo->_particleVaultContainer->collapseProcessing();
 
+  m_processingView = m_particle_family->view();
+
+  if(m_particle_family->view(m_local_ids_processed).size() != m_processingView.size()) ARCANE_FATAL("Erreur processed particle");
+  m_local_ids_processed.clear();
+
   // Nombre de particles dans Processing.
   monteCarlo->_tallies->_balanceTask[0]._start =
       monteCarlo->_particleVaultContainer->sizeProcessing();
@@ -151,7 +152,6 @@ cycleTracking()
   info() << "Module Quicksilver cycleTrackingArc";
 
   trackingArc(monteCarloArc);
-  exit(21);
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking);
 }
 
@@ -167,8 +167,10 @@ cycleFinalize()
 
   // Update the cumulative tally data.
   monteCarlo->_tallies->CycleFinalize(monteCarlo);
+  CycleFinalizeTallies();
 
   monteCarlo->time_info->cycle++;
+  monteCarloArc->time_info->cycle++;
 
   monteCarlo->particle_buffer->Free_Memory();
 
@@ -209,6 +211,66 @@ gameOver()
 /*---------------------------------------------------------------------------*/
 
 void QSModule::
+CycleFinalizeTallies()
+{
+  m_absorb = m_absorb_a;
+  m_census = m_census_a;
+  m_escape = m_escape_a;
+  m_collision = m_collision_a;
+  m_end = m_end_a;
+  m_fission = m_fission_a;
+  m_produce = m_produce_a;
+  m_scatter = m_scatter_a;
+  m_start = m_start_a;
+  m_source = m_source_a;
+  m_rr = m_rr_a;
+  m_split = m_split_a;
+  m_numSegments = m_numSegments_a;
+
+  m_absorb.reduce(Parallel::ReduceSum);
+  m_census.reduce(Parallel::ReduceSum);
+  m_escape.reduce(Parallel::ReduceSum);
+  m_collision.reduce(Parallel::ReduceSum);
+  m_end.reduce(Parallel::ReduceSum);
+  m_fission.reduce(Parallel::ReduceSum);
+  m_produce.reduce(Parallel::ReduceSum);
+  m_scatter.reduce(Parallel::ReduceSum);
+  m_start.reduce(Parallel::ReduceSum);
+  m_source.reduce(Parallel::ReduceSum);
+  m_rr.reduce(Parallel::ReduceSum);
+  m_split.reduce(Parallel::ReduceSum);
+  m_numSegments.reduce(Parallel::ReduceSum);
+
+  info() << "m_start : " << m_start.value();
+  info() << "m_source : " << m_source.value();
+  info() << "m_rr : " << m_rr.value();
+  info() << "m_split : " << m_split.value();
+  info() << "m_absorb : " << m_absorb.value();
+  info() << "m_scatter : " << m_scatter.value();
+  info() << "m_fission : " << m_fission.value();
+  info() << "m_produce : " << m_produce.value();
+  info() << "m_collision : " << m_collision.value();
+  info() << "m_escape : " << m_escape.value();
+  info() << "m_census : " << m_census.value();
+  info() << "m_numSegments : " << m_numSegments.value();
+  info() << "m_end : " << m_end.value();
+
+  m_absorb_a = 0;
+  m_census_a = 0;
+  m_escape_a = 0;
+  m_collision_a = 0;
+  m_end_a = 0;
+  m_fission_a = 0;
+  m_produce_a = 0;
+  m_scatter_a = 0;
+  m_start_a = 0;
+  m_source_a = 0;
+  m_rr_a = 0;
+  m_split_a = 0;
+  m_numSegments_a = 0;
+}
+
+void QSModule::
 getParametersAxl()
 {
   // Equivalent de Parameters::parseCommandLine().
@@ -236,6 +298,9 @@ getParametersAxl()
   params.simulationParams.lz = options()->getLz();
 
   // xDom, yDom, zDom à calculer avec les valeurs de nb-part-x.
+  params.simulationParams.xDom = options()->getXDom();
+  params.simulationParams.yDom = options()->getYDom();
+  params.simulationParams.zDom = options()->getZDom();
 
   // ???
   // addArg("bTally",           'B', 1, 'i', &(sp.balanceTallyReplications), 0, "number of balance tally replications");
@@ -354,10 +419,6 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
   double ly = params.simulationParams.ly;
   double lz = params.simulationParams.lz;
 
-  int xDom = params.simulationParams.xDom;
-  int yDom = params.simulationParams.yDom;
-  int zDom = params.simulationParams.zDom;
-
   double dx = lx / nx;
   double dy = ly / ny;
   double dz = lz / nz;
@@ -410,7 +471,13 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
   m_coordMid.resize(4);
   m_coordFace.resize(4);
   m_coordCenter.resize(4);
+
+  m_particleCoord.resize(3);
+  m_particleVelocity.resize(3);
+  m_particleDirCos.resize(3);
+
   m_total.resize(monteCarlo->_nuclearData->_numEnergyGroups);
+
   ENUMERATE_CELL(icell, ownCells())
   {
     Cell cell = *icell;
@@ -469,6 +536,8 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
     double volume = 0;
     MC_Vector cellCenter(m_coordCenter[icell][0], m_coordCenter[icell][1], m_coordCenter[icell][2]);
 
+    //info() << "Cell #" << unique_id << " x : " << x << " y : " << y << " z : " << z;
+
     ENUMERATE_FACE(iface, cell.faces())
     {
       Face face = *iface;
@@ -506,6 +575,7 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
       m_coordFace[iface][1] = std::min(std::max(0, faceTupleOffset[compt2].y() + y), ny-1);
       m_coordFace[iface][2] = std::min(std::max(0, faceTupleOffset[compt2].z() + z), nz-1);
 
+      //info() << "  Face #" << m_indexArc[iface];
 
       // Définir les conditions boundary.
       //////////////////// Début conditions boundary /////////////////////////
@@ -513,26 +583,31 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
       //Real faceNbr = m_coordFace[iface][0] + nx*(m_coordFace[iface][1] + ny*(m_coordFace[iface][2]));
 
       // Si la face est au bord du domaine entier.
-      if(m_coordFace[iface][0] == x && m_coordFace[iface][1] == y && m_coordFace[iface][2] == z)
+      //if(m_coordFace[iface][0] == x && m_coordFace[iface][1] == y && m_coordFace[iface][2] == z)
+      if(face.isSubDomainBoundary())
       {
         m_boundaryCond[iface] = condiBound[faceTupleOffset[compt2].b()];
+        //info() << "    Bord du domaine entier " << face.nbCell();
+
       }
+      // Si la face est au bord du sous-domaine.
+      else if(face.frontCell().owner() != face.backCell().owner())
+      {
+        // info() << "    Bord du sous-domaine " << face.nbCell();
+        // info() <<  "x : " << x << " y: " << y << " z: " << z 
+        // << " xx : " << faceTupleOffset[compt2].x() 
+        // << " yy : " << faceTupleOffset[compt2].y() 
+        // << " zz : " << faceTupleOffset[compt2].z() 
+        // << " compt : " << compt2;
+        m_boundaryCond[iface] = MC_Subfacet_Adjacency_Event::Transit_Off_Processor;
+      }
+      
       else
       {
-        Face face = *iface;
-        // Si la face est au bord du sous-domaine.
-        if(face.isSubDomainBoundary())
-        {
-          info() <<  "x : " << x << " y: " << y << " z: " << z << " xx : " << faceTupleOffset[compt2].x() << " yy : "<< faceTupleOffset[compt2].y() << " zz : " << faceTupleOffset[compt2].z() << " compt : "<< compt2;
-          ARCANE_FATAL("TODO Impossible");
-          m_boundaryCond[iface] = MC_Subfacet_Adjacency_Event::Transit_Off_Processor;
-        }
-        
-        else
-        {
-          m_boundaryCond[iface] = MC_Subfacet_Adjacency_Event::Transit_On_Processor;
-        }
+        //info() << "    Intra " << face.nbCell();
+        m_boundaryCond[iface] = MC_Subfacet_Adjacency_Event::Transit_On_Processor;
       }
+      
       //////////////////// Fin conditions boundary /////////////////////////
 
       //////////////////// Début Volume Cell /////////////////////////
@@ -605,19 +680,19 @@ void QSModule::
 initTallies(MonteCarlo* monteCarlo, const Parameters& params)
 {
   // Pour l'instant, balanceTallyReplications = fluxTallyReplications = cellTallyReplications = 1.
-  m_absorb = 0.0;      // Number of particles absorbed
-  m_census = 0.0;      // Number of particles that enter census
-  m_escape = 0.0;      // Number of particles that escape
-  m_collision = 0.0;   // Number of collosions
-  m_end = 0.0;         // Number of particles at end of cycle
-  m_fission = 0.0;     // Number of fission events
-  m_produce = 0.0;     // Number of particles created by collisions
-  m_scatter = 0.0;     // Number of scatters
-  m_start = 0.0;       // Number of particles at beginning of cycle
-  m_source = 0.0;      // Number of particles sourced in
-  m_rr = 0.0;          // Number of particles Russian Rouletted in population control
-  m_split = 0.0;       // Number of particles split in population control
-  m_numSegments = 0.0; // Number of segements
+  m_absorb = 0;      // Number of particles absorbed
+  m_census = 0;      // Number of particles that enter census
+  m_escape = 0;      // Number of particles that escape
+  m_collision = 0;   // Number of collosions
+  m_end = 0;         // Number of particles at end of cycle
+  m_fission = 0;     // Number of fission events
+  m_produce = 0;     // Number of particles created by collisions
+  m_scatter = 0;     // Number of scatters
+  m_start = 0;       // Number of particles at beginning of cycle
+  m_source = 0;      // Number of particles sourced in
+  m_rr = 0;          // Number of particles Russian Rouletted in population control
+  m_split = 0;       // Number of particles split in population control
+  m_numSegments = 0; // Number of segements
 
   int sizeOfSFT = monteCarlo->_nuclearData->_energies.size()-1;
   m_scalarFluxTally.resize(sizeOfSFT);
@@ -628,6 +703,7 @@ initTallies(MonteCarlo* monteCarlo, const Parameters& params)
     for (int i = 0; i < sizeOfSFT; i++)
     {
       m_scalarFluxTally[icell][i] = 0.0;
+      // TODO : Voir pour ajouter atomic.
     }
   }
 
@@ -914,11 +990,9 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
       particle_count += (uint64_t)cell_num_particles_float;
     }
 
-
     Int64UniqueArray uids(particle_count);
     Int32UniqueArray local_id_cells(particle_count);
     Int32UniqueArray particles_lid(particle_count);
-    IParticleFamily* pf = m_particle_family->toParticleFamily();
     Int64UniqueArray rng(particle_count);
     int particle_index_g = 0;
 
@@ -934,9 +1008,9 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
         int64_t rns;
         int64_t id;
 
-        ATOMIC_CAPTURE( m_sourceTally[icell], 1, random_number_seed );
+        ATOMIC_CAPTURE( m_sourceTally[icell], 1, random_number_seed ); // TODO : A voir
 
-        if(particle_index != random_number_seed) ARCANE_FATAL("aaaa");
+        //if(particle_index != random_number_seed) ARCANE_FATAL("aaaa");
 
         random_number_seed += (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
 
@@ -947,114 +1021,109 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
         uids[particle_index_g] = id;
         local_id_cells[particle_index_g] = icell.localId();
 
-
-        // Particle p = Particle(particles[particle_index_g].internal());
-
-        // if(p.uniqueId().asInt64() != id) 
-        // {
-        //   info() << particle_index_g << " " << particles.size();
-        //   ARCANE_FATAL("bbb");
-        // }
         particle_index_g++;
       }
     }
 
-    m_particles = pf->addParticles(uids, local_id_cells, particles_lid);
+    m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells, particles_lid);
     m_particle_family->endUpdate();
-    m_particles = m_particle_family->view();
 
-    // exit(23);
+    ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
+
     particle_index_g = 0;
 
-    m_particleCoord.resize(3);
-    m_particleVelocity.resize(3);
-    m_particleDirCos.resize(3);
+    ENUMERATE_PARTICLE(ipartic, viewSrcP)
+    {
+      Particle p = (*ipartic);
+      initParticle(p, rng[ipartic.index()]);
 
-    // ENUMERATE_PARTICLE(ipartic, m_particles)
+      MCT_Generate_Coordinate_3D_GArc(p, monteCarlo);
+      Sample_Isotropic(p);
+      m_particleKinEne[p] = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
+                              rngSample(&m_particleRNS[p]) + monteCarlo->_params.simulationParams.eMin;
+
+      Real speed = Get_Speed_From_Energy(p);
+
+      m_particleVelocity[p][MD_DirX] = speed * m_particleDirCos[p][0];
+      m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][1];
+      m_particleVelocity[p][MD_DirZ] = speed * m_particleDirCos[p][2];
+
+      m_particleTask[p] = task_index;
+      m_particleWeight[p] = source_particle_weight;
+
+      double randomNumber = rngSample(&m_particleRNS[p]);
+      m_particleNumMeanFreeP[p] = -1.0*std::log(randomNumber);
+
+      randomNumber = rngSample(&m_particleRNS[p]);
+      m_particleTimeCensus[p] = monteCarlo->time_info->time_step * randomNumber;
+
+      m_source_a++;
+    }
+
+    m_processingView = m_particle_family->view();
+
+    // ENUMERATE_CELL(icell, ownCells())
     // {
-    //   int64_t random_number_seed = ipartic.index(); // TODO : normalement, doit être = à particle_index (donc index partics par cell);
-    //   random_number_seed += (*ipartic).cell().uniqueId().asInt64() * INT64_C(0x0100000000);
+    //   Cell cell = *icell;
+    //   double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
+    //   double cell_num_particles_float = cell_weight_particles / source_particle_weight;
+    //   int cell_num_particles = (int)cell_num_particles_float;
 
-    //   int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
-    //   int64_t id = random_number_seed;
-
-    //   if((*ipartic).uniqueId().asInt64() != id) 
+    //   for ( int particle_index = 0; particle_index < cell_num_particles; particle_index++ )
     //   {
+    //     // int64_t random_number_seed = particle_index;
+    //     // random_number_seed += cell.uniqueId().asInt64() * INT64_C(0x0100000000);
 
-    //     info() << (*ipartic).uniqueId().asInt64() << " " << id << " " 
-    //     << ipartic.index() << " " << (*ipartic).cell().uniqueId().asInt64()
-    //     << " " << rns ;
-    //     ARCANE_FATAL("Pb index");
-    //   }
-    //   else
-    //   {
-    //     //cout << ipartic.index() << " ";
+    //     // int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
+    //     // int64_t id = random_number_seed;
+
+    //     Particle p = Particle(m_processingView[particle_index_g].internal());
+        
+    //     // if(p.uniqueId().asInt64() != id || rns != rng[particle_index_g]) 
+    //     // {
+    //     //   info() << particle_index_g << " " << m_processingView.size();
+    //     //   ARCANE_FATAL("Pb index");
+    //     // }
+
+    //     initParticle(p, rng[particle_index_g]);
+
+    //     // cout << "particle.identifier : " << particle.identifier << endl;
+
+    //     MCT_Generate_Coordinate_3D_GArc(p, monteCarlo);
+
+    //     // if(particle_index < 11)
+    //     // {
+    //     //   cout << "particle.identifier : " << p.uniqueId().asInt64() << endl;
+    //     //   cout << m_particleCoord[p][MD_DirX] << " x " << m_particleCoord[p][MD_DirY] << " x " << m_particleCoord[p][MD_DirZ] << endl;
+    //     // }
+    //     // else
+    //     // {
+    //     //   exit(45);
+    //     // }
+
+    //     Sample_Isotropic(p);
+    //     m_particleKinEne[p] = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
+    //                             rngSample(&m_particleRNS[p]) + monteCarlo->_params.simulationParams.eMin;
+
+    //     Real speed = Get_Speed_From_Energy(p);
+
+    //     m_particleVelocity[p][MD_DirX] = speed * m_particleDirCos[p][0];
+    //     m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][1];
+    //     m_particleVelocity[p][MD_DirZ] = speed * m_particleDirCos[p][2];
+
+    //     m_particleTask[p] = task_index;
+    //     m_particleWeight[p] = source_particle_weight;
+
+    //     double randomNumber = rngSample(&m_particleRNS[p]);
+    //     m_particleNumMeanFreeP[p] = -1.0*std::log(randomNumber);
+
+    //     randomNumber = rngSample(&m_particleRNS[p]);
+    //     m_particleTimeCensus[p] = monteCarlo->time_info->time_step * randomNumber;
+
+    //     m_source_a++;
+    //     particle_index_g++;
     //   }
     // }
-
-    ENUMERATE_CELL(icell, ownCells())
-    {
-      Cell cell = *icell;
-      double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
-      double cell_num_particles_float = cell_weight_particles / source_particle_weight;
-      int cell_num_particles = (int)cell_num_particles_float;
-
-      for ( int particle_index = 0; particle_index < cell_num_particles; particle_index++ )
-      {
-        int64_t random_number_seed = particle_index;
-        random_number_seed += cell.uniqueId().asInt64() * INT64_C(0x0100000000);
-
-        int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
-        int64_t id = random_number_seed;
-
-        Particle p = Particle(m_particles[particle_index_g].internal());
-        
-        if(p.uniqueId().asInt64() != id || rns != rng[particle_index_g]) 
-        {
-          info() << particle_index_g << " " << m_particles.size();
-          ARCANE_FATAL("Pb index");
-        }
-
-        initParticle(p, rns);// TODO : Utiliser array rng ?.
-
-        // cout << "particle.identifier : " << particle.identifier << endl;
-
-        MCT_Generate_Coordinate_3D_GArc(p, monteCarlo);
-
-        // if(particle_index < 11)
-        // {
-        //   cout << "particle.identifier : " << p.uniqueId().asInt64() << endl;
-        //   cout << m_particleCoord[p][MD_DirX] << " x " << m_particleCoord[p][MD_DirY] << " x " << m_particleCoord[p][MD_DirZ] << endl;
-        // }
-        // else
-        // {
-        //   exit(45);
-        // }
-
-        Sample_Isotropic(p);
-        m_particleKinEne[p] = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
-                                rngSample(&m_particleRNS[p]) + monteCarlo->_params.simulationParams.eMin;
-
-        Real speed = Get_Speed_From_Energy(p);
-
-        m_particleVelocity[p][MD_DirX] = speed * m_particleDirCos[p][0];
-        m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][1];
-        m_particleVelocity[p][MD_DirZ] = speed * m_particleDirCos[p][2];
-
-        m_particleTask[p] = task_index;
-        m_particleWeight[p] = source_particle_weight;
-
-        double randomNumber = rngSample(&m_particleRNS[p]);
-        m_particleNumMeanFreeP[p] = -1.0*std::log(randomNumber);
-
-        randomNumber = rngSample(&m_particleRNS[p]);
-        m_particleTimeCensus[p] = monteCarlo->time_info->time_step * randomNumber;
-
-        m_source = m_source() + 1; // TODO : Voir si besoin atomic.
-        particle_index_g++;
-      }
-    }
-    if(particle_index_g != m_particles.size()) ARCANE_FATAL("Bizarre...");
     //exit(123);
 }
 
@@ -1242,7 +1311,7 @@ PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance)
 
     uint64_t targetNumParticles = monteCarlo->_params.simulationParams.nParticles;
     uint64_t globalNumParticles = 0;
-    uint64_t localNumParticles = m_particles.size();
+    uint64_t localNumParticles = m_processingView.size();
    
     if (loadBalance)
     {
@@ -1292,7 +1361,7 @@ PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticle
   Int32UniqueArray addSrcP;
 
   // March backwards through the vault so killed particles doesn't mess up the indexing
-  ENUMERATE_PARTICLE(iparticle, m_particles)
+  ENUMERATE_PARTICLE(iparticle, m_processingView)
   {
     Particle particle = (*iparticle);
     double randomNumber = rngSample(&m_particleRNS[iparticle]);
@@ -1303,7 +1372,7 @@ PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticle
         // Kill
         supprP.add(particle.localId());
 
-        m_rr = m_rr() + 1; 
+        m_rr_a++; 
       }
       else
       {
@@ -1320,7 +1389,7 @@ PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticle
 
       for (int splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
       {
-        m_split = m_split() + 1; // TODO Voir si besoin atomic.
+        m_split_a++;
 
         int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[iparticle]);
         addIdP.add(rns);
@@ -1333,14 +1402,14 @@ PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticle
   {
     m_particle_family->toParticleFamily()->removeParticles(supprP);
     m_particle_family->toParticleFamily()->endUpdate();
-    m_particles = m_particle_family->view();
+    m_processingView = m_particle_family->view();
   }
   else if (splitRRFactor > 1)
   {
     Int32UniqueArray particles_lid(addIdP.size());
     m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
     m_particle_family->toParticleFamily()->endUpdate();
-    m_particles = m_particle_family->view();
+    m_processingView = m_particle_family->view();
 
     copyParticles(addSrcP, particles_lid);
   }
@@ -1411,7 +1480,7 @@ RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo)
     const double source_particle_weight = monteCarlo->source_particle_weight;
     const double weightCutoff = lowWeightCutoff*source_particle_weight;
 
-    ENUMERATE_PARTICLE(iparticle, m_particles)
+    ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
       Particle particle = (*iparticle);
 
@@ -1427,13 +1496,13 @@ RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo)
         {
           // Kill
           supprP.add(particle.localId());
-          m_rr = m_rr() + 1;
+          m_rr_a++;
         } 
       }
-      m_particle_family->toParticleFamily()->removeParticles(supprP);
-      m_particle_family->toParticleFamily()->endUpdate();
-      m_particles = m_particle_family->view();
     }
+    m_particle_family->toParticleFamily()->removeParticles(supprP);
+    m_particle_family->toParticleFamily()->endUpdate();
+    m_processingView = m_particle_family->view();
 
   }
 }
@@ -1633,94 +1702,81 @@ void QSModule::
 trackingArc(MonteCarlo* monteCarlo)
 {
   bool done = false;
-  info() << "sizeProcessing " << m_particles.size();
-  //exit(24);
 
   // A partir d'ici, toutes les particles de m_particle_family sont à suivre.
-  ParticleVectorView processing_view = m_particle_family->view();
+  pinfo() << "sizeProcessing " << m_processingView.size();
+  //exit(24);
 
-  if(mesh()->parallelMng()->commSize() > 1)
+  while (!done)
   {
-    m_local_ids_in.clear();
-  }
-
-  do 
-  {
-    int particle_count = 0; // Initialize count of num_particles processed
-
-    while (!done) 
+    ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
-      uint64_t fill_vault = 0;
+      Particle particle = (*iparticle);
 
-      ENUMERATE_PARTICLE(iparticle, processing_view)
+      if(iparticle.index() % 50000 == 0)
+      {
+        info() << "--------";
+        info() << iparticle.index() << "/" << m_processingView.size();
+        info() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size();
+        info() << "--------";
+      }
+      CycleTrackingGutsArc(monteCarlo, particle);
+    }
+
+    if(mesh()->parallelMng()->commSize() > 1)
+    {
+      ParticleVectorView in_view = m_particle_family->view(m_local_ids_in);
+
+      ENUMERATE_PARTICLE(iparticle, in_view)
       {
         Particle particle = (*iparticle);
-
-        if(iparticle.index() % 10000 == 0)
-        {
-          info() << "--------";
-          info() << iparticle.index() << "/" << processing_view.size();
-          info() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size();
-          info() << "--------";
-        }
         CycleTrackingGutsArc(monteCarlo, particle);
-
-        // if(iparticle.index() < 11)
-        // {
-        //   cout << "particle.identifier : " << particle.uniqueId().asInt64() << endl;
-        //   cout << m_particleCoord[particle][0] << " x " << m_particleCoord[particle][1] << " x " << m_particleCoord[particle][2] << endl;
-        // }
-        // else
-        // {
-        //   exit(123);
-        // }
-        // if(iparticle.index() == 10000) //DEBUG
-        // {
-        //   break;
-        // }
       }
 
-      if(mesh()->parallelMng()->commSize() > 1)
-      {
-        ParticleVectorView in_view = m_particle_family->view(m_local_ids_in);
+      m_local_ids_in.clear();
 
-        ENUMERATE_PARTICLE(iparticle, in_view)
-        {
-          Particle particle = (*iparticle);
-          CycleTrackingGutsArc(monteCarlo, particle);
-        }
+      pinfo() << "Nb Particles out : " << m_local_ids_out.size();
+    }
 
-        m_local_ids_in.clear();
+    info() << "========";
+    info() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
+    info() << "m_local_ids_processed : " << m_local_ids_processed.size();
+    info() << "========";
 
+    m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
+    // endUpdate fait par CollisionEventSuite;
+    m_local_ids_exit.clear();
+
+    CollisionEventSuite();
+
+    Integer m_local_ids_extra_size = m_local_ids_extra.size();
+
+    if(mesh()->parallelMng()->commSize() > 1)
+    {
+      do{
         // Echange particles.
         IParticleExchanger* pe = options()->particleExchanger();
         pe->beginNewExchange(m_local_ids_out.size());
         pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &m_local_ids_in, 0);
-      }
-      info() << "========";
-      info() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
-      info() << "m_local_ids_processed : " << m_local_ids_processed.size();
-      info() << "========";
-      m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
-      m_local_ids_exit.clear();
-      // endUpdate fait par CollisionEventSuite;
-      CollisionEventSuite();
 
-      if(m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0)
-      {
-        done = true;
-        ARCANE_FATAL("youpi");
-      }
-      else
-      {
-        // TODO Faire extra + in pour parallelisation !!!
-        processing_view = m_particle_family->view(m_local_ids_extra);
-        m_local_ids_extra.clear();
-      }
+        done = ((mesh()->parallelMng()->reduce(
+          Parallel::ReduceMax, 
+          m_local_ids_in.size() + m_local_ids_extra_size
+          )) == 0
+        );
 
+        m_rank_out.clear();
+        m_local_ids_out.clear();
+      } while(m_local_ids_in.size() == 0 && m_local_ids_extra_size == 0 && !done);
     }
 
-  } while (!done);
+    if(m_local_ids_extra_size != 0)
+    {
+      m_processingView = m_particle_family->view(m_local_ids_extra);
+      m_local_ids_extra.clear();
+    }
+
+  }
 }
 
 void QSModule::
@@ -1777,24 +1833,35 @@ CollisionEventSuite()
 void QSModule::
 CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle )
 {
-    // set the particle.task to the index of the processed vault the particle will census into.
-    m_particleTask[particle] = 0;//processed_vault;
+  if ( m_particleTimeCensus[particle] <= 0.0 )
+  {
+      m_particleTimeCensus[particle] += monteCarlo->time_info->time_step;
+  }
 
-    // loop over this particle until we cannot do anything more with it on this processor
-    CycleTrackingFunctionArc( monteCarlo, particle );
-    // if(particle_index < 11)
-    // {
-    // cout << "particle.identifier : " << mc_particle.identifier << endl;
-    // cout << mc_particle.coordinate.x << " x " << mc_particle.coordinate.y << " x " << mc_particle.coordinate.z << endl;
-    // }
-    // else
-    // {
-    // exit(123);
-    // }
+  // Age
+  if (m_particleAge[particle] < 0.0) { m_particleAge[particle] = 0.0; }
+
+  //    Energy Group
+  m_particleEneGrp[particle] = monteCarlo->_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+
+  // set the particle.task to the index of the processed vault the particle will census into.
+  m_particleTask[particle] = 0;//processed_vault;
+
+  // loop over this particle until we cannot do anything more with it on this processor
+  CycleTrackingFunctionArc( monteCarlo, particle );
+  // if(particle_index < 11)
+  // {
+  // cout << "particle.identifier : " << mc_particle.identifier << endl;
+  // cout << mc_particle.coordinate.x << " x " << mc_particle.coordinate.y << " x " << mc_particle.coordinate.z << endl;
+  // }
+  // else
+  // {
+  // exit(123);
+  // }
 
 
-    //Make sure this particle is marked as completed
-    m_particleSpecies[particle] = -1;
+  //Make sure this particle is marked as completed
+  m_particleSpecies[particle] = -1;
 }
 
 void QSModule::
@@ -1815,7 +1882,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
 
         // Collision ou Census ou Facet crossing
         MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(monteCarlo, particle, flux_tally_index);
-        m_numSegments = m_numSegments() + 1;
+        m_numSegments_a++;
 
 
         m_particleNumSeg[particle] += 1.;  /* Track the number of segments this particle has
@@ -1853,7 +1920,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
                 }
                 else if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Escape)
                 {
-                    m_escape = m_escape() + 1;
+                    m_escape_a++;
                     m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Escape;
                     m_particleSpecies[particle] = -1;
                     keepTrackingThisParticle = false;
@@ -1881,7 +1948,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
                 // The particle has reached the end of the time step.
                 //processedVault->pushParticle(mc_particle);
                 m_local_ids_processed.add(particle.localId());
-                m_census = m_census() + 1; // TODO : Voir atomic.
+                m_census_a++;
                 keepTrackingThisParticle = false;
                 break;
             }
@@ -2082,6 +2149,7 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &f
     }
 
     // Accumulate the particle's contribution to the scalar flux.
+    // TODO : Atomic
     m_scalarFluxTally[particle.cell()][m_particleEneGrp[particle]] += m_particleSegPathLength[particle] * m_particleWeight[particle];
 
     return segment_outcome;
@@ -2496,11 +2564,10 @@ MCT_Nearest_Facet_3D_G_Move_ParticleArc( Particle particle, // input/output: mov
                                       double move_factor)      // input: multiplication factor for move
 {
   Cell cell = particle.cell();
-  MC_Vector move_to(m_coordCenter[cell][0], m_coordCenter[cell][1], m_coordCenter[cell][2]);
 
-  m_particleCoord[particle][MD_DirX] += move_factor * ( move_to.x - m_particleCoord[particle][MD_DirX] );
-  m_particleCoord[particle][MD_DirY] += move_factor * ( move_to.y - m_particleCoord[particle][MD_DirY] );
-  m_particleCoord[particle][MD_DirZ] += move_factor * ( move_to.z - m_particleCoord[particle][MD_DirZ] );
+  m_particleCoord[particle][MD_DirX] += move_factor * ( m_coordCenter[cell][MD_DirX] - m_particleCoord[particle][MD_DirX] );
+  m_particleCoord[particle][MD_DirY] += move_factor * ( m_coordCenter[cell][MD_DirY] - m_particleCoord[particle][MD_DirY] );
+  m_particleCoord[particle][MD_DirZ] += move_factor * ( m_coordCenter[cell][MD_DirZ] - m_particleCoord[particle][MD_DirZ] );
 }
 
 unsigned int QSModule::
@@ -2545,7 +2612,7 @@ CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
     for (int reactIndex = 0; reactIndex < numReacts; reactIndex++)
     {
       currentCrossSection -= macroscopicCrossSectionArc(monteCarlo, reactIndex, cell,
-                isoIndex, m_particleEneGrp[particle]); // TODO : Editer methode pour mettre juste particle.
+                isoIndex, m_particleEneGrp[particle]);
       if (currentCrossSection < 0)
       {
         selectedIso = isoIndex;
@@ -2574,21 +2641,21 @@ CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
   //--------------------------------------------------------------------------------------------------------------
 
   // Set the reaction for this particle.
-  m_collision = m_collision() + 1; // TODO voir atomic.
+  m_collision_a++;
   NuclearDataReaction::Enum reactionType = monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
           _reactions[selectedReact]._reactionType;
 
   switch (reactionType)
   {
-    case NuclearDataReaction::Scatter:// TODO voir atomic.
-        m_scatter = m_scatter() + 1;
+    case NuclearDataReaction::Scatter:
+        m_scatter_a++;
         break;
-    case NuclearDataReaction::Absorption:// TODO voir atomic.
-        m_absorb = m_absorb() + 1;
+    case NuclearDataReaction::Absorption:
+        m_absorb_a++;
         break;
-    case NuclearDataReaction::Fission:// TODO voir atomic.
-        m_fission = m_fission() + 1;
-        m_produce = m_produce() + nOut;
+    case NuclearDataReaction::Fission:
+        m_fission_a++;
+        m_produce_a += nOut;
         break;
     case NuclearDataReaction::Undefined:
         printf("reactionType invalid\n");
@@ -2718,8 +2785,6 @@ MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo)
         // The particle will enter into an adjacent cell on a spatial neighbor.
         // The neighboring domain is on another processor. Set domain local domain on neighbor proc
         
-        //mc_particle.domain     = facet_adjacency.adjacent.domain;
-        //ARCANE_FATAL("TODO non supporté encore");
 
         Cell cell = face.frontCell();
 
@@ -2735,6 +2800,8 @@ MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo)
           }
           ARCANE_FATAL("Erreur deplace");
         }
+        m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
+
         m_particleFacet[particle]     = (m_particleFacet[particle] < 12 ? m_particleFacet[particle] + 12 : m_particleFacet[particle] - 12);
         m_particleLastEvent[particle] = MC_Tally_Event::Facet_Crossing_Communication;
 
@@ -2742,7 +2809,6 @@ MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo)
         m_rank_out.add(cell.owner());
 
         // Select particle buffer
-        // TODO Gérer transfert particles.
         //int neighbor_rank = monteCarlo->domain[facet_adjacency.current.domain].mesh._nbrRank[facet_adjacency.neighbor_index];
 
         // processingVault->putParticle( mc_particle, particle_index );
