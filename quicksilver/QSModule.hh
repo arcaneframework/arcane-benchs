@@ -63,10 +63,7 @@ public ArcaneQSObject {
 public:
   explicit QSModule(const ModuleBuildInfo &mbi) : 
   ArcaneQSObject(mbi)
-, m_mesh(mbi.mesh())
 , m_particle_family(nullptr)
-, m_particle_family_with_ghost(nullptr)
-, m_first_uid(0) 
 {
   
 }
@@ -84,9 +81,7 @@ public:
 
 public:
 
-  IMesh* m_mesh;
   IItemFamily* m_particle_family;
-  IItemFamily* m_particle_family_with_ghost;
 
   Int32UniqueArray m_local_ids_exit;
   Int32UniqueArray m_local_ids_processed;
@@ -105,9 +100,6 @@ public:
   Int32UniqueArray m_rank_out;
 
   Int32UniqueArray m_local_ids_in;
-
-  Int64 m_first_uid;
-  SharedArray< SharedArray<Integer> > m_extra_ghost_particles_to_send;
 
   ParticleVectorView m_processingView;
 
@@ -130,7 +122,7 @@ public:
   std::atomic<Int64> m_numSegments_a{0};
 
 protected:
-  ICartesianMesh* cartesian_mesh;
+  ICartesianMesh* m_cartesian_mesh;
 
 public:
   void CycleFinalizeTallies();
@@ -153,11 +145,7 @@ public:
   void clearCrossSectionCache();
   void MC_SourceNowArc(MonteCarlo *monteCarlo);
   Real Get_Speed_From_Energy(Particle p);
-  void MCT_Generate_Coordinate_3D_GArc(Particle p,
-                                  // uint64_t *random_number_seed,
-                                  // Cell &cell,
-                                  // MC_Vector &coordinate,  
-                                  MonteCarlo* monteCarlo );
+  void MCT_Generate_Coordinate_3D_GArc(Particle p, MonteCarlo* monteCarlo );
   double MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
                                             const MC_Vector &v1_,
                                             const MC_Vector &v2_,

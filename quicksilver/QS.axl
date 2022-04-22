@@ -479,20 +479,20 @@
   </entry-points>
 
   <options>
-
-    <simple name="xDom" type="integer" default="1">
+    
+    <simple name="xDom" type="integer" default="1"> <!-- For QS Legacy -->
       <description>
         xDom
       </description>
     </simple>
     
-    <simple name="yDom" type="integer" default="1">
+    <simple name="yDom" type="integer" default="1"> <!-- For QS Legacy -->
       <description>
         yDom
       </description>
     </simple>
     
-    <simple name="zDom" type="integer" default="1">
+    <simple name="zDom" type="integer" default="1"> <!-- For QS Legacy -->
       <description>
         zDom
       </description>

@@ -11,7 +11,7 @@
         <face-numbering-version>1</face-numbering-version>
 
         <nb-part-x>2</nb-part-x> 
-        <nb-part-y>1</nb-part-y>
+        <nb-part-y>2</nb-part-y>
         <nb-part-z>1</nb-part-z>
 
         <origin>0.0 0.0 0.0</origin>
@@ -43,7 +43,7 @@
 
   <qt>
     <xDom>2</xDom>
-    <yDom>1</yDom>
+    <yDom>2</yDom>
     <zDom>1</zDom>
     <dt>2e-09</dt>
     <fMax>0.1</fMax>

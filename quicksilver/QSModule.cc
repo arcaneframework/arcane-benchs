@@ -64,28 +64,22 @@ startInit()
 {
   info() << "Module Quicksilver INIT"; 
 
-  cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
+  m_cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
 
   // m_particle_family = mesh()->createItemFamily(IK_Particle,"ArcaneParticles");
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
 
-  m_particle_family_with_ghost = mesh()->createItemFamily(IK_Particle,"ArcaneParticlesWithGhost");
-
-  m_particle_family_with_ghost->toParticleFamily()->setEnableGhostItems(true) ;
-
-  info() << "Name of IParticleExchanger=" << options()->particleExchanger.name();
   IParticleExchanger* pe = options()->particleExchanger();
   pe->initialize(m_particle_family);
 
   m_particle_family->setHasUniqueIdMap(false);
 
-  // mpiInit(&argc, &argv);
-  printBanner(GIT_VERS, GIT_HASH);
+  // TODO : Voir pour rendre ça moins...hardcodé.
   int argc = 3;
   char *argv[] = {".", "-i", "/home/lheritiera/Documents/arcane/arcane-benchs/quicksilver/Coral2_P1.inp"};
 
   params = getParameters(argc, argv);
-  cartesian_mesh->computeDirections();
+  m_cartesian_mesh->computeDirections();
   getParametersAxl();
   printParameters(params, cout);
 
@@ -280,15 +274,15 @@ getParametersAxl()
   params.simulationParams.nSteps = options()->getNSteps();
   params.simulationParams.seed = options()->getSeed();
   {
-    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirX));
+    CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirX));
     params.simulationParams.nx = cdm.globalNbCell();
   }
   {
-    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirY));
+    CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirY));
     params.simulationParams.ny = cdm.globalNbCell();
   }
   {
-    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirZ));
+    CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirZ));
     params.simulationParams.nz = cdm.globalNbCell();
   }
 
@@ -424,8 +418,8 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
   double dz = lz / nz;
 
   int myRank, nRanks;
-  myRank = meshHandle().subDomain()->parallelMng()->commRank();
-  nRanks = meshHandle().subDomain()->parallelMng()->commSize();
+  myRank = mesh()->parallelMng()->commRank();
+  nRanks = mesh()->parallelMng()->commSize();
 
   // Extrait de GlobalFccGrid.cc.
   static vector<Tuple4> offset;
@@ -1702,10 +1696,12 @@ void QSModule::
 trackingArc(MonteCarlo* monteCarlo)
 {
   bool done = false;
+  ParticleVectorView inView;
 
   // A partir d'ici, toutes les particles de m_particle_family sont à suivre.
   pinfo() << "sizeProcessing " << m_processingView.size();
   //exit(24);
+
 
   while (!done)
   {
@@ -1715,33 +1711,27 @@ trackingArc(MonteCarlo* monteCarlo)
 
       if(iparticle.index() % 50000 == 0)
       {
-        info() << "--------";
-        info() << iparticle.index() << "/" << m_processingView.size();
-        info() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size();
-        info() << "--------";
+        pinfo() << "--------";
+        pinfo() << iparticle.index() << "/" << m_processingView.size();
+        pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
+        pinfo() << "--------";
       }
       CycleTrackingGutsArc(monteCarlo, particle);
     }
 
     if(mesh()->parallelMng()->commSize() > 1)
     {
-      ParticleVectorView in_view = m_particle_family->view(m_local_ids_in);
-
-      ENUMERATE_PARTICLE(iparticle, in_view)
+      ENUMERATE_PARTICLE(iparticle, inView)
       {
         Particle particle = (*iparticle);
         CycleTrackingGutsArc(monteCarlo, particle);
       }
-
-      m_local_ids_in.clear();
-
-      pinfo() << "Nb Particles out : " << m_local_ids_out.size();
     }
 
-    info() << "========";
-    info() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
-    info() << "m_local_ids_processed : " << m_local_ids_processed.size();
-    info() << "========";
+    pinfo() << "========";
+    pinfo() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
+    pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size();
+    pinfo() << "========";
 
     m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
     // endUpdate fait par CollisionEventSuite;
@@ -1749,11 +1739,10 @@ trackingArc(MonteCarlo* monteCarlo)
 
     CollisionEventSuite();
 
-    Integer m_local_ids_extra_size = m_local_ids_extra.size();
-
     if(mesh()->parallelMng()->commSize() > 1)
     {
       do{
+
         // Echange particles.
         IParticleExchanger* pe = options()->particleExchanger();
         pe->beginNewExchange(m_local_ids_out.size());
@@ -1761,21 +1750,25 @@ trackingArc(MonteCarlo* monteCarlo)
 
         done = ((mesh()->parallelMng()->reduce(
           Parallel::ReduceMax, 
-          m_local_ids_in.size() + m_local_ids_extra_size
+          m_local_ids_in.size() + m_local_ids_extra.size()
           )) == 0
         );
 
+        pinfo() << "/////////";
+        pinfo() << "Nb Particles out : " << m_local_ids_out.size();
+        pinfo() << "Nb Particles in : " << m_local_ids_in.size();
+        pinfo() << "/////////";
+
         m_rank_out.clear();
         m_local_ids_out.clear();
-      } while(m_local_ids_in.size() == 0 && m_local_ids_extra_size == 0 && !done);
-    }
+      } while(m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
 
-    if(m_local_ids_extra_size != 0)
-    {
-      m_processingView = m_particle_family->view(m_local_ids_extra);
-      m_local_ids_extra.clear();
+      inView = m_particle_family->view(m_local_ids_in);
+      m_local_ids_in.clear();
     }
-
+    
+    m_processingView = m_particle_family->view(m_local_ids_extra);
+    m_local_ids_extra.clear();
   }
 }
 
