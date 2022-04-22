@@ -35,38 +35,55 @@
         </z>
 
       </generator>
-      <!-- <initialisation>
-        <variable nom="Tally" valeur="0."/>
-      </initialisation> -->
     </mesh>
   </meshes>
 
-  <qt>
-    <xDom>2</xDom>
-    <yDom>2</yDom>
-    <zDom>1</zDom>
+  <q-s>
     <dt>2e-09</dt>
     <fMax>0.1</fMax>
-    <nParticles>1</nParticles>
-    <nSteps>2</nSteps>
-    <seed>1029384756</seed>
-    <lx>100.0</lx>
-    <ly>100.0</ly>
-    <lz>100.0</lz>
     <boundaryCondition>reflect</boundaryCondition>
+    <nSteps>10</nSteps>
+    <seed>1029384756</seed>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
     <lowWeightCutoff>0.001</lowWeightCutoff>
 
-    <!-- <material>sourceMaterial</material>
-    <shape>brick</shape>
-    <xMax>10000</xMax>
-    <xMin>0</xMin>
-    <yMax>10000</yMax>
-    <yMin>0</yMin>
-    <zMax>10000</zMax>
-    <zMin>0</zMin> -->
+    <geometry>
+      <material>sourceMaterial</material>
+      <shape>brick</shape>
+      <xMax>10000</xMax>
+      <xMin>0</xMin>
+      <yMax>10000</yMax>
+      <yMin>0</yMin>
+      <zMax>10000</zMax>
+      <zMin>0</zMin>
+    </geometry>
 
-  </qt>
+    <material>
+      <name>sourceMaterial</name>
+      <mass>12.011</mass>
+      <nIsotopes>20</nIsotopes>
+      <nReactions>9</nReactions>
+      <sourceRate>1e+10</sourceRate>
+      <totalCrossSection>1.5</totalCrossSection>
+      <absorptionCrossSection>flat</absorptionCrossSection>
+      <fissionCrossSection>flat</fissionCrossSection>
+      <scatteringCrossSection>flat</scatteringCrossSection>
+      <absorptionCrossSectionRatio>0.04</absorptionCrossSectionRatio>
+      <fissionCrossSectionRatio>0.05</fissionCrossSectionRatio>
+      <scatteringCrossSectionRatio>1</scatteringCrossSectionRatio>
+    </material>
+
+    <cross_section>
+      <name>flat</name>
+      <A>0</A>
+      <B>0</B>
+      <C>0</C>
+      <D>0</D>
+      <E>1</E>
+      <nuBar>1.6</nuBar>
+    </cross_section>
+
+  </q-s>
 </case>

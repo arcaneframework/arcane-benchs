@@ -16,6 +16,18 @@
 #include "arcane/IAsyncParticleExchanger.h"
 #include "arcane/ItemPrinter.h"
 #include "arcane/IExtraGhostParticlesBuilder.h"
+#include "arcane/materials/IMeshMaterialMng.h"
+#include <arcane/materials/IMeshMaterial.h>
+#include "arcane/materials/IMeshEnvironment.h"
+#include "arcane/materials/IMeshBlock.h"
+#include "arcane/materials/MeshMaterialModifier.h"
+#include "arcane/materials/MeshMaterialVariableRef.h"
+#include "arcane/materials/MeshEnvironmentVariableRef.h"
+#include "arcane/materials/MaterialVariableBuildInfo.h"
+
+enum eShape{UNDEFINED, BRICK, SPHERE}; // TODO : A deplacer (doit être defini avant QS_axl.h !).
+enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit être defini avant QS_axl.h !).
+
 #include "QS_axl.h"
 
 
@@ -60,13 +72,13 @@ using namespace std;
  */
 class QSModule : 
 public ArcaneQSObject {
+
 public:
   explicit QSModule(const ModuleBuildInfo &mbi) : 
   ArcaneQSObject(mbi)
 , m_particle_family(nullptr)
-{
-  
-}
+
+{}
 
 public:
   void startInit() override;
@@ -123,12 +135,14 @@ public:
 
 protected:
   ICartesianMesh* m_cartesian_mesh;
+  Arcane::Materials::IMeshMaterialMng* material_mng;
 
 public:
   void CycleFinalizeTallies();
   void getParametersAxl();
   MonteCarlo* initMCArc(const Parameters& params);
   void initNuclearData(MonteCarlo* monteCarlo, const Parameters& params);
+  void initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params);
   void initMesh(MonteCarlo* monteCarlo, const Parameters& params);
   qs_vector<MC_Subfacet_Adjacency_Event::Enum> getBoundaryCondition(const Parameters& params);
   void initTallies(MonteCarlo* monteCarlo, const Parameters& params);

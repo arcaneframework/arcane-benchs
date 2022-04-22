@@ -466,6 +466,33 @@
         dim="0"
         dump="true"/>
 
+    
+
+    <variable 
+        field-name="mass"
+        name="Mass"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        material="true"/>
+
+    <variable 
+        field-name="isoGid"
+        name="IsoGid"
+        data-type="integer"
+        item-kind="cell"
+        dim="1"
+        material="true"/>
+
+    <variable 
+        field-name="atomFraction"
+        name="AtomFraction"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        material="true"/>
+
+
   </variables>
 
   <entry-points>
@@ -479,24 +506,11 @@
   </entry-points>
 
   <options>
-    
-    <simple name="xDom" type="integer" default="1"> <!-- For QS Legacy -->
-      <description>
-        xDom
-      </description>
-    </simple>
-    
-    <simple name="yDom" type="integer" default="1"> <!-- For QS Legacy -->
-      <description>
-        yDom
-      </description>
-    </simple>
-    
-    <simple name="zDom" type="integer" default="1"> <!-- For QS Legacy -->
-      <description>
-        zDom
-      </description>
-    </simple>
+
+    <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
+      <name lang="fr">echangeur-particule</name>
+      <description>Service utilisé pour échanger les particules.</description>
+	  </service-instance>
 
     <simple name="dt" type="real" default="1e-8">
       <description>
@@ -546,12 +560,12 @@
       </description>
     </simple>
 
-    <!-- TODO : Passer à une enumeration (mais faut edit le code avant) -->
-    <simple name="boundaryCondition" type="string" default="reflect">
-      <description>
-        boundaryCondition
-      </description>
-    </simple>
+    <enumeration name="boundaryCondition" type="eBoundaryCondition" default="reflect">
+        <description>Type de condition au limites</description>
+        <enumvalue name="reflect" genvalue="reflect"  />
+        <enumvalue name="escape" genvalue="escape" />
+        <enumvalue name="octant" genvalue="octant"  />
+      </enumeration>
 
     <simple name="eMin" type="real" default="1e-9">
       <description>
@@ -577,10 +591,156 @@
       </description>
     </simple>
 
-    <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
-		 <name lang="fr">echangeur-particule</name>
-		 <description>Service utilisé pour échanger les particules.</description>
-	 </service-instance>
+    <!-- Infos sur les Geometry -->
+    <complex name="geometry" type="Geometry" minOccurs="0" maxOccurs="unbounded">
+      <description>Geometrie</description>
+
+      <simple name="material" type="string" default="sourceMaterial">
+        <description>material de la geometrie</description>
+      </simple>
+
+      <enumeration name="shape" type="eShape" default="brick">
+        <description>Type de condition au limites</description>
+        <enumvalue name="undefined" genvalue="UNDEFINED"  />
+        <enumvalue name="brick" genvalue="BRICK" />
+        <enumvalue name="sphere" genvalue="SPHERE"  />
+      </enumeration>
+
+
+      <!-- Si brick -->
+      <simple name="xMax" type="real" default="0.0">
+        <description>xMax</description>
+      </simple>
+
+      <simple name="xMin" type="real" default="0.0">
+        <description>xMin</description>
+      </simple>
+
+      <simple name="yMax" type="real" default="0.0">
+        <description>yMax</description>
+      </simple>
+
+      <simple name="yMin" type="real" default="0.0">
+        <description>yMin</description>
+      </simple>
+
+      <simple name="zMax" type="real" default="0.0">
+        <description>zMax</description>
+      </simple>
+
+      <simple name="zMin" type="real" default="0.0">
+        <description>zMin</description>
+      </simple>
+
+
+      <!-- Si sphere -->
+      <simple name="radius" type="real" default="0.0">
+        <description>radius</description>
+      </simple>
+
+      <simple name="xCenter" type="real" default="0.0">
+        <description>xCenter</description>
+      </simple>
+
+      <simple name="yCenter" type="real" default="0.0">
+        <description>yCenter</description>
+      </simple>
+
+      <simple name="zCenter" type="real" default="0.0">
+        <description>zCenter</description>
+      </simple>
+
+    </complex>
+
+    <!-- Infos sur les materiaux -->
+    <complex name="material" type="Material" minOccurs="0" maxOccurs="unbounded">
+      <description>Materiaux</description>
+
+      <simple name="name" type="string" default="sourceMaterial">
+        <description>Nom du materiau</description>
+      </simple>
+
+      <simple name="mass" type="real" default="1000.0">
+        <description>mass</description>
+      </simple>
+
+      <simple name="totalCrossSection" type="real" default="1.0">
+        <description>totalCrossSection</description>
+      </simple>
+
+      <simple name="nIsotopes" type="integer" default="10">
+        <description>nIsotopes</description>
+      </simple>
+
+      <simple name="nReactions" type="integer" default="9">
+        <description>nReactions</description>
+      </simple>
+
+      <simple name="sourceRate" type="real" default="0.0">
+        <description>sourceRate</description>
+      </simple>
+
+      <simple name="scatteringCrossSection" type="string" default="flat">
+        <description>scatteringCrossSection</description>
+      </simple>
+
+      <simple name="absorptionCrossSection" type="string" default="flat">
+        <description>absorptionCrossSection</description>
+      </simple>
+
+      <simple name="fissionCrossSection" type="string" default="flat">
+        <description>fissionCrossSection</description>
+      </simple>
+
+      <simple name="scatteringCrossSectionRatio" type="real" default="1.0">
+        <description>scatteringCrossSectionRatio</description>
+      </simple>
+      
+      <simple name="absorptionCrossSectionRatio" type="real" default="1.0">
+        <description>absorptionCrossSectionRatio</description>
+      </simple>
+
+      <simple name="fissionCrossSectionRatio" type="real" default="1.0">
+        <description>fissionCrossSectionRatio</description>
+      </simple>
+
+    </complex>
+
+
+    <!-- Infos sur les CrossSection -->
+    <complex name="cross_section" type="CrossSection" minOccurs="0" maxOccurs="unbounded">
+      <description>CrossSection</description>
+
+      <simple name="name" type="string" default="flat">
+        <description>Nom de la CrossSection</description>
+      </simple>
+
+      <simple name="A" type="real" default="0.0">
+        <description>aa</description>
+      </simple>
+
+      <simple name="B" type="real" default="0.0">
+        <description>bb</description>
+      </simple>
+
+      <simple name="C" type="real" default="0.0">
+        <description>cc</description>
+      </simple>
+
+      <simple name="D" type="real" default="0.0">
+        <description>dd</description>
+      </simple>
+
+      <simple name="E" type="real" default="0.0">
+        <description>ee</description>
+      </simple>
+
+      <simple name="nuBar" type="real" default="2.4">
+        <description>nuBar</description>
+      </simple>
+
+    </complex>
+
   </options>
 
 </module>

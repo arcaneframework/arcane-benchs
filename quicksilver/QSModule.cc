@@ -34,6 +34,8 @@
 #include "arcane/IMesh.h"
 
 using namespace Arcane;
+using namespace Arcane::Materials;
+
 using namespace std;
 
 #define MAX_PRODUCTION_SIZE 4
@@ -65,6 +67,8 @@ startInit()
   info() << "Module Quicksilver INIT"; 
 
   m_cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
+
+  material_mng = IMeshMaterialMng::getReference(defaultMesh());
 
   // m_particle_family = mesh()->createItemFamily(IK_Particle,"ArcaneParticles");
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
@@ -291,20 +295,23 @@ getParametersAxl()
   params.simulationParams.ly = options()->getLy();
   params.simulationParams.lz = options()->getLz();
 
-  // xDom, yDom, zDom à calculer avec les valeurs de nb-part-x.
-  params.simulationParams.xDom = options()->getXDom();
-  params.simulationParams.yDom = options()->getYDom();
-  params.simulationParams.zDom = options()->getZDom();
-
-  // ???
-  // addArg("bTally",           'B', 1, 'i', &(sp.balanceTallyReplications), 0, "number of balance tally replications");
-  // addArg("fTally",           'F', 1, 'i', &(sp.fluxTallyReplications),    0, "number of scalar flux tally replications");
-  // addArg("cTally",           'C', 1, 'i', &(sp.cellTallyReplications),    0, "number of scalar cell tally replications");
-
-
 
   // Equivalent de Parameters::scanSimulationBlock().
-  params.simulationParams.boundaryCondition = options()->getBoundaryCondition().localstr();
+  switch (options()->getBoundaryCondition())
+  {
+  case eBoundaryCondition::escape:
+    params.simulationParams.boundaryCondition = "escape";
+    break;
+
+  case eBoundaryCondition::octant:
+    params.simulationParams.boundaryCondition = "octant";
+    break;
+  
+  default:
+    params.simulationParams.boundaryCondition = "reflect";
+    break;
+  }
+  
   params.simulationParams.eMin = options()->getEMin();
   params.simulationParams.eMax = options()->getEMax();
   params.simulationParams.nGroups = options()->getNGroups();
@@ -316,20 +323,21 @@ getParametersAxl()
 MonteCarlo* QSModule::
 initMCArc(const Parameters& params)
 {
-   MonteCarlo* monteCarlo;
-   monteCarlo = new MonteCarlo(params);
+   MonteCarlo* monteCarloArc;
+   monteCarloArc = new MonteCarlo(params);
 
-   monteCarlo->time_info->time_step = params.simulationParams.dt;
+   monteCarloArc->time_info->time_step = params.simulationParams.dt;
 
-   initNuclearData(monteCarlo, params); // Configuration des materiaux.
-   initMesh(monteCarlo, params);
-   initTallies(monteCarlo, params);
+   //initNuclearData(monteCarloArc, params); // Configuration des materiaux.
+   initNuclearDataArc(monteCarloArc, params); // Configuration des materiaux.
+   initMesh(monteCarloArc, params);
+   initTallies(monteCarloArc, params);
 
    MC_Base_Particle::Update_Counts();
 
    //   used when debugging cross sections
-   checkCrossSections(monteCarlo, params);
-   return monteCarlo;
+   checkCrossSections(monteCarloArc, params);
+   return monteCarloArc;
 }
 
 
@@ -359,7 +367,9 @@ initNuclearData(MonteCarlo* monteCarlo, const Parameters& params)
   int num_isotopes  = 0;
   int num_materials = 0;
   
-  for( auto matIter = params.materialParams.begin(); matIter != params.materialParams.end(); matIter++ )
+  for( auto matIter = params.materialParams.begin(); 
+      matIter != params.materialParams.end(); 
+      matIter++ )
   {
     const MaterialParameters& mp = matIter->second;
     num_isotopes += mp.nIsotopes;
@@ -370,7 +380,8 @@ initNuclearData(MonteCarlo* monteCarlo, const Parameters& params)
   monteCarlo->_materialDatabase->_mat.reserve( num_materials, VAR_MEM );
   
   for (auto matIter = params.materialParams.begin();
-      matIter != params.materialParams.end(); matIter++)
+      matIter != params.materialParams.end();
+      matIter++)
   {
     const MaterialParameters& mp = matIter->second;
     Material material(mp.name, mp.mass);
@@ -398,6 +409,100 @@ initNuclearData(MonteCarlo* monteCarlo, const Parameters& params)
   }
 }
 
+
+void QSModule::
+initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params)
+{
+  Integer nb_cross_section = options()->cross_section().size();
+
+  map<string, Polynomial> crossSection;
+  map<string, Real> crossSection2; // TODO : Tres Tres Moche
+
+
+  for( Integer i = 0; i < nb_cross_section; i++ )
+  {
+    std::string cs_name = options()->cross_section[i].getName().localstr();
+
+    Real aa = options()->cross_section[i].getA();
+    Real bb = options()->cross_section[i].getB();
+    Real cc = options()->cross_section[i].getC();
+    Real dd = options()->cross_section[i].getD();
+    Real ee = options()->cross_section[i].getE();
+    Real nuBar = options()->cross_section[i].getNuBar();
+
+    crossSection.insert(make_pair(cs_name, Polynomial(aa, bb, cc, dd, ee)));
+    crossSection2.insert(make_pair(cs_name, nuBar));
+  }
+
+  // TODO : Si nb_cross_section == 0.
+
+
+  Integer num_materials = options()->material().size();
+
+  Integer num_isotopes = 0;
+
+  for( Integer i = 0; i < num_materials; i++ )
+  {
+    num_isotopes += options()->material[i].getNIsotopes();
+  }
+
+  // TODO : Si num_materials == 0.
+
+
+
+  monteCarlo->_nuclearData = new NuclearData(options()->getNGroups(),
+                                                options()->getEMin(),
+                                                options()->getEMax());
+  monteCarlo->_materialDatabase = new MaterialDatabase();
+  
+  monteCarlo->_nuclearData->_isotopes.reserve( num_isotopes, VAR_MEM );
+  monteCarlo->_materialDatabase->_mat.reserve( num_materials, VAR_MEM );
+
+
+
+  for( Integer i = 0; i < num_materials; i++ )
+  {
+    String mat_name = options()->material[i].getName();
+    Integer nIsotopes = options()->material[i].getNIsotopes();
+    Integer nReactions = options()->material[i].getNReactions();
+    String fissionCrossSection = options()->material[i].getFissionCrossSection();
+    String scatteringCrossSection = options()->material[i].getScatteringCrossSection();
+    String absorptionCrossSection = options()->material[i].getAbsorptionCrossSection();
+    Real totalCrossSection = options()->material[i].getTotalCrossSection();
+    Real fissionCrossSectionRatio = options()->material[i].getFissionCrossSectionRatio();
+    Real scatteringCrossSectionRatio = options()->material[i].getScatteringCrossSectionRatio();
+    Real absorptionCrossSectionRatio = options()->material[i].getAbsorptionCrossSectionRatio();
+
+
+    Material material(mat_name.localstr(), options()->material[i].getMass());
+    double nuBar = crossSection2.at(options()->material[i].getFissionCrossSection().localstr());
+
+    material._iso.reserve( nIsotopes, VAR_MEM );
+
+    for (int iIso=0; iIso<nIsotopes; ++iIso)
+    {
+        int isotopeGid = monteCarlo->_nuclearData->addIsotope(
+          nReactions,
+          crossSection.at(fissionCrossSection.localstr()),
+          crossSection.at(scatteringCrossSection.localstr()),
+          crossSection.at(absorptionCrossSection.localstr()),
+          nuBar,
+          totalCrossSection,
+          fissionCrossSectionRatio,
+          scatteringCrossSectionRatio,
+          absorptionCrossSectionRatio);
+        
+        // atomFraction for each isotope is 1/nIsotopes.  Treats all
+        // isotopes as equally prevalent.
+        material.addIsotope(Isotope(isotopeGid, 1.0/nIsotopes));
+    }
+    monteCarlo->_materialDatabase->addMaterial(material);
+
+
+    //material_mng->registerMaterialInfo(mat_name);
+  }
+  //exit(14);
+}
 
 
 
@@ -1766,7 +1871,12 @@ trackingArc(MonteCarlo* monteCarlo)
       inView = m_particle_family->view(m_local_ids_in);
       m_local_ids_in.clear();
     }
-    
+
+    else if(m_local_ids_extra.size() == 0)
+    {
+      done = true;
+    }
+
     m_processingView = m_particle_family->view(m_local_ids_extra);
     m_local_ids_extra.clear();
   }
