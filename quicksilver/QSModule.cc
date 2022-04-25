@@ -89,7 +89,7 @@ startInit()
 
   // monteCarlo stores just about everything.
   monteCarlo = initMC(params);
-  monteCarloArc = initMCArc(params);
+  initMCArc(params);
 
   MC_FASTTIMER_START(MC_Fast_Timer::main); // this can be done once monteCarlo exist.
 }
@@ -125,15 +125,15 @@ cycleInit()
   monteCarlo->particle_buffer->Initialize();
 
   MC_SourceNow(monteCarlo);
-  MC_SourceNowArc(monteCarloArc);
+  MC_SourceNowArc();
 
   // Réduction ou augmentation du nombre de particules.
   PopulationControl(monteCarlo, loadBalance); // controls particle population
-  PopulationControlArc(monteCarloArc, loadBalance); // controls particle population
+  PopulationControlArc(); // controls particle population
 
   // Roulette sur les particules avec faible poids.
   RouletteLowWeightParticles(monteCarlo); // Delete particles with low statistical weight
-  RouletteLowWeightParticlesArc(monteCarloArc); // Delete particles with low statistical weight
+  RouletteLowWeightParticlesArc(); // Delete particles with low statistical weight
   //exit(54);
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleInit);
 }
@@ -149,7 +149,7 @@ cycleTracking()
 
   info() << "Module Quicksilver cycleTrackingArc";
 
-  trackingArc(monteCarloArc);
+  trackingArc();
   MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking);
 }
 
@@ -168,7 +168,7 @@ cycleFinalize()
   CycleFinalizeTallies();
 
   monteCarlo->time_info->cycle++;
-  monteCarloArc->time_info->cycle++;
+  m_cycle++;
 
   monteCarlo->particle_buffer->Free_Memory();
 
@@ -320,24 +320,18 @@ getParametersAxl()
 }
 
 
-MonteCarlo* QSModule::
+void QSModule::
 initMCArc(const Parameters& params)
 {
-   MonteCarlo* monteCarloArc;
-   monteCarloArc = new MonteCarlo(params);
-
-   monteCarloArc->time_info->time_step = params.simulationParams.dt;
-
    //initNuclearData(monteCarloArc, params); // Configuration des materiaux.
-   initNuclearDataArc(monteCarloArc, params); // Configuration des materiaux.
-   initMesh(monteCarloArc, params);
-   initTallies(monteCarloArc, params);
+   initMesh(params);
+   initNuclearDataArc(); // Configuration des materiaux.
+   initTallies();
 
    MC_Base_Particle::Update_Counts();
 
    //   used when debugging cross sections
-   checkCrossSections(monteCarloArc, params);
-   return monteCarloArc;
+   //checkCrossSections(monteCarloArc, params);
 }
 
 
@@ -411,17 +405,19 @@ initNuclearData(MonteCarlo* monteCarlo, const Parameters& params)
 
 
 void QSModule::
-initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params)
+initNuclearDataArc()
 {
+  
+
   Integer nb_cross_section = options()->cross_section().size();
 
-  map<string, Polynomial> crossSection;
-  map<string, Real> crossSection2; // TODO : Tres Tres Moche
+  map<String, PolynomialArc> crossSection;
+  map<String, Real> crossSection2; // TODO : Tres Tres Moche
 
 
   for( Integer i = 0; i < nb_cross_section; i++ )
   {
-    std::string cs_name = options()->cross_section[i].getName().localstr();
+    String cs_name = options()->cross_section[i].getName();
 
     Real aa = options()->cross_section[i].getA();
     Real bb = options()->cross_section[i].getB();
@@ -430,7 +426,7 @@ initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params)
     Real ee = options()->cross_section[i].getE();
     Real nuBar = options()->cross_section[i].getNuBar();
 
-    crossSection.insert(make_pair(cs_name, Polynomial(aa, bb, cc, dd, ee)));
+    crossSection.insert(make_pair(cs_name, PolynomialArc(aa, bb, cc, dd, ee)));
     crossSection2.insert(make_pair(cs_name, nuBar));
   }
 
@@ -449,22 +445,70 @@ initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params)
   // TODO : Si num_materials == 0.
 
 
-
-  monteCarlo->_nuclearData = new NuclearData(options()->getNGroups(),
+  m_nuclearData = new NuclearDataArc(options()->getNGroups(),
                                                 options()->getEMin(),
                                                 options()->getEMax());
-  monteCarlo->_materialDatabase = new MaterialDatabase();
   
-  monteCarlo->_nuclearData->_isotopes.reserve( num_isotopes, VAR_MEM );
-  monteCarlo->_materialDatabase->_mat.reserve( num_materials, VAR_MEM );
+  m_nuclearData->_isotopes.reserve( num_isotopes );
 
 
 
   for( Integer i = 0; i < num_materials; i++ )
   {
     String mat_name = options()->material[i].getName();
+    MeshMaterialInfo* newMaterial = material_mng->registerMaterialInfo(mat_name);
+    info() << "Creation du materiau : " << mat_name;
+    MeshEnvironmentBuildInfo ebi1(mat_name);
+    ebi1.addMaterial(mat_name);
+    material_mng->createEnvironment(ebi1);
+  }
+  material_mng->endCreate();
+
+  Integer nb_geometry = options()->geometry().size();
+
+  Int32UniqueArray localIdMat[nb_geometry];
+
+  ENUMERATE_CELL(icell, ownCells())
+  {
+    for( Integer i = 0; i < nb_geometry; i++ )
+    {
+      if(isInsideArc(i, (*icell)))
+      {
+        localIdMat[i].add(icell.localId());
+        break;
+      }
+    }
+  }
+
+  ConstArrayView<IMeshMaterial*> materials = material_mng->materials();
+  info() << "Size materiau : " << materials.size();
+  {
+    MeshMaterialModifier modifier(material_mng);
+    for( Integer i = 0; i < nb_geometry; i++ )
+    {
+      String materialName = options()->geometry[i].getMaterial();
+
+      for (Integer j = 0; j < num_materials; j++)
+      {
+        info() << "Compare materiau : " << materials[j]->name() << " et " << materialName+"_"+materialName;
+
+        if(materials[j]->name() == materialName+"_"+materialName)
+        {
+          modifier.addCells(materials[j], localIdMat[i]);
+          break;
+        }
+      }
+    }
+  }
+
+
+  for( Integer i = 0; i < num_materials; i++ )
+  {
+    String mat_name = options()->material[i].getName();
+    Real mass = options()->material[i].getMass();
     Integer nIsotopes = options()->material[i].getNIsotopes();
     Integer nReactions = options()->material[i].getNReactions();
+    Real sourceRate = options()->material[i].getSourceRate();
     String fissionCrossSection = options()->material[i].getFissionCrossSection();
     String scatteringCrossSection = options()->material[i].getScatteringCrossSection();
     String absorptionCrossSection = options()->material[i].getAbsorptionCrossSection();
@@ -474,49 +518,57 @@ initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params)
     Real absorptionCrossSectionRatio = options()->material[i].getAbsorptionCrossSectionRatio();
 
 
-    Material material(mat_name.localstr(), options()->material[i].getMass());
     double nuBar = crossSection2.at(options()->material[i].getFissionCrossSection().localstr());
 
-    material._iso.reserve( nIsotopes, VAR_MEM );
+    ENUMERATE_MATCELL(icell, materials[i])
+    {
+      m_mass[icell] = mass;
+      m_sourceRate[icell] = sourceRate;
+    }
+    m_isoGid.resize(nIsotopes);
+    m_atomFraction.resize(nIsotopes);
+
 
     for (int iIso=0; iIso<nIsotopes; ++iIso)
     {
-        int isotopeGid = monteCarlo->_nuclearData->addIsotope(
-          nReactions,
-          crossSection.at(fissionCrossSection.localstr()),
-          crossSection.at(scatteringCrossSection.localstr()),
-          crossSection.at(absorptionCrossSection.localstr()),
-          nuBar,
-          totalCrossSection,
-          fissionCrossSectionRatio,
-          scatteringCrossSectionRatio,
-          absorptionCrossSectionRatio);
-        
-        // atomFraction for each isotope is 1/nIsotopes.  Treats all
-        // isotopes as equally prevalent.
-        material.addIsotope(Isotope(isotopeGid, 1.0/nIsotopes));
+      Integer isotopeGid = m_nuclearData->addIsotope(
+        nReactions,
+        crossSection.at(fissionCrossSection),
+        crossSection.at(scatteringCrossSection),
+        crossSection.at(absorptionCrossSection),
+        nuBar,
+        totalCrossSection,
+        fissionCrossSectionRatio,
+        scatteringCrossSectionRatio,
+        absorptionCrossSectionRatio);
+      
+      // atomFraction for each isotope is 1/nIsotopes.  Treats all
+      // isotopes as equally prevalent.
+      ENUMERATE_MATCELL(icell, materials[i])
+      {
+        m_isoGid[icell][iIso] = isotopeGid;
+        m_atomFraction[icell][iIso] = 1.0/nIsotopes;
+      }
     }
-    monteCarlo->_materialDatabase->addMaterial(material);
-
-
-    //material_mng->registerMaterialInfo(mat_name);
   }
+
+  
   //exit(14);
 }
 
 
 
 void QSModule::
-initMesh(MonteCarlo* monteCarlo, const Parameters& params)
+initMesh(const Parameters& params)
 {
     
   int nx = params.simulationParams.nx;
   int ny = params.simulationParams.ny;
   int nz = params.simulationParams.nz;
 
-  double lx = params.simulationParams.lx;
-  double ly = params.simulationParams.ly;
-  double lz = params.simulationParams.lz;
+  double lx = options()->getLx();
+  double ly = options()->getLy();
+  double lz = options()->getLz();
 
   double dx = lx / nx;
   double dy = ly / ny;
@@ -575,7 +627,7 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
   m_particleVelocity.resize(3);
   m_particleDirCos.resize(3);
 
-  m_total.resize(monteCarlo->_nuclearData->_numEnergyGroups);
+  m_total.resize(options()->getNGroups());
 
   ENUMERATE_CELL(icell, ownCells())
   {
@@ -736,10 +788,10 @@ initMesh(MonteCarlo* monteCarlo, const Parameters& params)
     //////////////////// Fin Volume Cell /////////////////////////
 
 
-    std::string matName = findMaterial(params, cellCenter);
-    m_material[icell] = monteCarlo->_materialDatabase->findMaterial(matName);
+    //std::string matName = findMaterial(params, cellCenter);
+    //m_material[icell] = monteCarlo->_materialDatabase->findMaterial(matName);
 
-    for(int i = 0; i < monteCarlo->_nuclearData->_numEnergyGroups; i++)
+    for(int i = 0; i < options()->getNGroups(); i++)
     {
       m_total[icell][i] = 0.0;
     }
@@ -776,7 +828,7 @@ getBoundaryCondition(const Parameters& params)
 
 
 void QSModule::
-initTallies(MonteCarlo* monteCarlo, const Parameters& params)
+initTallies()
 {
   // Pour l'instant, balanceTallyReplications = fluxTallyReplications = cellTallyReplications = 1.
   m_absorb = 0;      // Number of particles absorbed
@@ -793,7 +845,7 @@ initTallies(MonteCarlo* monteCarlo, const Parameters& params)
   m_split = 0;       // Number of particles split in population control
   m_numSegments = 0; // Number of segements
 
-  int sizeOfSFT = monteCarlo->_nuclearData->_energies.size()-1;
+  int sizeOfSFT = m_nuclearData->_energies.size()-1;
   m_scalarFluxTally.resize(sizeOfSFT);
 
   ENUMERATE_CELL(icell, ownCells())
@@ -921,6 +973,36 @@ isInside(const GeometryParameters& geom, const MC_Vector& rr)
   return inside;
 }
 
+bool QSModule::
+isInsideArc(Integer pos, 
+            Cell cell)
+{
+  bool inside = false;
+  switch (options()->geometry[pos].getShape())
+  {
+    case eShape::BRICK:
+      {
+        if ( (m_coordCenter[cell][MD_DirX] >= options()->geometry[pos].getXMin() && m_coordCenter[cell][MD_DirX] <= options()->geometry[pos].getXMax()) &&
+              (m_coordCenter[cell][MD_DirY] >= options()->geometry[pos].getYMin() && m_coordCenter[cell][MD_DirY] <= options()->geometry[pos].getYMax()) &&
+              (m_coordCenter[cell][MD_DirZ] >= options()->geometry[pos].getZMin() && m_coordCenter[cell][MD_DirZ] <= options()->geometry[pos].getZMax()) )
+            inside = true;
+      }
+      break;
+    case eShape::SPHERE:
+      {
+        MC_Vector center(options()->geometry[pos].getXCenter(), options()->geometry[pos].getYCenter(), options()->geometry[pos].getZCenter());
+        MC_Vector rr(m_coordCenter[cell][MD_DirX], m_coordCenter[cell][MD_DirY], m_coordCenter[cell][MD_DirZ]);
+        if ( (rr-center).Length() <= options()->geometry[pos].getRadius())
+            inside = true;
+      }
+
+      break;
+    default:
+      qs_assert(false);
+  }
+  return inside;
+}
+
 // Returns the name of the material present at coordinate rr.  If
 // multiple materials overlap return the last material found.
 string QSModule::
@@ -938,9 +1020,10 @@ findMaterial(const Parameters& params, const MC_Vector& rr)
 // This function is useful for debugging but is not called in ordinary
 // use of the code.  Uncomment the call to this function in initMC()
 // if you want to get plot data for the cross sections.
-void QSModule::
-checkCrossSections(MonteCarlo* monteCarlo, const Parameters& params)
-{
+//void QSModule::
+//checkCrossSections(MonteCarlo* monteCarlo, const Parameters& params)
+//{
+/*
   if( monteCarlo->_params.simulationParams.crossSectionsOut == "" ) return;
 
   struct XC_Data
@@ -959,7 +1042,8 @@ checkCrossSections(MonteCarlo* monteCarlo, const Parameters& params)
 
 
   MaterialDatabase* matDB = monteCarlo->_materialDatabase;
-  unsigned nMaterials = matDB->_mat.size();
+  //unsigned nMaterials = matDB->_mat.size();
+  unsigned nMaterials = material_mng->materials().size();
 
   map<string, vector<XC_Data> > xcTable;
 
@@ -1032,13 +1116,15 @@ xSec = fopen( fileName.c_str(), "w" );
   }
 fclose( xSec );
 }
+*/
+
 
 void QSModule::
 clearCrossSectionCache()
 {
   ENUMERATE_CELL(icell, ownCells())
   {
-    for(int i = 0; i < monteCarlo->_nuclearData->_numEnergyGroups; i++)
+    for(int i = 0; i < options()->getNGroups(); i++)
     {
       m_total[icell][i] = 0.0;
     }
@@ -1046,24 +1132,27 @@ clearCrossSectionCache()
 }
 
 void QSModule::
-MC_SourceNowArc(MonteCarlo *monteCarlo)
+MC_SourceNowArc()
 {
     NVTX_Range range("MC_Source_Now");
-  
-    std::vector<double> source_rate(monteCarlo->_materialDatabase->_mat.size());  // Get this from user input
 
-    for ( int material_index = 0; material_index < monteCarlo->_materialDatabase->_mat.size(); material_index++ )
-    {
-        std::string name = monteCarlo->_materialDatabase->_mat[material_index]._name;
-        double sourceRate = monteCarlo->_params.materialParams[name].sourceRate;
-        source_rate[material_index] = sourceRate;
-    }
+    
+  
+    //std::vector<double> source_rate(monteCarlo->_materialDatabase->_mat.size());  // Get this from user input
+    // std::vector<double> source_rate(material_mng->materials().size());  // Get this from user input
+
+    // for ( int material_index = 0; material_index < material_mng->materials().size(); material_index++ )
+    // {
+    //     std::string name = monteCarlo->_materialDatabase->_mat[material_index]._name;
+    //     double sourceRate = monteCarlo->_params.materialParams[name].sourceRate;
+    //     source_rate[material_index] = sourceRate;
+    // }
 
     double local_weight_particles = 0;
 
     ENUMERATE_CELL(icell, ownCells())
     {
-      double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
+      double cell_weight_particles = m_volume[icell] * m_sourceRate[icell] * options()->getDt();
       local_weight_particles += cell_weight_particles;
     }
 
@@ -1071,11 +1160,11 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
 
     total_weight_particles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, local_weight_particles);
 
-    uint64_t num_particles = monteCarlo->_params.simulationParams.nParticles;
+    uint64_t num_particles = options()->getNParticles();
     double source_fraction = 0.1;
     double source_particle_weight = total_weight_particles/(source_fraction * num_particles);
     // Store the source particle weight for later use.
-    monteCarlo->source_particle_weight = source_particle_weight;
+    m_source_particle_weight = source_particle_weight;
 
     uint64_t task_index = 0;
     uint64_t particle_count = 0;
@@ -1084,7 +1173,7 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
 
     ENUMERATE_CELL(icell, ownCells())
     {
-      double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
+      double cell_weight_particles = m_volume[icell] * m_sourceRate[icell] * options()->getDt();
       double cell_num_particles_float = cell_weight_particles / source_particle_weight;
       particle_count += (uint64_t)cell_num_particles_float;
     }
@@ -1097,7 +1186,7 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
 
     ENUMERATE_CELL(icell, ownCells())
     {
-      double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
+      double cell_weight_particles = m_volume[icell] * m_sourceRate[icell] * options()->getDt();
       double cell_num_particles_float = cell_weight_particles / source_particle_weight;
       int cell_num_particles = (int)cell_num_particles_float;
 
@@ -1136,10 +1225,10 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
       Particle p = (*ipartic);
       initParticle(p, rng[ipartic.index()]);
 
-      MCT_Generate_Coordinate_3D_GArc(p, monteCarlo);
+      MCT_Generate_Coordinate_3D_GArc(p);
       Sample_Isotropic(p);
-      m_particleKinEne[p] = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
-                              rngSample(&m_particleRNS[p]) + monteCarlo->_params.simulationParams.eMin;
+      m_particleKinEne[p] = (options()->getEMax() - options()->getEMin())*
+                              rngSample(&m_particleRNS[p]) + options()->getEMin();
 
       Real speed = Get_Speed_From_Energy(p);
 
@@ -1154,76 +1243,12 @@ MC_SourceNowArc(MonteCarlo *monteCarlo)
       m_particleNumMeanFreeP[p] = -1.0*std::log(randomNumber);
 
       randomNumber = rngSample(&m_particleRNS[p]);
-      m_particleTimeCensus[p] = monteCarlo->time_info->time_step * randomNumber;
+      m_particleTimeCensus[p] = options()->getDt() * randomNumber;
 
       m_source_a++;
     }
 
     m_processingView = m_particle_family->view();
-
-    // ENUMERATE_CELL(icell, ownCells())
-    // {
-    //   Cell cell = *icell;
-    //   double cell_weight_particles = m_volume[icell] * source_rate[m_material[icell]] * monteCarlo->time_info->time_step;
-    //   double cell_num_particles_float = cell_weight_particles / source_particle_weight;
-    //   int cell_num_particles = (int)cell_num_particles_float;
-
-    //   for ( int particle_index = 0; particle_index < cell_num_particles; particle_index++ )
-    //   {
-    //     // int64_t random_number_seed = particle_index;
-    //     // random_number_seed += cell.uniqueId().asInt64() * INT64_C(0x0100000000);
-
-    //     // int64_t rns = rngSpawn_Random_Number_Seed(&random_number_seed);
-    //     // int64_t id = random_number_seed;
-
-    //     Particle p = Particle(m_processingView[particle_index_g].internal());
-        
-    //     // if(p.uniqueId().asInt64() != id || rns != rng[particle_index_g]) 
-    //     // {
-    //     //   info() << particle_index_g << " " << m_processingView.size();
-    //     //   ARCANE_FATAL("Pb index");
-    //     // }
-
-    //     initParticle(p, rng[particle_index_g]);
-
-    //     // cout << "particle.identifier : " << particle.identifier << endl;
-
-    //     MCT_Generate_Coordinate_3D_GArc(p, monteCarlo);
-
-    //     // if(particle_index < 11)
-    //     // {
-    //     //   cout << "particle.identifier : " << p.uniqueId().asInt64() << endl;
-    //     //   cout << m_particleCoord[p][MD_DirX] << " x " << m_particleCoord[p][MD_DirY] << " x " << m_particleCoord[p][MD_DirZ] << endl;
-    //     // }
-    //     // else
-    //     // {
-    //     //   exit(45);
-    //     // }
-
-    //     Sample_Isotropic(p);
-    //     m_particleKinEne[p] = (monteCarlo->_params.simulationParams.eMax - monteCarlo->_params.simulationParams.eMin)*
-    //                             rngSample(&m_particleRNS[p]) + monteCarlo->_params.simulationParams.eMin;
-
-    //     Real speed = Get_Speed_From_Energy(p);
-
-    //     m_particleVelocity[p][MD_DirX] = speed * m_particleDirCos[p][0];
-    //     m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][1];
-    //     m_particleVelocity[p][MD_DirZ] = speed * m_particleDirCos[p][2];
-
-    //     m_particleTask[p] = task_index;
-    //     m_particleWeight[p] = source_particle_weight;
-
-    //     double randomNumber = rngSample(&m_particleRNS[p]);
-    //     m_particleNumMeanFreeP[p] = -1.0*std::log(randomNumber);
-
-    //     randomNumber = rngSample(&m_particleRNS[p]);
-    //     m_particleTimeCensus[p] = monteCarlo->time_info->time_step * randomNumber;
-
-    //     m_source_a++;
-    //     particle_index_g++;
-    //   }
-    // }
-    //exit(123);
 }
 
 void QSModule::
@@ -1286,11 +1311,7 @@ Get_Speed_From_Energy(Particle p)
 }
 
 void QSModule::
-MCT_Generate_Coordinate_3D_GArc(  Particle p,
-                                  // uint64_t *random_number_seed,
-                                  // Cell &cell,
-                                  // MC_Vector &coordinate,  
-                                  MonteCarlo* monteCarlo )
+MCT_Generate_Coordinate_3D_GArc(Particle p)
 {
   Cell cell = p.cell();
   int64_t* random_number_seed = &m_particleRNS[p];
@@ -1404,45 +1425,43 @@ MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
 }
 
 void QSModule::
-PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance)
+PopulationControlArc()
 {
     NVTX_Range range("PopulationControl");
 
-    uint64_t targetNumParticles = monteCarlo->_params.simulationParams.nParticles;
+    uint64_t targetNumParticles = options()->getNParticles();
     uint64_t globalNumParticles = 0;
     uint64_t localNumParticles = m_processingView.size();
    
-    if (loadBalance)
-    {
-      // If we are parallel, we will have one domain per mpi processs.  The targetNumParticles is across
-      // all MPI processes, so we need to divide by the number or ranks to get the per-mpi-process number targetNumParticles
-      targetNumParticles = ceil((double)targetNumParticles / mesh()->parallelMng()->commSize() );
+//     if (loadBalance)
+//     {
+//       // If we are parallel, we will have one domain per mpi processs.  The targetNumParticles is across
+//       // all MPI processes, so we need to divide by the number or ranks to get the per-mpi-process number targetNumParticles
+//       targetNumParticles = ceil((double)targetNumParticles / mesh()->parallelMng()->commSize() );
 
-      //NO LONGER SPLITING VAULTS BY THREADS
-//        // If we are threaded, targetNumParticles should be divided by the number of threads (tasks) to balance
-//        // the particles across the thread level vaults.
-//        targetNumParticles = ceil((double)targetNumParticles / (double)monteCarlo->processor_info->num_tasks);
-    }
-    else
-    {
+//       //NO LONGER SPLITING VAULTS BY THREADS
+// //        // If we are threaded, targetNumParticles should be divided by the number of threads (tasks) to balance
+// //        // the particles across the thread level vaults.
+// //        targetNumParticles = ceil((double)targetNumParticles / (double)monteCarlo->processor_info->num_tasks);
+//     }
+//     else
+//     {
       globalNumParticles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
-    }
+    // }
      
-    Balance & taskBalance = monteCarlo->_tallies->_balanceTask[0];
-
     double splitRRFactor = 1.0;
-    if (loadBalance)
-    {
-        int currentNumParticles = localNumParticles;
-        if (currentNumParticles != 0)
-            splitRRFactor = (double)targetNumParticles / (double)currentNumParticles;
-        else
-            splitRRFactor = 1.0;
-    }
-    else
-    {
+    // if (loadBalance)
+    // {
+    //     int currentNumParticles = localNumParticles;
+    //     if (currentNumParticles != 0)
+    //         splitRRFactor = (double)targetNumParticles / (double)currentNumParticles;
+    //     else
+    //         splitRRFactor = 1.0;
+    // }
+    // else
+    // {
         splitRRFactor = (double)targetNumParticles / (double)globalNumParticles;
-    }
+    // }
 
     // On augmente ou diminue la population selon splitRRFactor (si > 1, on augmente en splittant ; si < 1, on diminue en killant ou en augmentant le poids (rand))
     if (splitRRFactor != 1.0)  // no need to split if population is already correct.
@@ -1565,18 +1584,18 @@ copyParticle(Particle pSrc, Particle pNew)
 }
 
 void QSModule::
-RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo)
+RouletteLowWeightParticlesArc()
 {
   NVTX_Range range("RouletteLowWeightParticles");
 
-  const double lowWeightCutoff = monteCarlo->_params.simulationParams.lowWeightCutoff;
+  const double lowWeightCutoff = options()->getLowWeightCutoff();
 
   if (lowWeightCutoff > 0.0)
   {
     Int32UniqueArray supprP;
 
     // March backwards through the vault so killed particles don't mess up the indexing
-    const double source_particle_weight = monteCarlo->source_particle_weight;
+    const double source_particle_weight = m_source_particle_weight;
     const double weightCutoff = lowWeightCutoff*source_particle_weight;
 
     ENUMERATE_PARTICLE(iparticle, m_processingView)
@@ -1722,7 +1741,13 @@ tracking(MonteCarlo* monteCarlo)
         }
 
         particle_count += numParticles;
+        info() << "----------";
         info() << "numParticles : " << numParticles;
+        info() << "sizeExtra : " << my_particle_vault.sizeExtra();
+        info() << "sizeProcessed : " << my_particle_vault.sizeProcessed();
+        info() << "out : " << particle_count - (int)my_particle_vault.sizeProcessed() - (int)my_particle_vault.sizeExtra();
+        info() << "m_collision_a : " << monteCarlo->_tallies->_balanceTask[0]._collision << " m_escape_a : " << monteCarlo->_tallies->_balanceTask[0]._escape << " m_census_a : " << monteCarlo->_tallies->_balanceTask[0]._census;
+        info() << "----------";
 
         MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
         
@@ -1786,6 +1811,7 @@ tracking(MonteCarlo* monteCarlo)
     // Everything should be done normally.
     done = monteCarlo->particle_buffer->Test_Done_New(
         MC_New_Test_Done_Method::Blocking);
+  info() << "particle_count : " << particle_count;
 
   } while (!done);
   info() << "--------";
@@ -1798,7 +1824,7 @@ tracking(MonteCarlo* monteCarlo)
 }
 
 void QSModule::
-trackingArc(MonteCarlo* monteCarlo)
+trackingArc()
 {
   bool done = false;
   ParticleVectorView inView;
@@ -1808,8 +1834,10 @@ trackingArc(MonteCarlo* monteCarlo)
   //exit(24);
 
 
+  int particle_count = 0; // Initialize count of num_particles processed
   while (!done)
   {
+
     ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
       Particle particle = (*iparticle);
@@ -1821,22 +1849,33 @@ trackingArc(MonteCarlo* monteCarlo)
         pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
         pinfo() << "--------";
       }
-      CycleTrackingGutsArc(monteCarlo, particle);
+      CycleTrackingGutsArc(particle);
     }
+    particle_count += m_processingView.size();
 
     if(mesh()->parallelMng()->commSize() > 1)
     {
       ENUMERATE_PARTICLE(iparticle, inView)
       {
         Particle particle = (*iparticle);
-        CycleTrackingGutsArc(monteCarlo, particle);
+        CycleTrackingGutsArc(particle);
       }
+      particle_count += inView.size();
     }
 
     pinfo() << "========";
     pinfo() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
-    pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size();
+    pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_exit : " << m_local_ids_exit.size();
+    pinfo() << "m_collision_a : " << m_collision_a << " m_escape_a : " << m_escape_a << " m_census_a : " << m_census_a;
     pinfo() << "========";
+
+/*
+numParticles : 17242
+*I-QS         sizeExtra : 212
+*I-QS         sizeProcessed : 973481
+*I-QS         out : 43831
+
+*/
 
     m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
     // endUpdate fait par CollisionEventSuite;
@@ -1880,6 +1919,7 @@ trackingArc(MonteCarlo* monteCarlo)
     m_processingView = m_particle_family->view(m_local_ids_extra);
     m_local_ids_extra.clear();
   }
+  info() << "particle_count : " << particle_count;
 }
 
 void QSModule::
@@ -1906,7 +1946,7 @@ CollisionEventSuite()
   {
     Particle particle = Particle(viewP[i].internal());
     updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
-    m_particleEneGrp[particle] = monteCarlo->_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+    m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
   }
 
   Integer debug_size = m_local_ids_extra.size();
@@ -1934,24 +1974,24 @@ CollisionEventSuite()
 }
 
 void QSModule::
-CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle )
+CycleTrackingGutsArc( Particle particle )
 {
   if ( m_particleTimeCensus[particle] <= 0.0 )
   {
-      m_particleTimeCensus[particle] += monteCarlo->time_info->time_step;
+      m_particleTimeCensus[particle] += options()->getDt();
   }
 
   // Age
   if (m_particleAge[particle] < 0.0) { m_particleAge[particle] = 0.0; }
 
   //    Energy Group
-  m_particleEneGrp[particle] = monteCarlo->_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+  m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
 
   // set the particle.task to the index of the processed vault the particle will census into.
   m_particleTask[particle] = 0;//processed_vault;
 
   // loop over this particle until we cannot do anything more with it on this processor
-  CycleTrackingFunctionArc( monteCarlo, particle );
+  CycleTrackingFunctionArc(particle);
   // if(particle_index < 11)
   // {
   // cout << "particle.identifier : " << mc_particle.identifier << endl;
@@ -1968,7 +2008,7 @@ CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle )
 }
 
 void QSModule::
-CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
+CycleTrackingFunctionArc(Particle particle)
 {
     bool keepTrackingThisParticle = false;
     unsigned int tally_index = 0;
@@ -1984,7 +2024,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
         //
 
         // Collision ou Census ou Facet crossing
-        MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(monteCarlo, particle, flux_tally_index);
+        MC_Segment_Outcome_type::Enum segment_outcome = MC_Segment_OutcomeArc(particle, flux_tally_index);
         m_numSegments_a++;
 
 
@@ -1996,7 +2036,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
             // The particle undergoes a collision event producing:
             //   (0) Other-than-one same-species secondary particle, or
             //   (1) Exactly one same-species secondary particle.
-            if (CollisionEventArc(monteCarlo, particle ) == 0)
+            if (CollisionEventArc(particle ) == 0)
             {
               m_local_ids_exit.add(particle.localId());
               keepTrackingThisParticle = false;
@@ -2011,7 +2051,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
         case MC_Segment_Outcome_type::Facet_Crossing:
             {
                 // The particle has reached a cell facet.
-                MC_Tally_Event::Enum facet_crossing_type = MC_Facet_Crossing_EventArc(particle, monteCarlo);
+                MC_Tally_Event::Enum facet_crossing_type = MC_Facet_Crossing_EventArc(particle);
 
                 // if(particle_index == 11 && DEBUG_compt < 10)
                 // {
@@ -2032,7 +2072,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
                 }
                 else if (facet_crossing_type == MC_Tally_Event::Facet_Crossing_Reflection)
                 {
-                    MCT_Reflect_ParticleArc(monteCarlo, particle);
+                    MCT_Reflect_ParticleArc(particle);
 
                     keepTrackingThisParticle = true;
                 }
@@ -2065,7 +2105,7 @@ CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle)
 }
 
 MC_Segment_Outcome_type::Enum QSModule::
-MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &flux_tally_index)
+MC_Segment_OutcomeArc(Particle particle, unsigned int &flux_tally_index)
 {
     // initialize distances to large number
     int number_of_events = 3;
@@ -2092,7 +2132,7 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &f
 
     // Randomly determine the distance to the next collision
     // based upon the composition of the current cell.
-    double macroscopic_total_cross_section = weightedMacroscopicCrossSectionArc(monteCarlo, particle.cell(), m_particleEneGrp[particle]);
+    double macroscopic_total_cross_section = weightedMacroscopicCrossSectionArc(particle.cell(), m_particleEneGrp[particle]);
 
     // Cache the cross section
     m_particleTotalCrossSection[particle] = macroscopic_total_cross_section;
@@ -2141,7 +2181,7 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &f
 
     // Calculate the minimum distance to each facet of the cell.
     MC_Nearest_Facet nearest_facet;
-        nearest_facet = MCT_Nearest_FacetArc(particle, distance_threshold, current_best_distance, new_segment, monteCarlo);
+        nearest_facet = MCT_Nearest_FacetArc(particle, distance_threshold, current_best_distance, new_segment);
 
     m_particleNormalDot[particle] = nearest_facet.dot_product;
 
@@ -2259,7 +2299,7 @@ MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &f
 }
 
 double QSModule::
-weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell cell, int energyGroup)
+weightedMacroscopicCrossSectionArc(Cell cell, int energyGroup)
 {
    double precomputedCrossSection = m_total[cell][energyGroup];
 
@@ -2267,11 +2307,12 @@ weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell cell, int energy
       return precomputedCrossSection;
    
    int globalMatIndex = m_material[cell];
-   int nIsotopes = (int)monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso.size();
+   //int nIsotopes = (int)monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso.size();
+   int nIsotopes = m_isoGid[cell].size();
    double sum = 0.0;
    for (int isoIndex = 0; isoIndex < nIsotopes; isoIndex++)
    {
-      sum += macroscopicCrossSectionArc(monteCarlo, -1, cell, isoIndex, energyGroup);
+      sum += macroscopicCrossSectionArc(-1, cell, isoIndex, energyGroup);
    }
 
    ATOMIC_WRITE( m_total[cell][energyGroup], sum );
@@ -2287,12 +2328,13 @@ weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell cell, int energy
 //----------------------------------------------------------------------------------------------------------------------
 
 double QSModule::
-macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell cell, int isoIndex, int energyGroup)
+macroscopicCrossSectionArc(int reactionIndex, Cell cell, int isoIndex, int energyGroup)
 {
    // Initialize various data items.
    int globalMatIndex = m_material[cell];
 
-   double atomFraction = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._atomFraction;
+   //double atomFraction = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._atomFraction;
+   double atomFraction = m_atomFraction[cell][isoIndex];
 
    double microscopicCrossSection = 0.0;
    // The cell number density is the fraction of the atoms in cell
@@ -2301,18 +2343,19 @@ macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell cell,
    // isotopes are present in equal amounts
    double cellNumberDensity = m_cellNumberDensity[cell];
 
-   int isotopeGid = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._gid;
+   //int isotopeGid = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._gid;
+   int isotopeGid = m_isoGid[cell][isoIndex];
    if ( atomFraction == 0.0 || cellNumberDensity == 0.0) { return 1e-20; }
 
    if (reactionIndex < 0)
    {
       // Return total cross section
-      microscopicCrossSection = monteCarlo->_nuclearData->getTotalCrossSection(isotopeGid, energyGroup);
+      microscopicCrossSection = m_nuclearData->getTotalCrossSection(isotopeGid, energyGroup);
    }
    else
    {
       // Return the reaction cross section
-      microscopicCrossSection = monteCarlo->_nuclearData->getReactionCrossSection((unsigned int)reactionIndex,
+      microscopicCrossSection = m_nuclearData->getReactionCrossSection((unsigned int)reactionIndex,
                 isotopeGid, energyGroup);
    }
 
@@ -2324,8 +2367,7 @@ MC_Nearest_Facet QSModule::
 MCT_Nearest_FacetArc( Particle particle,
                       double distance_threshold,
                       double current_best_distance,
-                      bool new_segment,
-                      MonteCarlo* monteCarlo )
+                      bool new_segment)
 {
 
   MC_Nearest_Facet nearest_facet = MCT_Nearest_Facet_3D_GArc(particle);
@@ -2692,10 +2734,10 @@ MC_Find_Min(const double *array, int num_elements)
 }
 
 int QSModule::
-CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
+CollisionEventArc(Particle particle)
 {
   Cell cell = particle.cell();
-  int globalMatIndex = m_material[cell];
+  //int globalMatIndex = m_material[cell];
 
   //------------------------------------------------------------------------------------------------------------------
   //    Pick the isotope and reaction.
@@ -2706,15 +2748,17 @@ CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
   int selectedIso = -1;
   int selectedUniqueNumber = -1;
   int selectedReact = -1;
-  int numIsos = (int)monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso.size();
+  //int numIsos = (int)monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso.size();
+  int numIsos = m_isoGid[cell].size();
   
   for (int isoIndex = 0; isoIndex < numIsos && currentCrossSection >= 0; isoIndex++)
   {
-    int uniqueNumber = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._gid;
-    int numReacts = monteCarlo->_nuclearData->getNumberReactions(uniqueNumber);
+    //int uniqueNumber = monteCarlo->_materialDatabase->_mat[globalMatIndex]._iso[isoIndex]._gid;
+    int uniqueNumber = m_isoGid[cell][isoIndex];
+    int numReacts = m_nuclearData->getNumberReactions(uniqueNumber);
     for (int reactIndex = 0; reactIndex < numReacts; reactIndex++)
     {
-      currentCrossSection -= macroscopicCrossSectionArc(monteCarlo, reactIndex, cell,
+      currentCrossSection -= macroscopicCrossSectionArc(reactIndex, cell,
                 isoIndex, m_particleEneGrp[particle]);
       if (currentCrossSection < 0)
       {
@@ -2733,9 +2777,10 @@ CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
   double energyOut[MAX_PRODUCTION_SIZE];
   double angleOut[MAX_PRODUCTION_SIZE];
   int nOut = 0;
-  double mat_mass = monteCarlo->_materialDatabase->_mat[globalMatIndex]._mass;
+  //double mat_mass = monteCarlo->_materialDatabase->_mat[globalMatIndex]._mass;
+  double mat_mass = m_mass[cell];
 
-  monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact].sampleCollision(
+  m_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact].sampleCollision(
     m_particleKinEne[particle], mat_mass, &energyOut[0], &angleOut[0], nOut, &(m_particleRNS[particle]), MAX_PRODUCTION_SIZE );
 
   //--------------------------------------------------------------------------------------------------------------
@@ -2745,22 +2790,22 @@ CollisionEventArc(MonteCarlo* monteCarlo, Particle particle)
 
   // Set the reaction for this particle.
   m_collision_a++;
-  NuclearDataReaction::Enum reactionType = monteCarlo->_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
+  NuclearDataReactionArc::Enum reactionType = m_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
           _reactions[selectedReact]._reactionType;
 
   switch (reactionType)
   {
-    case NuclearDataReaction::Scatter:
+    case NuclearDataReactionArc::Scatter:
         m_scatter_a++;
         break;
-    case NuclearDataReaction::Absorption:
+    case NuclearDataReactionArc::Absorption:
         m_absorb_a++;
         break;
-    case NuclearDataReaction::Fission:
+    case NuclearDataReactionArc::Fission:
         m_fission_a++;
         m_produce_a += nOut;
         break;
-    case NuclearDataReaction::Undefined:
+    case NuclearDataReactionArc::Undefined:
         printf("reactionType invalid\n");
         qs_assert(false);
   }
@@ -2845,7 +2890,7 @@ Rotate3DVector(Particle particle, double sin_Theta, double cos_Theta, double sin
 }
 
 MC_Tally_Event::Enum QSModule::
-MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo)
+MC_Facet_Crossing_EventArc(Particle particle)
 {
      //Subfacet_Adjacency &facet_adjacency = MCT_Adjacent_Facet(location, mc_particle, monteCarlo);
     Face face = particle.cell().face(m_particleFace[particle]);
@@ -2925,7 +2970,7 @@ MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo)
 }
 
 void QSModule::
-MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, Particle particle)
+MCT_Reflect_ParticleArc(Particle particle)
 {
     int truc = m_particleFacet[particle] % 4;
 

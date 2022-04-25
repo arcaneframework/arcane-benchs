@@ -479,7 +479,7 @@
     <variable 
         field-name="isoGid"
         name="IsoGid"
-        data-type="integer"
+        data-type="real"
         item-kind="cell"
         dim="1"
         material="true"/>
@@ -490,6 +490,14 @@
         data-type="real"
         item-kind="cell"
         dim="1"
+        material="true"/>
+
+    <variable 
+        field-name="sourceRate"
+        name="SourceRate"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
         material="true"/>
 
 

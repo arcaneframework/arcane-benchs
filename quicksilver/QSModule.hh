@@ -24,6 +24,7 @@
 #include "arcane/materials/MeshMaterialVariableRef.h"
 #include "arcane/materials/MeshEnvironmentVariableRef.h"
 #include "arcane/materials/MaterialVariableBuildInfo.h"
+#include "arcane/materials/MeshEnvironmentBuildInfo.h"
 
 enum eShape{UNDEFINED, BRICK, SPHERE}; // TODO : A deplacer (doit être defini avant QS_axl.h !).
 enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit être defini avant QS_axl.h !).
@@ -58,7 +59,7 @@ enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit êt
 #include "MC_Segment_Outcome.hh"
 #include "MC_Nearest_Facet.hh"
 #include "MC_Distance_To_Facet.hh"
-
+#include "NuclearDataArc.hh"
 
 
 #include "git_hash.hh"
@@ -77,8 +78,10 @@ public:
   explicit QSModule(const ModuleBuildInfo &mbi) : 
   ArcaneQSObject(mbi)
 , m_particle_family(nullptr)
+, m_cycle(0)
 
-{}
+{
+}
 
 public:
   void startInit() override;
@@ -116,7 +119,6 @@ public:
   ParticleVectorView m_processingView;
 
   MonteCarlo *monteCarlo = NULL;
-  MonteCarlo *monteCarloArc = NULL;
   Parameters params;
 
   std::atomic<Int64> m_absorb_a{0};
@@ -136,16 +138,20 @@ public:
 protected:
   ICartesianMesh* m_cartesian_mesh;
   Arcane::Materials::IMeshMaterialMng* material_mng;
+  NuclearDataArc* m_nuclearData;
+
+  Real m_source_particle_weight;
+  Integer m_cycle; // TODO : Voir pour utiliser var arcane interne.
 
 public:
   void CycleFinalizeTallies();
   void getParametersAxl();
-  MonteCarlo* initMCArc(const Parameters& params);
+  void initMCArc(const Parameters& params);
   void initNuclearData(MonteCarlo* monteCarlo, const Parameters& params);
-  void initNuclearDataArc(MonteCarlo* monteCarlo, const Parameters& params);
-  void initMesh(MonteCarlo* monteCarlo, const Parameters& params);
+  void initNuclearDataArc();
+  void initMesh(const Parameters& params);
   qs_vector<MC_Subfacet_Adjacency_Event::Enum> getBoundaryCondition(const Parameters& params);
-  void initTallies(MonteCarlo* monteCarlo, const Parameters& params);
+  void initTallies();
   void initializeCentersRandomly(int nCenters,
                                 const GlobalFccGrid& grid,
                                 vector<MC_Vector>& centers);
@@ -157,31 +163,30 @@ public:
   string findMaterial(const Parameters& params, const MC_Vector& rr);
   void checkCrossSections(MonteCarlo* monteCarlo, const Parameters& params);
   void clearCrossSectionCache();
-  void MC_SourceNowArc(MonteCarlo *monteCarlo);
+  void MC_SourceNowArc();
   Real Get_Speed_From_Energy(Particle p);
-  void MCT_Generate_Coordinate_3D_GArc(Particle p, MonteCarlo* monteCarlo );
+  void MCT_Generate_Coordinate_3D_GArc(Particle p);
   double MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
                                             const MC_Vector &v1_,
                                             const MC_Vector &v2_,
                                             const MC_Vector &v3);
 
-  void PopulationControlArc(MonteCarlo* monteCarlo, bool loadBalance);
+  void PopulationControlArc();
   void PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles);
-  void RouletteLowWeightParticlesArc(MonteCarlo* monteCarlo);
+  void RouletteLowWeightParticlesArc();
 
   void tracking(MonteCarlo* monteCarlo);
-  void trackingArc(MonteCarlo* monteCarlo);
+  void trackingArc();
   void CollisionEventSuite();
-  void CycleTrackingGutsArc( MonteCarlo *monteCarlo, Particle particle );
-  void CycleTrackingFunctionArc( MonteCarlo *monteCarlo, Particle particle);
-  MC_Segment_Outcome_type::Enum MC_Segment_OutcomeArc(MonteCarlo* monteCarlo, Particle particle, unsigned int &flux_tally_index);
-  double weightedMacroscopicCrossSectionArc(MonteCarlo* monteCarlo, Cell cell, int energyGroup);
-  double macroscopicCrossSectionArc(MonteCarlo* monteCarlo, int reactionIndex, Cell cell, int isoIndex, int energyGroup);
+  void CycleTrackingGutsArc( Particle particle );
+  void CycleTrackingFunctionArc( Particle particle);
+  MC_Segment_Outcome_type::Enum MC_Segment_OutcomeArc(Particle particle, unsigned int &flux_tally_index);
+  double weightedMacroscopicCrossSectionArc(Cell cell, int energyGroup);
+  double macroscopicCrossSectionArc(int reactionIndex, Cell cell, int isoIndex, int energyGroup);
   MC_Nearest_Facet MCT_Nearest_FacetArc(Particle particle,
                                       double distance_threshold,
                                       double current_best_distance,
-                                      bool new_segment,
-                                      MonteCarlo* monteCarlo );
+                                      bool new_segment);
   MC_Nearest_Facet MCT_Nearest_Facet_3D_GArc( Particle particle);
   double MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
                                                      double facet_normal_dot_direction_cosine,
@@ -203,16 +208,18 @@ public:
 
   void MCT_Nearest_Facet_3D_G_Move_ParticleArc(Particle particle, // input/output: move this coordinate
                                           double move_factor);
-  int CollisionEventArc(MonteCarlo* monteCarlo, Particle particle);
+  int CollisionEventArc(Particle particle);
   void updateTrajectory( double energy, double angle, Particle particle );
-  MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(Particle particle, MonteCarlo* monteCarlo);
-  void MCT_Reflect_ParticleArc(MonteCarlo *monteCarlo, Particle particle);
+  MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(Particle particle);
+  void MCT_Reflect_ParticleArc(Particle particle);
   unsigned int MC_Find_Min(const double *array, int num_elements);
   void Sample_Isotropic(Particle p);
   void copyParticle(Particle pSrc, Particle pNew);
   void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
   void Rotate3DVector(Particle particle, double sin_Theta, double cos_Theta, double sin_Phi, double cos_Phi);
   void initParticle(Particle p, int64_t rns);
+  bool isInsideArc(Integer posOptions, 
+            Cell cell);
 };
 
 /*---------------------------------------------------------------------------*/

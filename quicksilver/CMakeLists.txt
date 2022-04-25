@@ -43,7 +43,8 @@ initMC.cc
 main.cc
 parseUtils.cc
 utils.cc
-utilsMpi.cc )
+utilsMpi.cc 
+NuclearDataArc.cc )
 
 arcane_generate_axl(QS)
 arcane_generate_axl(InitMC)
