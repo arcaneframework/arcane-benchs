@@ -1746,7 +1746,6 @@ tracking(MonteCarlo* monteCarlo)
         info() << "sizeExtra : " << my_particle_vault.sizeExtra();
         info() << "sizeProcessed : " << my_particle_vault.sizeProcessed();
         info() << "out : " << particle_count - (int)my_particle_vault.sizeProcessed() - (int)my_particle_vault.sizeExtra();
-        info() << "m_collision_a : " << monteCarlo->_tallies->_balanceTask[0]._collision << " m_escape_a : " << monteCarlo->_tallies->_balanceTask[0]._escape << " m_census_a : " << monteCarlo->_tallies->_balanceTask[0]._census;
         info() << "----------";
 
         MC_FASTTIMER_STOP(MC_Fast_Timer::cycleTracking_Kernel);
@@ -1866,16 +1865,8 @@ trackingArc()
     pinfo() << "========";
     pinfo() << "m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
     pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_exit : " << m_local_ids_exit.size();
-    pinfo() << "m_collision_a : " << m_collision_a << " m_escape_a : " << m_escape_a << " m_census_a : " << m_census_a;
     pinfo() << "========";
 
-/*
-numParticles : 17242
-*I-QS         sizeExtra : 212
-*I-QS         sizeProcessed : 973481
-*I-QS         out : 43831
-
-*/
 
     m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
     // endUpdate fait par CollisionEventSuite;
@@ -2032,21 +2023,29 @@ CycleTrackingFunctionArc(Particle particle)
                                             undergone this cycle on all processes. */
         switch (segment_outcome) {
         case MC_Segment_Outcome_type::Collision:
-            {
+          {
             // The particle undergoes a collision event producing:
             //   (0) Other-than-one same-species secondary particle, or
             //   (1) Exactly one same-species secondary particle.
-            if (CollisionEventArc(particle ) == 0)
+            switch (CollisionEventArc(particle))
             {
+
+            case 0:
               m_local_ids_exit.add(particle.localId());
               keepTrackingThisParticle = false;
-            }
-            else
-            {
+              break;
+
+            case 1:
+              keepTrackingThisParticle = true;
+              break;
+            
+            default:
               keepTrackingThisParticle = false;
+              break;
+
             }
-            }
-            break;
+          }
+          break;
     
         case MC_Segment_Outcome_type::Facet_Crossing:
             {
@@ -2810,30 +2809,37 @@ CollisionEventArc(Particle particle)
         qs_assert(false);
   }
 
-  if( nOut == 0 ) return 0;
-
-
-
-
-
-
-  for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
+  if( nOut == 0 ) 
   {
-    int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[particle]);
-    m_local_ids_extra_gId.add(rns);
-    m_local_ids_extra_cellId.add(particle.cell().localId());
-    m_local_ids_extra_srcP.add(particle.localId());
-    m_local_ids_extra_energyOut.add(energyOut[secondaryIndex]);
-    m_local_ids_extra_angleOut.add(angleOut[secondaryIndex]);
+    return 0;
   }
 
-  // If a fission reaction produces secondary particles we also add the original
-  // particle to the "extras" that we will handle later.  This avoids the 
-  // possibility of a particle doing multiple fission reactions in a single
-  // kernel invocation and overflowing the extra storage with secondary particles.
-  m_local_ids_extra.add(particle.localId());
-  m_local_ids_extra_energyOut_pSrc.add(energyOut[0]); // Pour particle
-  m_local_ids_extra_angleOut_pSrc.add(angleOut[0]);   // Pour particle
+  else if (nOut == 1)
+  {
+    updateTrajectory(energyOut[0], angleOut[0], particle);
+    m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+  }
+
+  else
+  {
+    for (int secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
+    {
+      int64_t rns = rngSpawn_Random_Number_Seed(&m_particleRNS[particle]);
+      m_local_ids_extra_gId.add(rns);
+      m_local_ids_extra_cellId.add(particle.cell().localId());
+      m_local_ids_extra_srcP.add(particle.localId());
+      m_local_ids_extra_energyOut.add(energyOut[secondaryIndex]);
+      m_local_ids_extra_angleOut.add(angleOut[secondaryIndex]);
+    }
+
+    // If a fission reaction produces secondary particles we also add the original
+    // particle to the "extras" that we will handle later.  This avoids the 
+    // possibility of a particle doing multiple fission reactions in a single
+    // kernel invocation and overflowing the extra storage with secondary particles.
+    m_local_ids_extra.add(particle.localId());
+    m_local_ids_extra_energyOut_pSrc.add(energyOut[0]); // Pour particle
+    m_local_ids_extra_angleOut_pSrc.add(angleOut[0]);   // Pour particle
+  }
 
   return nOut;
 }
