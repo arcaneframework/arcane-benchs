@@ -42,7 +42,7 @@
     <dt>2e-09</dt>
     <fMax>0.1</fMax>
     <boundaryCondition>reflect</boundaryCondition>
-    <nSteps>10</nSteps>
+    <nSteps>2</nSteps>
     <seed>1029384756</seed>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>

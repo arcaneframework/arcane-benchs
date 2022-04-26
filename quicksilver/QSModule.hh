@@ -32,41 +32,76 @@ enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit êt
 #include "QS_axl.h"
 
 
-
-#include "CoralBenchmark.hh"
-#include "CycleTracking.hh"
-#include "EnergySpectrum.hh"
-#include "MC_Fast_Timer.hh"
-#include "MC_Particle_Buffer.hh"
-#include "MC_Processor_Info.hh"
-#include "MC_SourceNow.hh"
-#include "MC_Time_Info.hh"
-#include "MonteCarlo.hh"
-#include "NVTX_Range.hh"
-#include "Parameters.hh"
-#include "ParticleVault.hh"
-#include "ParticleVaultContainer.hh"
-#include "PopulationControl.hh"
-#include "SendQueue.hh"
-#include "Tallies.hh"
-#include "cudaFunctions.hh"
-#include "cudaUtils.hh"
-#include "initMC.hh"
-#include "macros.hh"
-#include "qs_assert.hh"
-#include "utils.hh"
-#include "utilsMpi.hh"
-#include "MC_Segment_Outcome.hh"
-#include "MC_Nearest_Facet.hh"
-#include "MC_Distance_To_Facet.hh"
 #include "NuclearDataArc.hh"
+#include "MC_Vector.hh"
 
 
-#include "git_hash.hh"
-#include "git_vers.hh"
 
 using namespace Arcane;
-using namespace std;
+
+enum Face_Adjacency_Event
+{
+  Adjacency_Undefined = 0,
+  Boundary_Escape,
+  Boundary_Reflection,
+  Transit_On_Processor,
+  Transit_Off_Processor
+};
+
+enum CosDir
+{
+  MD_DirA = 0, // Alpha
+  MD_DirB,     // Beta
+  MD_DirG      // Gamma
+};
+
+enum Segment_Outcome_type
+{
+  Initialize                    = -1,
+  Collision                     = 0,
+  Facet_Crossing                = 1,
+  Census                        = 2,
+  Max_Number                    = 3
+};
+
+
+enum Tally_Event
+{
+  Collision1,
+  Facet_Crossing_Transit_Exit,
+  Census1,
+  Facet_Crossing_Tracking_Error,
+  Facet_Crossing_Escape,
+  Facet_Crossing_Reflection,
+  Facet_Crossing_Communication
+};
+
+struct Nearest_Facet
+{
+   Integer facet;
+   Real distance_to_facet;
+   Real dot_product;
+   
+   Nearest_Facet()
+   : facet(0),
+     distance_to_facet(1e80),
+     dot_product(0.0)
+   {}
+};
+
+struct Distance_To_Facet
+{
+    Real distance;
+    Integer facet;
+    Integer subfacet;
+    
+    Distance_To_Facet()
+    : distance(0.0),
+      facet(0),
+      subfacet(0) 
+    {}
+};
+
 
 /*!
  * \brief Module QS.
@@ -118,8 +153,7 @@ public:
 
   ParticleVectorView m_processingView;
 
-  MonteCarlo *monteCarlo = NULL;
-  Parameters params;
+  Int64 m_nx, m_ny, m_nz;
 
   std::atomic<Int64> m_absorb_a{0};
   std::atomic<Int64> m_census_a{0};
@@ -146,80 +180,67 @@ protected:
 public:
   void CycleFinalizeTallies();
   void getParametersAxl();
-  void initMCArc(const Parameters& params);
-  void initNuclearData(MonteCarlo* monteCarlo, const Parameters& params);
+  void initMCArc();
   void initNuclearDataArc();
-  void initMesh(const Parameters& params);
-  qs_vector<MC_Subfacet_Adjacency_Event::Enum> getBoundaryCondition(const Parameters& params);
+  void initMesh();
+  UniqueArray<Face_Adjacency_Event> getBoundaryCondition();
   void initTallies();
-  void initializeCentersRandomly(int nCenters,
-                                const GlobalFccGrid& grid,
-                                vector<MC_Vector>& centers);
-  void initializeCentersGrid(double lx, double ly, double lz,
-                            int xDom, int yDom, int zDom,
-                            vector<MC_Vector>& centers);
-  void consistencyCheck(int myRank, const qs_vector<MC_Domain>& domain);
-  bool isInside(const GeometryParameters& geom, const MC_Vector& rr);
-  string findMaterial(const Parameters& params, const MC_Vector& rr);
-  void checkCrossSections(MonteCarlo* monteCarlo, const Parameters& params);
   void clearCrossSectionCache();
   void MC_SourceNowArc();
   Real Get_Speed_From_Energy(Particle p);
   void MCT_Generate_Coordinate_3D_GArc(Particle p);
-  double MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
+  Real MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
                                             const MC_Vector &v1_,
                                             const MC_Vector &v2_,
                                             const MC_Vector &v3);
 
   void PopulationControlArc();
-  void PopulationControlGutsArc(const double splitRRFactor, uint64_t currentNumParticles);
+  void PopulationControlGutsArc(const Real splitRRFactor, Int64 currentNumParticles);
   void RouletteLowWeightParticlesArc();
 
-  void tracking(MonteCarlo* monteCarlo);
   void trackingArc();
   void CollisionEventSuite();
   void CycleTrackingGutsArc( Particle particle );
   void CycleTrackingFunctionArc( Particle particle);
-  MC_Segment_Outcome_type::Enum MC_Segment_OutcomeArc(Particle particle, unsigned int &flux_tally_index);
-  double weightedMacroscopicCrossSectionArc(Cell cell, int energyGroup);
-  double macroscopicCrossSectionArc(int reactionIndex, Cell cell, int isoIndex, int energyGroup);
-  MC_Nearest_Facet MCT_Nearest_FacetArc(Particle particle,
-                                      double distance_threshold,
-                                      double current_best_distance,
+  Segment_Outcome_type MC_Segment_OutcomeArc(Particle particle);
+  Real weightedMacroscopicCrossSectionArc(Cell cell, int energyGroup);
+  Real macroscopicCrossSectionArc(int reactionIndex, Cell cell, int isoIndex, int energyGroup);
+  Nearest_Facet MCT_Nearest_FacetArc(Particle particle,
+                                      Real distance_threshold,
+                                      Real current_best_distance,
                                       bool new_segment);
-  MC_Nearest_Facet MCT_Nearest_Facet_3D_GArc( Particle particle);
-  double MCT_Nearest_Facet_3D_G_Distance_To_Segment(double plane_tolerance,
-                                                     double facet_normal_dot_direction_cosine,
-                                                     double A, double B, double C, double D,
+  Nearest_Facet MCT_Nearest_Facet_3D_GArc( Particle particle);
+  Real MCT_Nearest_Facet_3D_G_Distance_To_Segment(Real plane_tolerance,
+                                                     Real facet_normal_dot_direction_cosine,
+                                                     Real A, Real B, Real C, Real D,
                                                      const MC_Vector &facet_coords0,
                                                      const MC_Vector &facet_coords1,
                                                      const MC_Vector &facet_coords2,
                                                      Particle particle,
                                                      bool allow_enter);
 
-  MC_Nearest_Facet MCT_Nearest_Facet_Find_NearestArc(Particle particle,
+  Nearest_Facet MCT_Nearest_Facet_Find_NearestArc(Particle particle,
                                   int &iteration, // input/output
-                                  double &move_factor, // input/output
+                                  Real &move_factor, // input/output
                                   int num_facets_per_cell,
-                                  MC_Distance_To_Facet *distance_to_facet,
+                                  Distance_To_Facet *distance_to_facet,
                                   int &retry /* output */ );
-  MC_Nearest_Facet MCT_Nearest_Facet_Find_Nearest(int num_facets_per_cell,
-                                                   MC_Distance_To_Facet *distance_to_facet);
+  Nearest_Facet MCT_Nearest_Facet_Find_Nearest(int num_facets_per_cell,
+                                                   Distance_To_Facet *distance_to_facet);
 
   void MCT_Nearest_Facet_3D_G_Move_ParticleArc(Particle particle, // input/output: move this coordinate
-                                          double move_factor);
+                                          Real move_factor);
   int CollisionEventArc(Particle particle);
-  void updateTrajectory( double energy, double angle, Particle particle );
-  MC_Tally_Event::Enum MC_Facet_Crossing_EventArc(Particle particle);
+  void updateTrajectory( Real energy, Real angle, Particle particle );
+  Tally_Event MC_Facet_Crossing_EventArc(Particle particle);
   void MCT_Reflect_ParticleArc(Particle particle);
-  unsigned int MC_Find_Min(const double *array, int num_elements);
+  Integer MC_Find_Min(RealUniqueArray array);
   void Sample_Isotropic(Particle p);
   void copyParticle(Particle pSrc, Particle pNew);
   void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
-  void Rotate3DVector(Particle particle, double sin_Theta, double cos_Theta, double sin_Phi, double cos_Phi);
-  void initParticle(Particle p, int64_t rns);
-  bool isInsideArc(Integer posOptions, 
-            Cell cell);
+  void Rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi);
+  void initParticle(Particle p, Int64 rns);
+  bool isInsideArc(Integer posOptions, Cell cell);
 };
 
 /*---------------------------------------------------------------------------*/

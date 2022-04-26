@@ -3,13 +3,11 @@
 
 #include <cstdio>
 #include <string>
-#include "QS_Vector.hh"
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
 #include "qs_assert.hh"
 #include "DeclareMacro.hh"
-#include <arcane/ITimeLoopMng.h>
 #include "arcane/ItemVector.h"
 
 using namespace Arcane;

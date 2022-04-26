@@ -3,19 +3,26 @@
 
 #include <cmath>
 #include "DeclareMacro.hh"
+#include "arcane/ItemVector.h"
+
+using namespace Arcane;
 
 HOST_DEVICE_CLASS
 class MC_Vector
 {
  public:
-   double x;
-   double y;
-   double z;
+   Real x;
+   Real y;
+   Real z;
 
    HOST_DEVICE_CUDA
    MC_Vector() : x(0), y(0), z(0) {}
+
    HOST_DEVICE_CUDA
-   MC_Vector(double a, double b, double c) : x(a), y(b), z(c) {}
+   MC_Vector(Real a, Real b, Real c) : x(a), y(b), z(c) {}
+
+   HOST_DEVICE_CUDA
+   MC_Vector(RealArrayView av) : x(av[MD_DirX]), y(av[MD_DirY]), z(av[MD_DirZ]) {}
 
    HOST_DEVICE_CUDA
    MC_Vector& operator=( const MC_Vector&tmp )
