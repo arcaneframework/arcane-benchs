@@ -1,4 +1,4 @@
-#include "NuclearDataArc.hh"
+#include "NuclearData.hh"
 #include <cmath>
 #include "MC_RNG_State.hh"
 #include "DeclareMacro.hh"
@@ -9,9 +9,9 @@ using std::pow;
 
 // Set the cross section values and reaction type
 // Cross sections are scaled to produce the supplied reactionCrossSection at 1MeV.
-NuclearDataReactionArc::NuclearDataReactionArc(
+NuclearDataReaction::NuclearDataReaction(
    Enum reactionType, Real nuBar, const RealUniqueArray energies,
-   const PolynomialArc& polynomial, Real reactionCrossSection)
+   const Polynomial& polynomial, Real reactionCrossSection)
 : _crossSection(energies.size()-1),
   _reactionType(reactionType),
   _nuBar(nuBar)
@@ -43,7 +43,7 @@ NuclearDataReactionArc::NuclearDataReactionArc(
 
 HOST_DEVICE
 
-void NuclearDataReactionArc::sampleCollision(
+void NuclearDataReaction::sampleCollision(
    Real incidentEnergy, Real material_mass, Real* energyOut,
    Real* angleOut, Integer &nOut, Int64* seed, Integer max_production_size)
 {
@@ -82,17 +82,17 @@ void NuclearDataReactionArc::sampleCollision(
 HOST_DEVICE_END
 
 // Then call this for each reaction to set cross section values
-void NuclearDataSpeciesArc::addReaction(
-   NuclearDataReactionArc::Enum type, Real nuBar,
-   RealUniqueArray energies, const PolynomialArc& polynomial, Real reactionCrossSection)
+void NuclearDataSpecies::addReaction(
+   NuclearDataReaction::Enum type, Real nuBar,
+   RealUniqueArray energies, const Polynomial& polynomial, Real reactionCrossSection)
 {
-   _reactions.add(NuclearDataReactionArc(type, nuBar, energies, polynomial, reactionCrossSection));
+   _reactions.add(NuclearDataReaction(type, nuBar, energies, polynomial, reactionCrossSection));
 }
 
 
 
 // Set up the energies boundaries of the neutron
-NuclearDataArc::NuclearDataArc(Integer numGroups, Real energyLow, Real energyHigh) : _energies( numGroups+1)
+NuclearData::NuclearData(Integer numGroups, Real energyLow, Real energyHigh) : _energies( numGroups+1)
 {
    qs_assert (energyLow < energyHigh);
    _energies[0] = energyLow;
@@ -107,16 +107,16 @@ NuclearDataArc::NuclearDataArc(Integer numGroups, Real energyLow, Real energyHig
    }
 }
 
-Integer NuclearDataArc::addIsotope(
+Integer NuclearData::addIsotope(
    Integer nReactions,
-   const PolynomialArc& fissionFunction,
-   const PolynomialArc& scatterFunction,
-   const PolynomialArc& absorptionFunction,
+   const Polynomial& fissionFunction,
+   const Polynomial& scatterFunction,
+   const Polynomial& absorptionFunction,
    Real nuBar,
    Real totalCrossSection,
    Real fissionWeight, Real scatterWeight, Real absorptionWeight)
 {
-   _isotopes.add(NuclearDataIsotopeArc());
+   _isotopes.add(NuclearDataIsotope());
 
    Real totalWeight = fissionWeight + scatterWeight + absorptionWeight;
 
@@ -144,24 +144,24 @@ Integer NuclearDataArc::addIsotope(
 
    for (Integer ii=0; ii<nReactions; ++ii)
    {
-      NuclearDataReactionArc::Enum type;
-      PolynomialArc polynomial(0.0, 0.0, 0.0, 0.0, 0.0);
+      NuclearDataReaction::Enum type;
+      Polynomial polynomial(0.0, 0.0, 0.0, 0.0, 0.0);
       Real reactionCrossSection = 0.;
       // reaction index % 3 is one of the 3 reaction types
       switch (ii % 3)
       {
         case 0:
-         type = NuclearDataReactionArc::Scatter;
+         type = NuclearDataReaction::Scatter;
          polynomial = scatterFunction;
          reactionCrossSection = scatterCrossSection;
          break;
         case 1:
-         type = NuclearDataReactionArc::Fission;
+         type = NuclearDataReaction::Fission;
          polynomial = fissionFunction;
          reactionCrossSection = fissionCrossSection;
          break;
         case 2:
-         type = NuclearDataReactionArc::Absorption;
+         type = NuclearDataReaction::Absorption;
          polynomial = absorptionFunction;
          reactionCrossSection = absorptionCrossSection;
          break;
@@ -175,7 +175,7 @@ Integer NuclearDataArc::addIsotope(
 
 HOST_DEVICE
 // Return the cross section for this energy group
-Real NuclearDataReactionArc::getCrossSection(Integer group)
+Real NuclearDataReaction::getCrossSection(Integer group)
 {
    qs_assert(group < _crossSection.size());
    return _crossSection[group];
@@ -183,7 +183,7 @@ Real NuclearDataReactionArc::getCrossSection(Integer group)
 HOST_DEVICE_END
 
 HOST_DEVICE
-Integer NuclearDataArc::getNumberReactions(Integer isotopeIndex)
+Integer NuclearData::getNumberReactions(Integer isotopeIndex)
 {
    qs_assert(isotopeIndex < _isotopes.size());
    return _isotopes[isotopeIndex]._species[0]._reactions.size();
@@ -192,7 +192,7 @@ HOST_DEVICE_END
 
 // For this energy, return the group index
 HOST_DEVICE
-Integer NuclearDataArc::getEnergyGroup(Real energy)
+Integer NuclearData::getEnergyGroup(Real energy)
 {
    Integer numEnergies = _energies.size();
    if (energy <= _energies[0]) return 0;
@@ -217,7 +217,7 @@ HOST_DEVICE_END
 // General routines to help access data lower down
 // Return the total cross section for this energy group
 HOST_DEVICE
-Real NuclearDataArc::getTotalCrossSection(Integer isotopeIndex, Integer group)
+Real NuclearData::getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
    qs_assert(isotopeIndex < _isotopes.size());
    Integer numReacts = _isotopes[isotopeIndex]._species[0]._reactions.size();
@@ -232,7 +232,7 @@ HOST_DEVICE_END
 
 // Return the total cross section for this energy group
 HOST_DEVICE
-Real NuclearDataArc::getReactionCrossSection(
+Real NuclearData::getReactionCrossSection(
    Integer reactIndex, Integer isotopeIndex, Integer group)
 {
    qs_assert(isotopeIndex < _isotopes.size());

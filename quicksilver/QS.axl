@@ -4,9 +4,6 @@
 
   <variables>
   
-    <!-- TODO : Refaire les data-types -->
-
-
     <variable
         field-name="volume"
         name="Volume"

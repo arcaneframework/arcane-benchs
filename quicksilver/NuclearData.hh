@@ -13,10 +13,10 @@
 using namespace Arcane;
 
 
-class PolynomialArc
+class Polynomial
 {
  public:
-   PolynomialArc(Real aa, Real bb, Real cc, Real dd, Real ee)
+   Polynomial(Real aa, Real bb, Real cc, Real dd, Real ee)
    :
    _aa(aa), _bb(bb), _cc(cc), _dd(dd), _ee(ee){}
 
@@ -30,7 +30,7 @@ class PolynomialArc
 };
 
 // Lowest level class at the reaction level
-class NuclearDataReactionArc
+class NuclearDataReaction
 {
  public:
    // The types of reactions
@@ -42,10 +42,10 @@ class NuclearDataReactionArc
       Fission
    };
    
-   NuclearDataReactionArc(){};
+   NuclearDataReaction(){};
 
-   NuclearDataReactionArc(Enum reactionType, Real nuBar, RealUniqueArray energies,
-                       const PolynomialArc& polynomial, Real reationCrossSection);
+   NuclearDataReaction(Enum reactionType, Real nuBar, RealUniqueArray energies,
+                       const Polynomial& polynomial, Real reationCrossSection);
    
 
    HOST_DEVICE_CUDA
@@ -61,39 +61,39 @@ class NuclearDataReactionArc
 };
 
 // This class holds an array of reactions for neutrons
-class NuclearDataSpeciesArc
+class NuclearDataSpecies
 {
  public:
    
-   void addReaction(NuclearDataReactionArc::Enum type, Real nuBar, RealUniqueArray energies,
-                    const PolynomialArc& polynomial, Real reactionCrossSection);
+   void addReaction(NuclearDataReaction::Enum type, Real nuBar, RealUniqueArray energies,
+                    const Polynomial& polynomial, Real reactionCrossSection);
    
-   UniqueArray<NuclearDataReactionArc> _reactions;
+   UniqueArray<NuclearDataReaction> _reactions;
 };
 
 // For this isotope, store the cross sections. In this case the species is just neutron.
-class NuclearDataIsotopeArc
+class NuclearDataIsotope
 {
  public:
    
-   NuclearDataIsotopeArc()
+   NuclearDataIsotope()
    : _species(1){}
    
-   UniqueArray<NuclearDataSpeciesArc> _species;
+   UniqueArray<NuclearDataSpecies> _species;
 
 };
 
 // Top level class to handle all things related to nuclear data
-class NuclearDataArc
+class NuclearData
 {
  public:
    
-   NuclearDataArc(Integer numGroups, Real energyLow, Real energyHigh);
+   NuclearData(Integer numGroups, Real energyLow, Real energyHigh);
 
    Integer addIsotope(Integer nReactions,
-                  const PolynomialArc& fissionFunction,
-                  const PolynomialArc& scatterFunction,
-                  const PolynomialArc& absorptionFunction,
+                  const Polynomial& fissionFunction,
+                  const Polynomial& scatterFunction,
+                  const Polynomial& absorptionFunction,
                   Real nuBar,
                   Real totalCrossSection,
                   Real fissionWeight, Real scatterWeight, Real absorptionWeight);
@@ -109,7 +109,7 @@ class NuclearDataArc
 
    // Store the cross sections and reactions by isotope, which stores
    // it by species
-   UniqueArray<NuclearDataIsotopeArc> _isotopes;
+   UniqueArray<NuclearDataIsotope> _isotopes;
    // This is the overall energy layout. If we had more than just
    // neutrons, this array would be a vector of vectors.
    RealUniqueArray _energies;

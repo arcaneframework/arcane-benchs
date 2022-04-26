@@ -81,8 +81,6 @@ Integer QS2ArcaneNode[] = {0, 1, 2, 3,
 void QSModule::
 startInit()
 {
-  info() << "Module Quicksilver INIT"; 
-
   m_cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
   material_mng = IMeshMaterialMng::getReference(defaultMesh());
 
@@ -92,17 +90,15 @@ startInit()
   m_particle_family->setHasUniqueIdMap(false);
 
   m_cartesian_mesh->computeDirections();
-  getParametersAxl();
+  getParametersArc();
 
-  initMCArc();
+  initMC();
 }
 
 
 void QSModule::
 cycleInit()
 {
-  info() << "Module Quicksilver cycleInit";
-
   clearCrossSectionCache();
 
   m_processingView = m_particle_family->view();
@@ -112,29 +108,26 @@ cycleInit()
 
   m_local_ids_processed.clear();
 
-  MC_SourceNowArc();
+  sourceParticles();
 
   // Réduction ou augmentation du nombre de particules.
-  PopulationControlArc(); // controls particle population
+  populationControl(); // controls particle population
 
   // Roulette sur les particules avec faible poids.
-  RouletteLowWeightParticlesArc(); // Delete particles with low statistical weight
+  rouletteLowWeightParticles(); // Delete particles with low statistical weight
 }
 
 void QSModule::
 cycleTracking()
 {
-  info() << "Module Quicksilver cycleTrackingArc";
-  trackingArc();
+  tracking();
 }
 
 void QSModule::
 cycleFinalize()
 {
-  info() << "Module Quicksilver cycleFinalize";
-
   // Update the cumulative tally data.
-  CycleFinalizeTallies();
+  cycleFinalizeTallies();
 
   if(m_global_iteration() == options()->getNSteps())
     subDomain()->timeLoopMng()->stopComputeLoop(true);
@@ -143,14 +136,13 @@ cycleFinalize()
 void QSModule::
 gameOver()
 {
-  info() << "Module Quicksilver gameOver";
 }
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
 void QSModule::
-CycleFinalizeTallies()
+cycleFinalizeTallies()
 {
   m_absorb = m_absorb_a;
   m_census = m_census_a;
@@ -210,7 +202,7 @@ CycleFinalizeTallies()
 }
 
 void QSModule::
-getParametersAxl()
+getParametersArc()
 {
   {
     CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirX));
@@ -229,10 +221,10 @@ getParametersAxl()
 
 
 void QSModule::
-initMCArc()
+initMC()
 {
   initMesh();
-  initNuclearDataArc(); // Configuration des materiaux.
+  initNuclearData(); // Configuration des materiaux.
   initTallies();
 }
 
@@ -242,11 +234,11 @@ initMCArc()
 /// the MaterialDatabase must correspond to the isotope indices in the
 /// NuclearData.
 void QSModule::
-initNuclearDataArc()
+initNuclearData()
 {
   Integer nb_cross_section = options()->cross_section().size();
 
-  std::map<String, PolynomialArc> crossSection;
+  std::map<String, Polynomial> crossSection;
   std::map<String, Real> crossSection2; // TODO : Tres Tres Moche
 
 
@@ -261,7 +253,7 @@ initNuclearDataArc()
     Real ee = options()->cross_section[i].getE();
     Real nuBar = options()->cross_section[i].getNuBar();
 
-    crossSection.insert(std::make_pair(cs_name, PolynomialArc(aa, bb, cc, dd, ee)));
+    crossSection.insert(std::make_pair(cs_name, Polynomial(aa, bb, cc, dd, ee)));
     crossSection2.insert(std::make_pair(cs_name, nuBar));
   }
 
@@ -277,7 +269,7 @@ initNuclearDataArc()
 
   // TODO : Si num_materials == 0.
 
-  m_nuclearData = new NuclearDataArc(options()->getNGroups(), options()->getEMin(), options()->getEMax());
+  m_nuclearData = new NuclearData(options()->getNGroups(), options()->getEMin(), options()->getEMax());
   
   m_nuclearData->_isotopes.reserve( num_isotopes );
 
@@ -301,7 +293,7 @@ initNuclearDataArc()
   {
     for( Integer i = 0; i < nb_geometry; i++ )
     {
-      if(isInsideArc(i, (*icell)))
+      if(isInGeometry(i, (*icell)))
       {
         localIdMat[i].add(icell.localId());
         break;
@@ -680,7 +672,7 @@ initTallies()
 // Returns true if the specified coordinate in inside the specified
 // geometry.  False otherwise
 bool QSModule::
-isInsideArc(Integer pos, 
+isInGeometry(Integer pos, 
             Cell cell)
 {
   bool inside = false;
@@ -723,7 +715,7 @@ clearCrossSectionCache()
 }
 
 void QSModule::
-MC_SourceNowArc()
+sourceParticles()
 {
   NVTX_Range range("MC_Source_Now");
 
@@ -802,12 +794,12 @@ MC_SourceNowArc()
     Particle p = (*ipartic);
     initParticle(p, rng[ipartic.index()]);
 
-    MCT_Generate_Coordinate_3D_GArc(p);
-    Sample_Isotropic(p);
+    generate3DCoordinate(p);
+    sampleIsotropic(p);
     m_particleKinEne[p] = (options()->getEMax() - options()->getEMin())*
                             rngSample(&m_particleRNS[p]) + options()->getEMin();
 
-    Real speed = Get_Speed_From_Energy(p);
+    Real speed = getSpeedFromEnergy(p);
 
     m_particleVelocity[p][MD_DirX] = speed * m_particleDirCos[p][MD_DirA];
     m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][MD_DirB];
@@ -865,7 +857,7 @@ initParticle(Particle p, Int64 rns)
 }
 
 void QSModule::
-Sample_Isotropic(Particle p)
+sampleIsotropic(Particle p)
 {
   m_particleDirCos[p][MD_DirG] = 1.0 - 2.0*(uint64_t)rngSample(&m_particleRNS[p]);
   Real sine_gamma  = sqrt((1.0 - (m_particleDirCos[p][MD_DirG]*m_particleDirCos[p][MD_DirG])));
@@ -876,7 +868,7 @@ Sample_Isotropic(Particle p)
 }
 
 Real QSModule::
-Get_Speed_From_Energy(Particle p)
+getSpeedFromEnergy(Particle p)
 {
   Real energy = m_particleKinEne[p];
   static const Real rest_mass_energy = PhysicalConstants::_neutronRestMassEnergy;
@@ -888,7 +880,7 @@ Get_Speed_From_Energy(Particle p)
 }
 
 void QSModule::
-MCT_Generate_Coordinate_3D_GArc(Particle p)
+generate3DCoordinate(Particle p)
 {
   Cell cell = p.cell();
   Int64* random_number_seed = &m_particleRNS[p];
@@ -926,7 +918,7 @@ MCT_Generate_Coordinate_3D_GArc(Particle p)
       MC_Vector point1(m_coordCm[second_node]);
       MC_Vector point2(m_coordMidCm[face]);
 
-      Real subvolume = MCT_Cell_Volume_3D_G_vector_tetDetArc(point0, point1, point2, center);
+      Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
 
       if(current_volume >= which_volume) { break; }
@@ -975,7 +967,7 @@ MCT_Generate_Coordinate_3D_GArc(Particle p)
 ///
 ///  subtract v3 from v0, v1 and v2.  Then take the triple product of v0, v1 and v2.
 Real QSModule::
-MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3)
+computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3)
 {
   MC_Vector v0(v0_), v1(v1_), v2(v2_);
 
@@ -990,9 +982,9 @@ MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_, const MC_Vector &v1_
 }
 
 void QSModule::
-PopulationControlArc()
+populationControl()
 {
-  NVTX_Range range("PopulationControl");
+  NVTX_Range range("populationControl");
 
   Int64 targetNumParticles = options()->getNParticles();
   Int64 globalNumParticles = 0;
@@ -1030,11 +1022,11 @@ PopulationControlArc()
 
   // On augmente ou diminue la population selon splitRRFactor (si > 1, on augmente en splittant ; si < 1, on diminue en killant ou en augmentant le poids (rand))
   if (splitRRFactor != 1.0)  // no need to split if population is already correct.
-    PopulationControlGutsArc(splitRRFactor, localNumParticles);
+    populationControlGuts(splitRRFactor, localNumParticles);
 }
 
 void QSModule::
-PopulationControlGutsArc(const Real splitRRFactor, Int64 currentNumParticles)
+populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
 {
   Int32UniqueArray supprP;
   Int64UniqueArray addIdP;
@@ -1147,9 +1139,9 @@ copyParticle(Particle pSrc, Particle pNew)
 }
 
 void QSModule::
-RouletteLowWeightParticlesArc()
+rouletteLowWeightParticles()
 {
-  NVTX_Range range("RouletteLowWeightParticles");
+  NVTX_Range range("rouletteLowWeightParticles");
 
   const Real lowWeightCutoff = options()->getLowWeightCutoff();
 
@@ -1187,7 +1179,7 @@ RouletteLowWeightParticlesArc()
 }
 
 void QSModule::
-trackingArc()
+tracking()
 {
   bool done = false;
   ParticleVectorView inView;
@@ -1212,7 +1204,7 @@ trackingArc()
         pinfo() << "m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
         pinfo() << "--------";
       }
-      CycleTrackingGutsArc(particle);
+      cycleTrackingGuts(particle);
     }
     particle_count += m_processingView.size();
 
@@ -1221,7 +1213,7 @@ trackingArc()
       ENUMERATE_PARTICLE(iparticle, inView)
       {
         Particle particle = (*iparticle);
-        CycleTrackingGutsArc(particle);
+        cycleTrackingGuts(particle);
       }
       particle_count += inView.size();
     }
@@ -1233,10 +1225,10 @@ trackingArc()
 
 
     m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
-    // endUpdate fait par CollisionEventSuite;
+    // endUpdate fait par collisionEventSuite;
     m_local_ids_exit.clear();
 
-    CollisionEventSuite();
+    collisionEventSuite();
 
     if(mesh()->parallelMng()->commSize() > 1)
     {
@@ -1278,7 +1270,7 @@ trackingArc()
 }
 
 void QSModule::
-CollisionEventSuite()
+collisionEventSuite()
 {
   Int32UniqueArray particles_lid(m_local_ids_extra_gId.size());
   m_particle_family->toParticleFamily()->addParticles(m_local_ids_extra_gId, m_local_ids_extra_cellId, particles_lid);
@@ -1329,7 +1321,7 @@ CollisionEventSuite()
 }
 
 void QSModule::
-CycleTrackingGutsArc( Particle particle )
+cycleTrackingGuts( Particle particle )
 {
   if ( m_particleTimeCensus[particle] <= 0.0 )
   {
@@ -1349,7 +1341,7 @@ CycleTrackingGutsArc( Particle particle )
   m_particleTask[particle] = 0;//processed_vault;
 
   // loop over this particle until we cannot do anything more with it on this processor
-  CycleTrackingFunctionArc(particle);
+  cycleTrackingFunction(particle);
   // if(particle_index < 11)
   // {
   // cout << "particle.identifier : " << mc_particle.identifier << endl;
@@ -1366,7 +1358,7 @@ CycleTrackingGutsArc( Particle particle )
 }
 
 void QSModule::
-CycleTrackingFunctionArc(Particle particle)
+cycleTrackingFunction(Particle particle)
 {
   bool keepTrackingThisParticle = false;
   do
@@ -1379,7 +1371,7 @@ CycleTrackingFunctionArc(Particle particle)
       //
 
       // Collision ou Census ou Facet crossing
-      Segment_Outcome_type segment_outcome = MC_Segment_OutcomeArc(particle);
+      Segment_Outcome_type segment_outcome = computeNextEvent(particle);
       m_numSegments_a++;
 
 
@@ -1391,7 +1383,7 @@ CycleTrackingFunctionArc(Particle particle)
           // The particle undergoes a collision event producing:
           //   (0) Other-than-one same-species secondary particle, or
           //   (1) Exactly one same-species secondary particle.
-          switch (CollisionEventArc(particle))
+          switch (collisionEvent(particle))
           {
 
           case 0:
@@ -1414,7 +1406,7 @@ CycleTrackingFunctionArc(Particle particle)
       case Segment_Outcome_type::Facet_Crossing:
         {
           // The particle has reached a cell facet.
-          Tally_Event facet_crossing_type = MC_Facet_Crossing_EventArc(particle);
+          Tally_Event facet_crossing_type = facetCrossingEvent(particle);
 
           // if(particle_index == 11 && DEBUG_compt < 10)
           // {
@@ -1435,7 +1427,7 @@ CycleTrackingFunctionArc(Particle particle)
           }
           else if (facet_crossing_type == Tally_Event::Facet_Crossing_Reflection)
           {
-              MCT_Reflect_ParticleArc(particle);
+              reflectParticle(particle);
 
               keepTrackingThisParticle = true;
           }
@@ -1444,7 +1436,7 @@ CycleTrackingFunctionArc(Particle particle)
               // Enters an adjacent cell in an off-processor domain.
               //mc_particle.species = -1;
               keepTrackingThisParticle = false;
-              // Pas de m_local_ids_exit car la particle sera retiré de la famille par ExchangeParticles.
+              // Pas de m_local_ids_exit car la particle sera retirée de la famille par ExchangeParticles.
           }
         }
         break;
@@ -1452,7 +1444,6 @@ CycleTrackingFunctionArc(Particle particle)
       case Segment_Outcome_type::Census:
         {
           // The particle has reached the end of the time step.
-          //processedVault->pushParticle(mc_particle);
           m_local_ids_processed.add(particle.localId());
           m_census_a++;
           keepTrackingThisParticle = false;
@@ -1468,7 +1459,7 @@ CycleTrackingFunctionArc(Particle particle)
 }
 
 Segment_Outcome_type QSModule::
-MC_Segment_OutcomeArc(Particle particle)
+computeNextEvent(Particle particle)
 {
   // initialize distances to large number
   Integer number_of_events = 3;
@@ -1487,7 +1478,7 @@ MC_Segment_OutcomeArc(Particle particle)
 
     if ( m_particleNumMeanFreeP[particle] > -900.0 )
     {
-      printf(" MC_Segment_Outcome: m_particleNumMeanFreeP[particle] > -900.0 \n");
+      printf(" computeNextEvent: m_particleNumMeanFreeP[particle] > -900.0 \n");
     }
 
     m_particleNumMeanFreeP[particle] = PhysicalConstants::_smallDouble;
@@ -1495,7 +1486,7 @@ MC_Segment_OutcomeArc(Particle particle)
 
   // Randomly determine the distance to the next collision
   // based upon the composition of the current cell.
-  Real macroscopic_total_cross_section = weightedMacroscopicCrossSectionArc(particle.cell(), m_particleEneGrp[particle]);
+  Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(particle.cell(), m_particleEneGrp[particle]);
 
   // Cache the cross section
   m_particleTotalCrossSection[particle] = macroscopic_total_cross_section;
@@ -1543,7 +1534,7 @@ MC_Segment_OutcomeArc(Particle particle)
                         m_particleLastEvent[particle] == Tally_Event::Collision1);
 
   // Calculate the minimum distance to each facet of the cell.
-  Nearest_Facet nearest_facet = MCT_Nearest_FacetArc(particle, distance_threshold, current_best_distance, new_segment);
+  Nearest_Facet nearest_facet = getNearestFacet(particle, distance_threshold, current_best_distance, new_segment);
 
   m_particleNormalDot[particle] = nearest_facet.dot_product;
 
@@ -1569,7 +1560,7 @@ MC_Segment_OutcomeArc(Particle particle)
 
   // we choose our segment outcome here
   Segment_Outcome_type segment_outcome =
-      (Segment_Outcome_type) MC_Find_Min(distance);
+      (Segment_Outcome_type) findMin(distance);
   
 
   if (distance[segment_outcome] < 0)
@@ -1667,7 +1658,7 @@ MC_Segment_OutcomeArc(Particle particle)
 }
 
 Real QSModule::
-weightedMacroscopicCrossSectionArc(Cell cell, Integer energyGroup)
+weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
 {
   Real precomputedCrossSection = m_total[cell][energyGroup];
 
@@ -1678,7 +1669,7 @@ weightedMacroscopicCrossSectionArc(Cell cell, Integer energyGroup)
   Real sum = 0.0;
   for (Integer isoIndex = 0; isoIndex < nIsotopes; isoIndex++)
   {
-    sum += macroscopicCrossSectionArc(-1, cell, isoIndex, energyGroup);
+    sum += macroscopicCrossSection(-1, cell, isoIndex, energyGroup);
   }
 
   m_total[cell][energyGroup] = sum; // TODO Atomic
@@ -1693,7 +1684,7 @@ weightedMacroscopicCrossSectionArc(Cell cell, Integer energyGroup)
 //  A reactionIndex of -1 means total cross section.
 //----------------------------------------------------------------------------------------------------------------------
 Real QSModule::
-macroscopicCrossSectionArc(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup)
+macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup)
 {
   // Initialize various data items.
 
@@ -1728,12 +1719,12 @@ macroscopicCrossSectionArc(Integer reactionIndex, Cell cell, Integer isoIndex, I
 }
 
 Nearest_Facet QSModule::
-MCT_Nearest_FacetArc( Particle particle,
+getNearestFacet( Particle particle,
                       Real distance_threshold,
                       Real current_best_distance,
                       bool new_segment)
 {
-  Nearest_Facet nearest_facet = MCT_Nearest_Facet_3D_GArc(particle);
+  Nearest_Facet nearest_facet = computeFindNearestFacet(particle);
 
   if (nearest_facet.distance_to_facet < 0) {
     nearest_facet.distance_to_facet = 0; 
@@ -1748,7 +1739,7 @@ MCT_Nearest_FacetArc( Particle particle,
 }
 
 Nearest_Facet QSModule::
-MCT_Nearest_Facet_3D_GArc(Particle particle)
+computeFindNearestFacet(Particle particle)
 {
   Cell cell = particle.cell();
   MC_Vector *facet_coords[3];
@@ -1797,62 +1788,37 @@ MCT_Nearest_Facet_3D_GArc(Particle particle)
             plane.B * m_particleDirCos[particle][MD_DirB] +
             plane.C * m_particleDirCos[particle][MD_DirG]);
 
-        // info() << " Facet : " << point0.x << "x" << point0.y << "x" << point0.z;
-        // info()                << point1.x << "x" << point1.y << "x" << point1.z;
-        // info()                << point2.x << "x" << point2.y << "x" << point2.z;
-        // info() << " Coord : " << m_coord[first_node][0] << "x" << m_coord[first_node][1] << "x" << m_coord[first_node][2];
-        // info()                << m_coord[second_node][0] << "x" << m_coord[second_node][1] << "x" << m_coord[second_node][2];
-        // info()                << m_coordMid[iface][0] << "x" << m_coordMid[iface][1] << "x" << m_coordMid[iface][2];
-        //info() << " CooCm : " << m_coordCm[first_node][0] << "x" << m_coordCm[first_node][1] << "x" << m_coordCm[first_node][2];
-        //info()                << m_coordCm[second_node][0] << "x" << m_coordCm[second_node][1] << "x" << m_coordCm[second_node][2];
-        //info()                << m_coordMidCm[iface][0] << "x" << m_coordMidCm[iface][1] << "x" << m_coordMidCm[iface][2];
-        //info() << " Center : " << m_coordCenter[cell][0] << "x" << m_coordCenter[cell][1] << "x" << m_coordCenter[cell][2];
-        //info() << " Plane : " << plane.A << "x" << plane.B << "x" << plane.C << " " << plane.D;
-        //info() << "facet_normal_dot_direction_cosine : " << facet_normal_dot_direction_cosine;
-        // info() << " Facet : " << m_coordCm[first_node][0] << "x" << m_coordCm[first_node][1] << "x" << m_coordCm[first_node][2];
-        // info()                << m_coordCm[second_node][0] << "x" << m_coordCm[second_node][1] << "x" << m_coordCm[second_node][2];
-        // info()                << m_coordMidCm[iface][0] << "x" << m_coordMidCm[iface][1] << "x" << m_coordMidCm[iface][2];
-        // info();
-        // info();
-        //info() << "Coord : " << coordinate.x << "x" << coordinate.y << "x" << coordinate.z;
-        
-
         // Consider only those facets whose outer normals have
         // a positive dot product with the direction cosine.
         // I.e. the particle is LEAVING the cell.
         if (facet_normal_dot_direction_cosine <= 0.0) continue;
 
-        Real t = MCT_Nearest_Facet_3D_G_Distance_To_Segment(
+        Real t = distanceToSegmentFacet(
             plane_tolerance,
             facet_normal_dot_direction_cosine, plane.A, plane.B, plane.C, plane.D,
             point0, point1, point2,
             particle, false);
 
         distance_to_facet[facet_index].distance = t;
-        //info() << "distance_to_facet : facet_index :" << facet_index << " distance : " << t;
-        //info() << "mcp :" << mc_particle->identifier;
-        //info() << "direction_cosine : " << direction_cosine->alpha << " x "<< direction_cosine->beta << " x "<< direction_cosine->gamma;
-        //info() << "\n";
-
       }
     }
     //ARCANE_FATAL("aaa");
 
     Integer retry = 0;
 
-    Nearest_Facet nearest_facet = MCT_Nearest_Facet_Find_NearestArc(
+    Nearest_Facet nearest_facet = findNearestFacet(
       particle,
-      iteration, move_factor, 24,
+      iteration, move_factor,
       distance_to_facet,
       retry);
 
 
-    if (! retry) return nearest_facet;
+    if (!retry) return nearest_facet;
   }
 }
 
 Real QSModule::
-MCT_Nearest_Facet_3D_G_Distance_To_Segment(Real plane_tolerance,
+distanceToSegmentFacet(Real plane_tolerance,
                                                      Real facet_normal_dot_direction_cosine,//=
                                                      Real A, Real B, Real C, Real D,//=
                                                      const MC_Vector &facet_coords0,//=
@@ -1973,14 +1939,13 @@ MCT_Nearest_Facet_3D_G_Distance_To_Segment(Real plane_tolerance,
 }
 
 Nearest_Facet QSModule::
-MCT_Nearest_Facet_Find_NearestArc(Particle particle,
+findNearestFacet(Particle particle,
                                   Integer &iteration, // input/output
                                   Real &move_factor, // input/output
-                                  Integer num_facets_per_cell,
                                   Distance_To_Facet *distance_to_facet,
                                   Integer &retry /* output */ )
 {
-  Nearest_Facet nearest_facet = MCT_Nearest_Facet_Find_Nearest(num_facets_per_cell, distance_to_facet);
+  Nearest_Facet nearest_facet = nearestFacet(distance_to_facet);
 
   const Integer max_allowed_segments = 10000000;
 
@@ -1989,10 +1954,10 @@ MCT_Nearest_Facet_Find_NearestArc(Particle particle,
   if ( (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble && move_factor > 0) ||
       ( m_particleNumSeg[particle] > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0 ) )
   {
+    info() << "Attention, peut-être problème de facet.";
     // Could not find a solution, so move the particle towards the center of the cell
     // and try again.
-    MCT_Nearest_Facet_3D_G_Move_ParticleArc(particle, move_factor);
-
+    nearestFacet3DMoveParticle(particle, move_factor);
     iteration++;
     move_factor *= 2.0;
 
@@ -2022,8 +1987,7 @@ MCT_Nearest_Facet_Find_NearestArc(Particle particle,
 }
 
 Nearest_Facet QSModule::
-MCT_Nearest_Facet_Find_Nearest( Integer num_facets_per_cell,
-                                Distance_To_Facet *distance_to_facet)
+nearestFacet( Distance_To_Facet *distance_to_facet)
 {
   Nearest_Facet nearest_facet;
 
@@ -2032,7 +1996,7 @@ MCT_Nearest_Facet_Find_Nearest( Integer num_facets_per_cell,
   nearest_negative_facet.distance_to_facet = -PhysicalConstants::_hugeDouble;
 
   // Determine the facet that is closest to the specified coordinates.
-  for (Integer facet_index = 0; facet_index < num_facets_per_cell; facet_index++)
+  for (Integer facet_index = 0; facet_index < 24; facet_index++)
   {
     if ( distance_to_facet[facet_index].distance > 0.0 )
     {
@@ -2068,8 +2032,8 @@ MCT_Nearest_Facet_Find_Nearest( Integer num_facets_per_cell,
 }
 
 void QSModule::
-MCT_Nearest_Facet_3D_G_Move_ParticleArc( Particle particle, // input/output: move this coordinate
-                                         Real move_factor)  // input: multiplication factor for move
+nearestFacet3DMoveParticle( Particle particle, // input/output: move this coordinate
+                            Real move_factor)  // input: multiplication factor for move
 {
   Cell cell = particle.cell();
 
@@ -2078,8 +2042,9 @@ MCT_Nearest_Facet_3D_G_Move_ParticleArc( Particle particle, // input/output: mov
   m_particleCoord[particle][MD_DirZ] += move_factor * ( m_coordCenter[cell][MD_DirZ] - m_particleCoord[particle][MD_DirZ] );
 }
 
+template<typename T>
 Integer QSModule::
-MC_Find_Min(RealUniqueArray array)
+findMin(UniqueArray<T> array)
 {
     Real min = array[0];
     Integer min_index = 0;
@@ -2097,7 +2062,7 @@ MC_Find_Min(RealUniqueArray array)
 }
 
 Integer QSModule::
-CollisionEventArc(Particle particle)
+collisionEvent(Particle particle)
 {
   Cell cell = particle.cell();
 
@@ -2118,7 +2083,7 @@ CollisionEventArc(Particle particle)
     Integer numReacts = m_nuclearData->getNumberReactions(uniqueNumber);
     for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++)
     {
-      currentCrossSection -= macroscopicCrossSectionArc(reactIndex, cell,
+      currentCrossSection -= macroscopicCrossSection(reactIndex, cell,
                 isoIndex, m_particleEneGrp[particle]);
       if (currentCrossSection < 0)
       {
@@ -2150,22 +2115,22 @@ CollisionEventArc(Particle particle)
 
   // Set the reaction for this particle.
   m_collision_a++;
-  NuclearDataReactionArc::Enum reactionType = m_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
+  NuclearDataReaction::Enum reactionType = m_nuclearData->_isotopes[selectedUniqueNumber]._species[0].\
           _reactions[selectedReact]._reactionType;
 
   switch (reactionType)
   {
-    case NuclearDataReactionArc::Scatter:
+    case NuclearDataReaction::Scatter:
         m_scatter_a++;
         break;
-    case NuclearDataReactionArc::Absorption:
+    case NuclearDataReaction::Absorption:
         m_absorb_a++;
         break;
-    case NuclearDataReactionArc::Fission:
+    case NuclearDataReaction::Fission:
         m_fission_a++;
         m_produce_a += nOut;
         break;
-    case NuclearDataReactionArc::Undefined:
+    case NuclearDataReaction::Undefined:
         printf("reactionType invalid\n");
         qs_assert(false);
   }
@@ -2216,7 +2181,7 @@ updateTrajectory( Real energy, Real angle, Particle particle )
   Real cosPhi = cos(phi);
   Real sinTheta = sqrt((1.0 - (cosTheta*cosTheta)));
 
-  Rotate3DVector(particle, sinTheta, cosTheta, sinPhi, cosPhi);
+  rotate3DVector(particle, sinTheta, cosTheta, sinPhi, cosPhi);
 
   Real speed = (PhysicalConstants::_speedOfLight *
           sqrt((1.0 - ((PhysicalConstants::_neutronRestMassEnergy *
@@ -2233,7 +2198,7 @@ updateTrajectory( Real energy, Real angle, Particle particle )
 }
 
 void QSModule::
-Rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi)
+rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi)
 {
   // Calculate additional variables in the rotation matrix.
   Real cos_theta = m_particleDirCos[particle][MD_DirG];
@@ -2259,7 +2224,7 @@ Rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, 
 }
 
 Tally_Event QSModule::
-MC_Facet_Crossing_EventArc(Particle particle)
+facetCrossingEvent(Particle particle)
 {
   Face face = particle.cell().face(m_particleFace[particle]);
 
@@ -2312,7 +2277,7 @@ MC_Facet_Crossing_EventArc(Particle particle)
 }
 
 void QSModule::
-MCT_Reflect_ParticleArc(Particle particle)
+reflectParticle(Particle particle)
 {
     Integer facet = m_particleFacet[particle] % 4;
 

@@ -5,7 +5,7 @@ find_package(Arcane REQUIRED)
 
 add_executable(Quicksilver main.cc QSModule.cc QS_axl.h InitMCModule.cc InitMC_axl.h
 MC_RNG_State.cc
-NuclearDataArc.cc )
+NuclearData.cc )
 
 arcane_generate_axl(QS)
 arcane_generate_axl(InitMC)

@@ -32,7 +32,7 @@ enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit êt
 #include "QS_axl.h"
 
 
-#include "NuclearDataArc.hh"
+#include "NuclearData.hh"
 #include "MC_Vector.hh"
 
 
@@ -172,45 +172,45 @@ public:
 protected:
   ICartesianMesh* m_cartesian_mesh;
   Arcane::Materials::IMeshMaterialMng* material_mng;
-  NuclearDataArc* m_nuclearData;
+  NuclearData* m_nuclearData;
 
   Real m_source_particle_weight;
   Integer m_cycle; // TODO : Voir pour utiliser var arcane interne.
 
 public:
-  void CycleFinalizeTallies();
-  void getParametersAxl();
-  void initMCArc();
-  void initNuclearDataArc();
+  void cycleFinalizeTallies();
+  void getParametersArc();
+  void initMC();
+  void initNuclearData();
   void initMesh();
   UniqueArray<Face_Adjacency_Event> getBoundaryCondition();
   void initTallies();
   void clearCrossSectionCache();
-  void MC_SourceNowArc();
-  Real Get_Speed_From_Energy(Particle p);
-  void MCT_Generate_Coordinate_3D_GArc(Particle p);
-  Real MCT_Cell_Volume_3D_G_vector_tetDetArc(const MC_Vector &v0_,
+  void sourceParticles();
+  Real getSpeedFromEnergy(Particle p);
+  void generate3DCoordinate(Particle p);
+  Real computeTetVolume(const MC_Vector &v0_,
                                             const MC_Vector &v1_,
                                             const MC_Vector &v2_,
                                             const MC_Vector &v3);
 
-  void PopulationControlArc();
-  void PopulationControlGutsArc(const Real splitRRFactor, Int64 currentNumParticles);
-  void RouletteLowWeightParticlesArc();
+  void populationControl();
+  void populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles);
+  void rouletteLowWeightParticles();
 
-  void trackingArc();
-  void CollisionEventSuite();
-  void CycleTrackingGutsArc( Particle particle );
-  void CycleTrackingFunctionArc( Particle particle);
-  Segment_Outcome_type MC_Segment_OutcomeArc(Particle particle);
-  Real weightedMacroscopicCrossSectionArc(Cell cell, int energyGroup);
-  Real macroscopicCrossSectionArc(int reactionIndex, Cell cell, int isoIndex, int energyGroup);
-  Nearest_Facet MCT_Nearest_FacetArc(Particle particle,
+  void tracking();
+  void collisionEventSuite();
+  void cycleTrackingGuts( Particle particle );
+  void cycleTrackingFunction( Particle particle);
+  Segment_Outcome_type computeNextEvent(Particle particle);
+  Real weightedMacroscopicCrossSection(Cell cell, int energyGroup);
+  Real macroscopicCrossSection(int reactionIndex, Cell cell, int isoIndex, int energyGroup);
+  Nearest_Facet getNearestFacet(Particle particle,
                                       Real distance_threshold,
                                       Real current_best_distance,
                                       bool new_segment);
-  Nearest_Facet MCT_Nearest_Facet_3D_GArc( Particle particle);
-  Real MCT_Nearest_Facet_3D_G_Distance_To_Segment(Real plane_tolerance,
+  Nearest_Facet computeFindNearestFacet( Particle particle);
+  Real distanceToSegmentFacet(Real plane_tolerance,
                                                      Real facet_normal_dot_direction_cosine,
                                                      Real A, Real B, Real C, Real D,
                                                      const MC_Vector &facet_coords0,
@@ -219,28 +219,27 @@ public:
                                                      Particle particle,
                                                      bool allow_enter);
 
-  Nearest_Facet MCT_Nearest_Facet_Find_NearestArc(Particle particle,
+  Nearest_Facet findNearestFacet(Particle particle,
                                   int &iteration, // input/output
                                   Real &move_factor, // input/output
-                                  int num_facets_per_cell,
                                   Distance_To_Facet *distance_to_facet,
                                   int &retry /* output */ );
-  Nearest_Facet MCT_Nearest_Facet_Find_Nearest(int num_facets_per_cell,
-                                                   Distance_To_Facet *distance_to_facet);
+  Nearest_Facet nearestFacet(Distance_To_Facet *distance_to_facet);
 
-  void MCT_Nearest_Facet_3D_G_Move_ParticleArc(Particle particle, // input/output: move this coordinate
+  void nearestFacet3DMoveParticle(Particle particle, // input/output: move this coordinate
                                           Real move_factor);
-  int CollisionEventArc(Particle particle);
+  int collisionEvent(Particle particle);
   void updateTrajectory( Real energy, Real angle, Particle particle );
-  Tally_Event MC_Facet_Crossing_EventArc(Particle particle);
-  void MCT_Reflect_ParticleArc(Particle particle);
-  Integer MC_Find_Min(RealUniqueArray array);
-  void Sample_Isotropic(Particle p);
+  Tally_Event facetCrossingEvent(Particle particle);
+  void reflectParticle(Particle particle);
+  template<typename T>
+  Integer findMin(UniqueArray<T> array);
+  void sampleIsotropic(Particle p);
   void copyParticle(Particle pSrc, Particle pNew);
   void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
-  void Rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi);
+  void rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi);
   void initParticle(Particle p, Int64 rns);
-  bool isInsideArc(Integer posOptions, Cell cell);
+  bool isInGeometry(Integer posOptions, Cell cell);
 };
 
 /*---------------------------------------------------------------------------*/
