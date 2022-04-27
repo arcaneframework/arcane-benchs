@@ -2,4 +2,388 @@
 <module name="InitMC" version="1.0">
   <description>Descripteur du module InitMC</description>
 
+  <variables>
+
+    <variable
+        field-name="eMin"
+        name="EMin"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="eMax"
+        name="EMax"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="nGroups"
+        name="NGroups"
+        data-type="integer"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+  
+    <variable
+        field-name="volume"
+        name="Volume"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+      <variable
+        field-name="total"
+        name="Total"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+      <variable
+        field-name="sourceTally"
+        name="SourceTally"
+        data-type="int32"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="coordCm"
+        name="CoordCm"
+        data-type="real"
+        item-kind="node"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="coordMidCm"
+        name="CoordMidCm"
+        data-type="real"
+        item-kind="face"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+      <variable
+        field-name="coordCenter"
+        name="CoordCenter"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="source"
+        name="Source"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="rr"
+        name="Rr"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="split"
+        name="Split"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particleCoord"
+        name="ParticleCoord"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particleVelocity"
+        name="ParticleVelocity"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleDirCos"
+        name="ParticleDirCos"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleKinEne"
+        name="ParticleKinEne"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleWeight"
+        name="ParticleWeight"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleTimeCensus"
+        name="ParticleTimeCensus"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleTotalCrossSection"
+        name="ParticleTotalCrossSection"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleAge"
+        name="ParticleAge"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleNumMeanFreeP"
+        name="ParticleNumMeanFreeP"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleMeanFreeP"
+        name="ParticleMeanFreeP"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleSegPathLength"
+        name="ParticleSegPathLength"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleRNS"
+        name="ParticleRNS"
+        family-name="ArcaneParticles"
+        data-type="int64"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleLastEvent"
+        name="ParticleLastEvent"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleNumColl"
+        name="ParticleNumColl"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleTask"
+        name="ParticleTask"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleSpecies"
+        name="ParticleSpecies"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleBreed"
+        name="ParticleBreed"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleEneGrp"
+        name="ParticleEneGrp"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleFacet"
+        name="ParticleFacet"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleFace"
+        name="ParticleFace"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleNormalDot"
+        name="ParticleNormalDot"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="particleNumSeg"
+        name="ParticleNumSeg"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable 
+        field-name="sourceRate"
+        name="SourceRate"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        need-sync="true"
+        material="true"/>
+
+  </variables>
+
+  <entry-points>
+    <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
+    <entry-point method-name="cycleInit" name="CycleInit" where="compute-loop" property="none" />
+    <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
+  </entry-points>
+
+  <options>
+
+
+    <simple name="nParticles" type="int64" default="1000000">
+      <description>
+        number of particles
+      </description>
+    </simple>
+
+    <simple name="lowWeightCutoff" type="real" default="0.001">
+      <description>
+        low weight roulette cutoff
+      </description>
+    </simple>
+
+  </options>
+
 </module>

@@ -16,19 +16,16 @@
 
         <origin>0.0 0.0 0.0</origin>
 
-        <!-- lx = lenght * n -->
         <x>
           <length>10.0</length>
           <n>4</n>
         </x>
 
-        <!-- ly = lenght * n -->
         <y>
           <length>10.0</length>
           <n>4</n>
         </y>
 
-        <!-- lz = lenght * n -->
         <z>
           <length>10.0</length>
           <n>4</n>
@@ -40,15 +37,21 @@
 
   <q-s>
     <dt>2e-09</dt>
-    <fMax>0.1</fMax>
     <boundaryCondition>reflect</boundaryCondition>
     <nSteps>2</nSteps>
-    <seed>1029384756</seed>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <lowWeightCutoff>0.001</lowWeightCutoff>
+  </q-s>
 
+  <init-m-c>
+    <!-- <fMax>0.1</fMax> --> <!-- N'est pas utilisé par QS original  max random mesh node displacement-->
+    <!-- <seed>1029384756</seed> --> <!-- N'est pas utilisé par QS original  random number seed-->
+    <lowWeightCutoff>0.001</lowWeightCutoff>
+  </init-m-c>
+
+  <tracking-m-c>
+    
     <geometry>
       <material>sourceMaterial</material>
       <shape>brick</shape>
@@ -84,6 +87,6 @@
       <E>1</E>
       <nuBar>1.6</nuBar>
     </cross_section>
+  </tracking-m-c>
 
-  </q-s>
 </case>

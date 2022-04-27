@@ -3,6 +3,33 @@
   <description>Descripteur du module QS</description>
 
   <variables>
+
+    <variable
+        field-name="eMin"
+        name="EMin"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="eMax"
+        name="EMax"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="nGroups"
+        name="NGroups"
+        data-type="integer"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
   
     <variable
         field-name="volume"
@@ -10,15 +37,6 @@
         data-type="real"
         item-kind="cell"
         dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="facetp"
-        name="Facetp"
-        data-type="real"
-        item-kind="face"
-        dim="1"
         dump="true"
         need-sync="true" />
 
@@ -263,7 +281,8 @@
         data-type="real"
         item-kind="particle"
         dim="1"
-        dump="true"/>
+        dump="true"
+        need-sync="true" />
 
     <variable
         field-name="particleVelocity"
@@ -272,7 +291,9 @@
         data-type="real"
         item-kind="particle"
         dim="1"
-        dump="true"/>
+        dump="true"
+        need-sync="true" />
+
 
     <variable
         field-name="particleDirCos"
@@ -281,232 +302,20 @@
         data-type="real"
         item-kind="particle"
         dim="1"
-        dump="true"/>
+        dump="true"
+        need-sync="true" />
 
-    <variable
-        field-name="particleKinEne"
-        name="ParticleKinEne"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleWeight"
-        name="ParticleWeight"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleTimeCensus"
-        name="ParticleTimeCensus"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleTotalCrossSection"
-        name="ParticleTotalCrossSection"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleAge"
-        name="ParticleAge"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleNumMeanFreeP"
-        name="ParticleNumMeanFreeP"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleMeanFreeP"
-        name="ParticleMeanFreeP"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleSegPathLength"
-        name="ParticleSegPathLength"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleRNS"
-        name="ParticleRNS"
-        family-name="ArcaneParticles"
-        data-type="int64"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleLastEvent"
-        name="ParticleLastEvent"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleNumColl"
-        name="ParticleNumColl"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleTask"
-        name="ParticleTask"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleSpecies"
-        name="ParticleSpecies"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleBreed"
-        name="ParticleBreed"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleEneGrp"
-        name="ParticleEneGrp"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleFacet"
-        name="ParticleFacet"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleFace"
-        name="ParticleFace"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleNormalDot"
-        name="ParticleNormalDot"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    <variable
-        field-name="particleNumSeg"
-        name="ParticleNumSeg"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="0"
-        dump="true"/>
-
-    
-
-    <variable 
-        field-name="mass"
-        name="Mass"
-        data-type="real"
-        item-kind="cell"
-        dim="0"
-        material="true"/>
-
-    <variable 
-        field-name="isoGid"
-        name="IsoGid"
-        data-type="real"
-        item-kind="cell"
-        dim="1"
-        material="true"/>
-
-    <variable 
-        field-name="atomFraction"
-        name="AtomFraction"
-        data-type="real"
-        item-kind="cell"
-        dim="1"
-        material="true"/>
-
-    <variable 
-        field-name="sourceRate"
-        name="SourceRate"
-        data-type="real"
-        item-kind="cell"
-        dim="0"
-        material="true"/>
 
 
   </variables>
 
   <entry-points>
-    <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
-
-    <entry-point method-name="cycleInit" name="CycleInit" where="compute-loop" property="none" />
-    <entry-point method-name="cycleTracking" name="CycleTracking" where="compute-loop" property="none" />
+    <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
     <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
-    
-    <entry-point method-name="gameOver" name="GameOver" where="exit" property="none" />
+    <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
   </entry-points>
 
   <options>
-
-    <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
-      <name lang="fr">echangeur-particule</name>
-      <description>Service utilisé pour échanger les particules.</description>
-	  </service-instance>
 
     <simple name="dt" type="real" default="1e-8">
       <description>
@@ -514,27 +323,27 @@
       </description>
     </simple>
 
-    <simple name="fMax" type="real" default="0.1">
+    <simple name="eMin" type="real" default="1e-9">
       <description>
-        max random mesh node displacement
+        min energy of cross section
       </description>
     </simple>
 
-    <simple name="nParticles" type="int64" default="1000000">
+    <simple name="eMax" type="real" default="20">
       <description>
-        number of particles
+        max energy of cross section
+      </description>
+    </simple>
+
+    <simple name="nGroups" type="integer" default="230">
+      <description>
+        number of groups for cross sections
       </description>
     </simple>
 
     <simple name="nSteps" type="integer" default="10">
       <description>
         number of time steps
-      </description>
-    </simple>
-
-    <simple name="seed" type="integer" default="1029384756">
-      <description>
-        random number seed
       </description>
     </simple>
 
@@ -562,180 +371,6 @@
         <enumvalue name="escape" genvalue="escape" />
         <enumvalue name="octant" genvalue="octant"  />
       </enumeration>
-
-    <simple name="eMin" type="real" default="1e-9">
-      <description>
-        min energy of cross section
-      </description>
-    </simple>
-
-    <simple name="eMax" type="real" default="20">
-      <description>
-        max energy of cross section
-      </description>
-    </simple>
-
-    <simple name="nGroups" type="integer" default="230">
-      <description>
-        number of groups for cross sections
-      </description>
-    </simple>
-    
-    <simple name="lowWeightCutoff" type="real" default="0.001">
-      <description>
-        low weight roulette cutoff
-      </description>
-    </simple>
-
-    <!-- Infos sur les Geometry -->
-    <complex name="geometry" type="Geometry" minOccurs="0" maxOccurs="unbounded">
-      <description>Geometrie</description>
-
-      <simple name="material" type="string" default="sourceMaterial">
-        <description>material de la geometrie</description>
-      </simple>
-
-      <enumeration name="shape" type="eShape" default="brick">
-        <description>Type de condition au limites</description>
-        <enumvalue name="undefined" genvalue="UNDEFINED"  />
-        <enumvalue name="brick" genvalue="BRICK" />
-        <enumvalue name="sphere" genvalue="SPHERE"  />
-      </enumeration>
-
-
-      <!-- Si brick -->
-      <simple name="xMax" type="real" default="0.0">
-        <description>xMax</description>
-      </simple>
-
-      <simple name="xMin" type="real" default="0.0">
-        <description>xMin</description>
-      </simple>
-
-      <simple name="yMax" type="real" default="0.0">
-        <description>yMax</description>
-      </simple>
-
-      <simple name="yMin" type="real" default="0.0">
-        <description>yMin</description>
-      </simple>
-
-      <simple name="zMax" type="real" default="0.0">
-        <description>zMax</description>
-      </simple>
-
-      <simple name="zMin" type="real" default="0.0">
-        <description>zMin</description>
-      </simple>
-
-
-      <!-- Si sphere -->
-      <simple name="radius" type="real" default="0.0">
-        <description>radius</description>
-      </simple>
-
-      <simple name="xCenter" type="real" default="0.0">
-        <description>xCenter</description>
-      </simple>
-
-      <simple name="yCenter" type="real" default="0.0">
-        <description>yCenter</description>
-      </simple>
-
-      <simple name="zCenter" type="real" default="0.0">
-        <description>zCenter</description>
-      </simple>
-
-    </complex>
-
-    <!-- Infos sur les materiaux -->
-    <complex name="material" type="Material" minOccurs="0" maxOccurs="unbounded">
-      <description>Materiaux</description>
-
-      <simple name="name" type="string" default="sourceMaterial">
-        <description>Nom du materiau</description>
-      </simple>
-
-      <simple name="mass" type="real" default="1000.0">
-        <description>mass</description>
-      </simple>
-
-      <simple name="totalCrossSection" type="real" default="1.0">
-        <description>totalCrossSection</description>
-      </simple>
-
-      <simple name="nIsotopes" type="integer" default="10">
-        <description>nIsotopes</description>
-      </simple>
-
-      <simple name="nReactions" type="integer" default="9">
-        <description>nReactions</description>
-      </simple>
-
-      <simple name="sourceRate" type="real" default="0.0">
-        <description>sourceRate</description>
-      </simple>
-
-      <simple name="scatteringCrossSection" type="string" default="flat">
-        <description>scatteringCrossSection</description>
-      </simple>
-
-      <simple name="absorptionCrossSection" type="string" default="flat">
-        <description>absorptionCrossSection</description>
-      </simple>
-
-      <simple name="fissionCrossSection" type="string" default="flat">
-        <description>fissionCrossSection</description>
-      </simple>
-
-      <simple name="scatteringCrossSectionRatio" type="real" default="1.0">
-        <description>scatteringCrossSectionRatio</description>
-      </simple>
-      
-      <simple name="absorptionCrossSectionRatio" type="real" default="1.0">
-        <description>absorptionCrossSectionRatio</description>
-      </simple>
-
-      <simple name="fissionCrossSectionRatio" type="real" default="1.0">
-        <description>fissionCrossSectionRatio</description>
-      </simple>
-
-    </complex>
-
-
-    <!-- Infos sur les CrossSection -->
-    <complex name="cross_section" type="CrossSection" minOccurs="0" maxOccurs="unbounded">
-      <description>CrossSection</description>
-
-      <simple name="name" type="string" default="flat">
-        <description>Nom de la CrossSection</description>
-      </simple>
-
-      <simple name="A" type="real" default="0.0">
-        <description>aa</description>
-      </simple>
-
-      <simple name="B" type="real" default="0.0">
-        <description>bb</description>
-      </simple>
-
-      <simple name="C" type="real" default="0.0">
-        <description>cc</description>
-      </simple>
-
-      <simple name="D" type="real" default="0.0">
-        <description>dd</description>
-      </simple>
-
-      <simple name="E" type="real" default="0.0">
-        <description>ee</description>
-      </simple>
-
-      <simple name="nuBar" type="real" default="2.4">
-        <description>nuBar</description>
-      </simple>
-
-    </complex>
 
   </options>
 
