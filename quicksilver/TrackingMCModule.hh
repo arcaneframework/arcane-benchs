@@ -25,9 +25,7 @@
 #include "arcane/materials/MeshEnvironmentVariableRef.h"
 #include "arcane/materials/MaterialVariableBuildInfo.h"
 #include "arcane/materials/MeshEnvironmentBuildInfo.h"
-
-enum eShape{UNDEFINED, BRICK, SPHERE}; // TODO : A deplacer (doit être defini avant QS_axl.h !).
-enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit être defini avant QS_axl.h !).
+#include "structEnum.hh"
 
 #include "TrackingMC_axl.h"
 
@@ -37,66 +35,6 @@ enum eBoundaryCondition{reflect, escape, octant}; // TODO : A deplacer (doit êt
 using namespace Arcane;
 using namespace Arcane::Materials;
 
-enum Face_Adjacency_Event
-{
-  Adjacency_Undefined = 0,
-  Boundary_Escape,
-  Boundary_Reflection,
-  Transit_On_Processor,
-  Transit_Off_Processor
-};
-
-enum CosDir
-{
-  MD_DirA = 0, // Alpha
-  MD_DirB,     // Beta
-  MD_DirG      // Gamma
-};
-
-enum Segment_Outcome_type
-{
-  Initialize                    = -1,
-  Collision                     = 0,
-  Facet_Crossing                = 1,
-  Census                        = 2,
-  Max_Number                    = 3
-};
-enum Tally_Event
-{
-  Collision1,
-  Facet_Crossing_Transit_Exit,
-  Census1,
-  Facet_Crossing_Tracking_Error,
-  Facet_Crossing_Escape,
-  Facet_Crossing_Reflection,
-  Facet_Crossing_Communication
-};
-
-struct Nearest_Facet
-{
-   Integer facet;
-   Real distance_to_facet;
-   Real dot_product;
-   
-   Nearest_Facet()
-   : facet(0),
-     distance_to_facet(1e80),
-     dot_product(0.0)
-   {}
-};
-
-struct Distance_To_Facet
-{
-    Real distance;
-    Integer facet;
-    Integer subfacet;
-    
-    Distance_To_Facet()
-    : distance(0.0),
-      facet(0),
-      subfacet(0) 
-    {}
-};
 
 /*!
  * \brief Module TrackingMC.
@@ -156,9 +94,9 @@ public:
   void cycleTrackingGuts( Particle particle );
   void cycleTrackingFunction(Particle particle);
   void collisionEventSuite();
-  Segment_Outcome_type computeNextEvent(Particle particle);
+  segmentOutcomeType computeNextEvent(Particle particle);
   Integer collisionEvent(Particle particle);
-  Tally_Event facetCrossingEvent(Particle particle);
+  faceEvent facetCrossingEvent(Particle particle);
   void reflectParticle(Particle particle);
   void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
   void copyParticle(Particle pSrc, Particle pNew);

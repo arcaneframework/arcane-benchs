@@ -6,56 +6,31 @@
 #include "PhysicalConstants.hh"
 
 
-#define MAX_PRODUCTION_SIZE 4
-
-bool ordre_qs2[]  = {true, true, false, false, false, true};
-
-Integer QS2ArcaneFacet2[] = {16, 17, 18, 19, 
-                        7 , 6 , 5 , 4 , 
-                        20, 23, 22, 21, 
-                        8 , 9 , 10, 11, 
-                        12, 13, 14, 15, 
-                        3 , 2 , 1 , 0 };
-
-Integer QS2ArcaneFace2[] = {4, 1, 5, 2, 3, 0};
-
-Integer QS2ArcaneNode2[] = {0, 1, 2, 3,
-                       0, 3, 2, 1,
-                       1, 0, 3, 2,
-                       0, 1, 2, 3,
-                       0, 1, 2, 3,
-                       0, 3, 2, 1};
 
 
 void InitMCModule::
 initModule()
 {
-  m_cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
-  m_material_mng = IMeshMaterialMng::getReference(mesh());
-
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
+
+  m_particleCoord.resize(3);
+  m_particleCoord.fill(0.0);
+
+  m_particleVelocity.resize(3);
+  m_particleVelocity.fill(0.0);
+  
+  m_particleDirCos.resize(3);
+  m_particleDirCos.fill(0.0);
 }
 
-void InitMCModule::
-endModule()
-{
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    if(m_sourceRate[icell] != 10000000000) ARCANE_FATAL("Bizarre");
-  }
-}
 
 void InitMCModule::
 cycleInit()
 {
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    if(m_sourceRate[icell] != 10000000000) ARCANE_FATAL("Bizarre");
-  }
   clearCrossSectionCache();
-
   m_processingView = m_particle_family->view();
 
+  // Création des particules.
   sourceParticles();
 
   // Réduction ou augmentation du nombre de particules.
@@ -64,23 +39,15 @@ cycleInit()
   // Roulette sur les particules avec faible poids.
   rouletteLowWeightParticles(); // Delete particles with low statistical weight
   updateTallies();
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    if(m_sourceRate[icell] != 10000000000) ARCANE_FATAL("Bizarre");
-  }
 }
 
 void InitMCModule::
-updateTallies()
+endModule()
 {
-  m_source = m_source_a;
-  m_rr = m_rr_a;
-  m_split = m_split_a;
-  
-  m_source_a = 0;
-  m_rr_a = 0;
-  m_split_a = 0;
 }
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 void InitMCModule::
 clearCrossSectionCache()
@@ -104,7 +71,6 @@ sourceParticles()
 
   ENUMERATE_CELL(icell, ownCells())
   {
-    if(m_sourceRate[icell] != 10000000000) ARCANE_FATAL("Bizarre");
     Real cell_weight_particles = m_volume[icell] * m_sourceRate[icell] * m_global_deltat();
     local_weight_particles += cell_weight_particles;
   }
@@ -114,14 +80,14 @@ sourceParticles()
   total_weight_particles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, local_weight_particles);
 
   Int64 num_particles = options()->getNParticles();
+
   Real source_fraction = 0.1;
   Real source_particle_weight = total_weight_particles/(source_fraction * num_particles);
+
   // Store the source particle weight for later use.
   m_source_particle_weight = source_particle_weight;
 
-  Int64 task_index = 0;
   Int64 particle_count = 0;
-
 
   ENUMERATE_CELL(icell, ownCells())
   {
@@ -150,8 +116,6 @@ sourceParticles()
 
       random_number_seed = m_sourceTally[icell]; // TODO : Atomic
       m_sourceTally[icell]++; // TODO : Atomic
-
-      //if(particle_index != random_number_seed) ARCANE_FATAL("aaaa");
 
       random_number_seed += (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
 
@@ -187,7 +151,6 @@ sourceParticles()
     m_particleVelocity[p][MD_DirY] = speed * m_particleDirCos[p][MD_DirB];
     m_particleVelocity[p][MD_DirZ] = speed * m_particleDirCos[p][MD_DirG];
 
-    m_particleTask[p] = task_index;
     m_particleWeight[p] = source_particle_weight;
 
     Real randomNumber = rngSample(&m_particleRNS[p]);
@@ -212,37 +175,10 @@ populationControl()
   Int64 globalNumParticles = 0;
   Integer localNumParticles = m_processingView.size();
   
-//     if (loadBalance)
-//     {
-//       // If we are parallel, we will have one domain per mpi processs.  The targetNumParticles is across
-//       // all MPI processes, so we need to divide by the number or ranks to get the per-mpi-process number targetNumParticles
-//       targetNumParticles = ceil((Real)targetNumParticles / mesh()->parallelMng()->commSize() );
-
-//       //NO LONGER SPLITING VAULTS BY THREADS
-// //        // If we are threaded, targetNumParticles should be divided by the number of threads (tasks) to balance
-// //        // the particles across the thread level vaults.
-// //        targetNumParticles = ceil((Real)targetNumParticles / (Real)monteCarlo->processor_info->num_tasks);
-//     }
-//     else
-//     {
-    globalNumParticles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
-  // }
+  globalNumParticles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
     
-  Real splitRRFactor = 1.0;
-  // if (loadBalance)
-  // {
-  //     Integer currentNumParticles = localNumParticles;
-  //     if (currentNumParticles != 0)
-  //         splitRRFactor = (Real)targetNumParticles / (Real)currentNumParticles;
-  //     else
-  //         splitRRFactor = 1.0;
-  // }
-  // else
-  // {
-      splitRRFactor = (Real)targetNumParticles / (Real)globalNumParticles;
-  // }
+  Real splitRRFactor = (Real)targetNumParticles / (Real)globalNumParticles;
 
-  // On augmente ou diminue la population selon splitRRFactor (si > 1, on augmente en splittant ; si < 1, on diminue en killant ou en augmentant le poids (rand))
   if (splitRRFactor != 1.0)  // no need to split if population is already correct.
     populationControlGuts(splitRRFactor, localNumParticles);
 }
@@ -251,22 +187,17 @@ populationControl()
 void InitMCModule::
 populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
 {
-  Int32UniqueArray supprP;
-  Int64UniqueArray addIdP;
-  Int32UniqueArray addCellIdP;
-  Int32UniqueArray addSrcP;
-
   // March backwards through the vault so killed particles doesn't mess up the indexing
-  ENUMERATE_PARTICLE(iparticle, m_processingView)
+  if (splitRRFactor < 1)
   {
-    Particle particle = (*iparticle);
-    Real randomNumber = rngSample(&m_particleRNS[iparticle]);
-    if (splitRRFactor < 1)
+    Int32UniqueArray supprP;
+    ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
+      Real randomNumber = rngSample(&m_particleRNS[iparticle]);
       if (randomNumber > splitRRFactor)
       {
         // Kill
-        supprP.add(particle.localId());
+        supprP.add(iparticle.localId());
 
         m_rr_a++; 
       }
@@ -275,8 +206,20 @@ populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
         m_particleWeight[iparticle] /= splitRRFactor;
       }
     }
-    else if (splitRRFactor > 1)
+    m_particle_family->toParticleFamily()->removeParticles(supprP);
+    m_particle_family->toParticleFamily()->endUpdate();
+  }
+
+  else if (splitRRFactor > 1)
+  {
+    Int64UniqueArray addIdP;
+    Int32UniqueArray addCellIdP;
+    Int32UniqueArray addSrcP;
+    ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
+      Particle particle = (*iparticle);
+      Real randomNumber = rngSample(&m_particleRNS[iparticle]);
+
       // Split
       Integer splitFactor = (Integer)floor(splitRRFactor);
       if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
@@ -290,43 +233,68 @@ populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
         Int64 rns = rngSpawn_Random_Number_Seed(&m_particleRNS[iparticle]);
         addIdP.add(rns);
         addCellIdP.add(particle.cell().localId());
-        addSrcP.add(particle.localId());
+        addSrcP.add(iparticle.localId());
       }
     }
-  }
-  if (splitRRFactor < 1)
-  {
-    m_particle_family->toParticleFamily()->removeParticles(supprP);
-    m_particle_family->toParticleFamily()->endUpdate();
-    m_processingView = m_particle_family->view();
-  }
-  else if (splitRRFactor > 1)
-  {
+
     Int32UniqueArray particles_lid(addIdP.size());
     m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
     m_particle_family->toParticleFamily()->endUpdate();
-    m_processingView = m_particle_family->view();
 
-    copyParticles(addSrcP, particles_lid);
+    cloneParticles(addSrcP, particles_lid);
   }
+
+  m_processingView = m_particle_family->view();
 }
 
+void InitMCModule::
+initParticle(Particle p, Int64 rns)
+{
+  m_particleRNS[p] = rns;
+  m_particleCoord[p][MD_DirX] = 0.0;
+  m_particleCoord[p][MD_DirY] = 0.0;
+  m_particleCoord[p][MD_DirZ] = 0.0;
+
+  m_particleVelocity[p][MD_DirX] = 0.0;
+  m_particleVelocity[p][MD_DirY] = 0.0;
+  m_particleVelocity[p][MD_DirZ] = 0.0;
+
+  m_particleDirCos[p][MD_DirA] = 0.0;
+  m_particleDirCos[p][MD_DirB] = 0.0;
+  m_particleDirCos[p][MD_DirG] = 0.0;
+
+  m_particleKinEne[p] = 0.0;
+  m_particleWeight[p] = 0.0;
+  m_particleTimeCensus[p] = 0.0;
+  m_particleTotalCrossSection[p] = 0.0;
+  m_particleAge[p] = 0.0;
+  m_particleNumMeanFreeP[p] = 0.0;
+  m_particleMeanFreeP[p] = 0.0;
+  m_particleSegPathLength[p] = 0.0;
+  m_particleLastEvent[p] = particleEvent::census;
+  m_particleNumColl[p] = 0;
+  m_particleNumSeg[p] = 0.0;
+  m_particleSpecies[p] = 0;
+  m_particleEneGrp[p] = 0;
+  m_particleFace[p] = 0;
+  m_particleFacet[p] = 0;
+  m_particleNormalDot[p] = 0.0;
+}
 
 void InitMCModule::
-copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew)
+cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew)
 {
   ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
   ParticleVectorView viewNewP = m_particle_family->view(idsNew);
-  for (Integer i = 0; i < idsSrc.size(); i++)
+  ENUMERATE_PARTICLE(iparticle, viewSrcP)
   {
-    Particle pSrc(viewSrcP[i].internal());
-    Particle pNew(viewNewP[i].internal());
-    copyParticle(pSrc, pNew);
+    Particle pNew(viewNewP[iparticle.index()].internal());
+    cloneParticle((*iparticle), pNew);
   }
 }
 
 void InitMCModule::
-copyParticle(Particle pSrc, Particle pNew)
+cloneParticle(Particle pSrc, Particle pNew)
 {
   m_particleRNS[pNew] = pNew.uniqueId().asInt64();
 
@@ -353,15 +321,12 @@ copyParticle(Particle pSrc, Particle pNew)
   m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
   m_particleNumColl[pNew] = m_particleNumColl[pSrc];
   m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
-  m_particleTask[pNew] = m_particleTask[pSrc];
   m_particleSpecies[pNew] = m_particleSpecies[pSrc];
-  m_particleBreed[pNew] = m_particleBreed[pSrc];
   m_particleEneGrp[pNew] = m_particleEneGrp[pSrc];
   m_particleFace[pNew] = m_particleFace[pSrc];
   m_particleFacet[pNew] = m_particleFacet[pSrc];
   m_particleNormalDot[pNew] = m_particleNormalDot[pSrc];
 }
-
 
 void InitMCModule::
 rouletteLowWeightParticles()
@@ -375,8 +340,7 @@ rouletteLowWeightParticles()
     Int32UniqueArray supprP;
 
     // March backwards through the vault so killed particles don't mess up the indexing
-    const Real source_particle_weight = m_source_particle_weight;
-    const Real weightCutoff = lowWeightCutoff * source_particle_weight;
+    const Real weightCutoff = lowWeightCutoff * m_source_particle_weight;
 
     ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
@@ -396,50 +360,13 @@ rouletteLowWeightParticles()
         } 
       }
     }
+
     m_particle_family->toParticleFamily()->removeParticles(supprP);
     m_particle_family->toParticleFamily()->endUpdate();
-    m_processingView = m_particle_family->view();
 
+    m_processingView = m_particle_family->view();
   }
 }
-
-
-void InitMCModule::
-initParticle(Particle p, Int64 rns)
-{
-  m_particleRNS[p] = rns;
-  m_particleCoord[p][MD_DirX] = 0.0;
-  m_particleCoord[p][MD_DirY] = 0.0;
-  m_particleCoord[p][MD_DirZ] = 0.0;
-
-  m_particleVelocity[p][MD_DirX] = 0.0;
-  m_particleVelocity[p][MD_DirY] = 0.0;
-  m_particleVelocity[p][MD_DirZ] = 0.0;
-
-  m_particleDirCos[p][MD_DirA] = 0.0;
-  m_particleDirCos[p][MD_DirB] = 0.0;
-  m_particleDirCos[p][MD_DirG] = 0.0;
-
-  m_particleKinEne[p] = 0.0;
-  m_particleWeight[p] = 0.0;
-  m_particleTimeCensus[p] = 0.0;
-  m_particleTotalCrossSection[p] = 0.0;
-  m_particleAge[p] = 0.0;
-  m_particleNumMeanFreeP[p] = 0.0;
-  m_particleMeanFreeP[p] = 0.0;
-  m_particleSegPathLength[p] = 0.0;
-  m_particleLastEvent[p] = Tally_Event::Census1;
-  m_particleNumColl[p] = 0;
-  m_particleNumSeg[p] = 0.0;
-  m_particleTask[p] = 0;
-  m_particleSpecies[p] = 0;
-  m_particleBreed[p] = 0;
-  m_particleEneGrp[p] = 0;
-  m_particleFace[p] = 0;
-  m_particleFacet[p] = 0;
-  m_particleNormalDot[p] = 0.0;
-}
-
 
 void InitMCModule::
 generate3DCoordinate(Particle p)
@@ -450,28 +377,23 @@ generate3DCoordinate(Particle p)
   // Determine the cell-center nodal point coordinates.
   MC_Vector center(m_coordCenter[cell]);
 
-  Integer num_facets = 24;
-
   Real random_number = rngSample(random_number_seed);
   Real which_volume = random_number * 6.0 * m_volume[cell];
 
   // Find the tet to sample from.
   Real current_volume = 0.0;
-  Integer facet_index = -1;
   Node first_node;
   Node second_node;
   Face face;
 
   for(Integer i = 0; i < 6; i++)
   {
-    face = cell.face(QS2ArcaneFace2[i]);
+    face = cell.face(QS2ArcaneFace[i]);
 
     for (Integer j = 0; j < 4; j++)
     {
-      facet_index++;
-
-      Integer first_pos_node = QS2ArcaneNode2[i*4 + j];
-      Integer second_pos_node = QS2ArcaneNode2[i*4 + ((j == 3) ? 0 : j+1)];
+      Integer first_pos_node = QS2ArcaneNode[i*4 + j];
+      Integer second_pos_node = QS2ArcaneNode[i*4 + ((j == 3) ? 0 : j+1)];
 
       first_node = face.node(first_pos_node);
       second_node = face.node(second_pos_node);
@@ -483,9 +405,9 @@ generate3DCoordinate(Particle p)
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
 
-      if(current_volume >= which_volume) { break; }
+      if(current_volume >= which_volume) break;
     }
-    if(current_volume >= which_volume) { break; }
+    if(current_volume >= which_volume) break;
   }
 
   // Sample from the tet.
@@ -567,4 +489,16 @@ getSpeedFromEnergy(Particle p)
 
   return speed_of_light * sqrt(energy * (energy + 2.0*(rest_mass_energy)) /
                                 ((energy + rest_mass_energy) * (energy + rest_mass_energy)));
+}
+
+void InitMCModule::
+updateTallies()
+{
+  m_source = m_source_a;
+  m_rr = m_rr_a;
+  m_split = m_split_a;
+  
+  m_source_a = 0;
+  m_rr_a = 0;
+  m_split_a = 0;
 }

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <case codename="Quicksilver" xml:lang="en" codeversion="1.0">
   <arcane>
-    <title>Sample</title>
-    <timeloop>QuicksilverLoop</timeloop>
+    <title>Coral2_P1</title>
+    <timeloop>QAMALoop</timeloop>
   </arcane>
 
   <meshes>
@@ -42,11 +42,13 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
+    <lx>100.0</lx>
+    <ly>100.0</ly>
+    <lz>100.0</lz>
   </q-s>
 
   <init-m-c>
-    <!-- <fMax>0.1</fMax> --> <!-- N'est pas utilisé par QS original  max random mesh node displacement-->
-    <!-- <seed>1029384756</seed> --> <!-- N'est pas utilisé par QS original  random number seed-->
+    <nParticles>1000000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </init-m-c>
 
@@ -87,6 +89,7 @@
       <E>1</E>
       <nuBar>1.6</nuBar>
     </cross_section>
+
   </tracking-m-c>
 
 </case>

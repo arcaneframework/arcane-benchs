@@ -6,7 +6,6 @@
 #include "MC_Facet_Geometry.hh"
 #define MAX_PRODUCTION_SIZE 4
 
-bool ordre_qs3[]  = {true, true, false, false, false, true};
 
 
 void TrackingMCModule::
@@ -30,14 +29,11 @@ endModule()
 
 }
 
-
-/// Initializes both the NuclearData and the MaterialDatabase.  These
-/// two structures are inherently linked since the isotopeGids stored in
-/// the MaterialDatabase must correspond to the isotope indices in the
-/// NuclearData.
 void TrackingMCModule::
 initNuclearData()
 {
+  info() << "Initialisation des matériaux";
+
   Integer nb_cross_section = options()->cross_section().size();
 
   std::map<String, Polynomial> crossSection;
@@ -354,9 +350,6 @@ cycleTrackingGuts( Particle particle )
   //    Energy Group
   m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
 
-  // set the particle.task to the index of the processed vault the particle will census into.
-  m_particleTask[particle] = 0;//processed_vault;
-
   // loop over this particle until we cannot do anything more with it on this processor
   cycleTrackingFunction(particle);
   // if(particle_index < 11)
@@ -388,7 +381,7 @@ cycleTrackingFunction(Particle particle)
       //
 
       // Collision ou Census ou Facet crossing
-      Segment_Outcome_type segment_outcome = computeNextEvent(particle);
+      segmentOutcomeType segment_outcome = computeNextEvent(particle);
       m_numSegments_a++;
 
       
@@ -396,7 +389,7 @@ cycleTrackingFunction(Particle particle)
       m_particleNumSeg[particle] += 1.;  /* Track the number of segments this particle has
                                           undergone this cycle on all processes. */
       switch (segment_outcome) {
-      case Segment_Outcome_type::Collision:
+      case segmentOutcomeType::Collision1:
         {
           // The particle undergoes a collision event producing:
           //   (0) Other-than-one same-species secondary particle, or
@@ -421,29 +414,29 @@ cycleTrackingFunction(Particle particle)
         }
         break;
   
-      case Segment_Outcome_type::Facet_Crossing:
+      case segmentOutcomeType::Facet_Crossing:
         {
           // The particle has reached a cell facet.
-          Tally_Event facet_crossing_type = facetCrossingEvent(particle);
+          faceEvent facet_crossing_type = facetCrossingEvent(particle);
 
           // if(particle_index == 11 && DEBUG_compt < 10)
           // {
           //   info() << "   Passe ici !" << facet_crossing_type;
           // }
-          if (facet_crossing_type == Tally_Event::Facet_Crossing_Transit_Exit)
+          if (facet_crossing_type == faceEvent::Facet_Crossing_Transit_Exit)
           {
               keepTrackingThisParticle = true;  // Transit Event
           }
-          else if (facet_crossing_type == Tally_Event::Facet_Crossing_Escape)
+          else if (facet_crossing_type == faceEvent::Facet_Crossing_Escape)
           {
               m_escape_a++;
-              m_particleLastEvent[particle] = Tally_Event::Facet_Crossing_Escape;
+              m_particleLastEvent[particle] = faceEvent::Facet_Crossing_Escape;
               m_particleSpecies[particle] = -1;
               keepTrackingThisParticle = false;
               m_local_ids_exit.add(particle.localId());
 
           }
-          else if (facet_crossing_type == Tally_Event::Facet_Crossing_Reflection)
+          else if (facet_crossing_type == faceEvent::Facet_Crossing_Reflection)
           {
               reflectParticle(particle);
 
@@ -459,7 +452,7 @@ cycleTrackingFunction(Particle particle)
         }
         break;
   
-      case Segment_Outcome_type::Census:
+      case segmentOutcomeType::Census1:
         {
           // The particle has reached the end of the time step.
           m_local_ids_processed.add(particle.localId());
@@ -528,7 +521,7 @@ collisionEventSuite()
   m_local_ids_extra_angleOut_pSrc.clear();
 }
 
-Segment_Outcome_type TrackingMCModule::
+segmentOutcomeType TrackingMCModule::
 computeNextEvent(Particle particle)
 {
   // initialize distances to large number
@@ -583,15 +576,15 @@ computeNextEvent(Particle particle)
   // Forced collisions do not need to move far.
   if (force_collision)
   {
-    distance[Segment_Outcome_type::Collision] = PhysicalConstants::_smallDouble;
+    distance[segmentOutcomeType::Collision1] = PhysicalConstants::_smallDouble;
   }
   else
   {
-    distance[Segment_Outcome_type::Collision] = m_particleNumMeanFreeP[particle] * m_particleMeanFreeP[particle];
+    distance[segmentOutcomeType::Collision1] = m_particleNumMeanFreeP[particle] * m_particleMeanFreeP[particle];
   }
 
   // process census
-  distance[Segment_Outcome_type::Census] = particle_speed*m_particleTimeCensus[particle];
+  distance[segmentOutcomeType::Census1] = particle_speed*m_particleTimeCensus[particle];
 
 
   //  DEBUG  Turn off threshold for now
@@ -601,21 +594,21 @@ computeNextEvent(Particle particle)
 
 
   bool new_segment =  (m_particleNumSeg[particle] == 0 ||
-                        m_particleLastEvent[particle] == Tally_Event::Collision1);
+                        m_particleLastEvent[particle] == faceEvent::Collision);
 
   // Calculate the minimum distance to each facet of the cell.
   Nearest_Facet nearest_facet = getNearestFacet(particle, distance_threshold, current_best_distance, new_segment);
 
   m_particleNormalDot[particle] = nearest_facet.dot_product;
 
-  distance[Segment_Outcome_type::Facet_Crossing] = nearest_facet.distance_to_facet;
+  distance[segmentOutcomeType::Facet_Crossing] = nearest_facet.distance_to_facet;
   //info() << "Distance : " << nearest_facet.distance_to_facet << " " << nearest_facet.facet;
   //ARCANE_FATAL("aaa");
 
   // Get out of here if the tracker failed to bound this particle's volume.
-  if (m_particleLastEvent[particle] == Tally_Event::Facet_Crossing_Tracking_Error)
+  if (m_particleLastEvent[particle] == faceEvent::Facet_Crossing_Tracking_Error)
   {
-    return Segment_Outcome_type::Facet_Crossing;
+    return segmentOutcomeType::Facet_Crossing;
   }
 
   // Calculate the minimum distance to the selected events.
@@ -623,14 +616,14 @@ computeNextEvent(Particle particle)
   // Force a collision (if required).
   if ( force_collision == 1 )
   {
-    distance[Segment_Outcome_type::Facet_Crossing] = PhysicalConstants::_hugeDouble;
-    distance[Segment_Outcome_type::Census]         = PhysicalConstants::_hugeDouble;
-    distance[Segment_Outcome_type::Collision]      = PhysicalConstants::_tinyDouble ;
+    distance[segmentOutcomeType::Facet_Crossing] = PhysicalConstants::_hugeDouble;
+    distance[segmentOutcomeType::Census1]         = PhysicalConstants::_hugeDouble;
+    distance[segmentOutcomeType::Collision1]      = PhysicalConstants::_tinyDouble ;
   }
 
   // we choose our segment outcome here
-  Segment_Outcome_type segment_outcome =
-      (Segment_Outcome_type) findMin(distance);
+  segmentOutcomeType segment_outcome =
+      (segmentOutcomeType) findMin(distance);
   
 
   if (distance[segment_outcome] < 0)
@@ -641,9 +634,9 @@ computeNextEvent(Particle particle)
     //                 " Facet Crossing         = %g,\n"
     //                 " Census                 = %g,\n",
     //                 mc_particle.identifier,
-    //                 distance[Segment_Outcome_type::Collision],
-    //                 distance[Segment_Outcome_type::Facet_Crossing],
-    //                 distance[Segment_Outcome_type::Census]);
+    //                 distance[segmentOutcomeType::Collision],
+    //                 distance[segmentOutcomeType::Facet_Crossing],
+    //                 distance[segmentOutcomeType::Census]);
     qs_assert(false);
   }
   
@@ -652,17 +645,17 @@ computeNextEvent(Particle particle)
   m_particleNumMeanFreeP[particle] -= m_particleSegPathLength[particle] / m_particleMeanFreeP[particle];
 
   // Before using segment_outcome as an index, verify it is valid
-  if (segment_outcome < 0 || segment_outcome >= Segment_Outcome_type::Max_Number)
+  if (segment_outcome < 0 || segment_outcome >= segmentOutcomeType::Max_Number)
   {
     // ( "segment_outcome '%d' is invalid\n", (Integer)segment_outcome );
     qs_assert(false);
   }
 
-  Tally_Event SegmentOutcome_to_LastEvent[Segment_Outcome_type::Max_Number] =
+  faceEvent SegmentOutcome_to_LastEvent[segmentOutcomeType::Max_Number] =
   {
-    Tally_Event::Collision1,
-    Tally_Event::Facet_Crossing_Transit_Exit,
-    Tally_Event::Census1,
+    faceEvent::Collision,
+    faceEvent::Facet_Crossing_Transit_Exit,
+    faceEvent::Census,
   };
 
   m_particleLastEvent[particle] = SegmentOutcome_to_LastEvent[segment_outcome];
@@ -671,18 +664,18 @@ computeNextEvent(Particle particle)
   //   (i)   the distance to collision in the cell, or
   //   (ii)  the minimum distance to a facet of the cell, or
   //   (iii) the distance to census at the end of the time step
-  if (segment_outcome == Segment_Outcome_type::Collision)
+  if (segment_outcome == segmentOutcomeType::Collision1)
   {
     m_particleNumMeanFreeP[particle] = 0.0;
   }
 
-  else if (segment_outcome == Segment_Outcome_type::Facet_Crossing)
+  else if (segment_outcome == segmentOutcomeType::Facet_Crossing)
   {
     m_particleFace[particle] = nearest_facet.facet / 4;
     m_particleFacet[particle] = nearest_facet.facet; // TODO : pos global ([0, 24[), voir pour mettre pos local ([0, 4[)
   }
   
-  else if (segment_outcome == Segment_Outcome_type::Census)
+  else if (segment_outcome == segmentOutcomeType::Census1)
   {
     m_particleTimeCensus[particle] = std::min(m_particleTimeCensus[particle], 0.0);
   }
@@ -840,12 +833,12 @@ collisionEvent(Particle particle)
 }
 
 
-Tally_Event TrackingMCModule::
+faceEvent TrackingMCModule::
 facetCrossingEvent(Particle particle)
 {
   Face face = particle.cell().face(m_particleFace[particle]);
 
-  if ( m_boundaryCond[face] == Face_Adjacency_Event::Transit_On_Processor )
+  if ( m_boundaryCond[face] == faceAdjacencyEvent::Transit_On_Processor )
   {
     // The particle will enter into an adjacent cell.
     Cell cell = face.frontCell();
@@ -856,21 +849,21 @@ facetCrossingEvent(Particle particle)
     }
     
     m_particleFacet[particle]     = (m_particleFacet[particle] < 12 ? m_particleFacet[particle] + 12 : m_particleFacet[particle] - 12);
-    m_particleLastEvent[particle] = Tally_Event::Facet_Crossing_Transit_Exit;
+    m_particleLastEvent[particle] = faceEvent::Facet_Crossing_Transit_Exit;
 
     m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
   }
-  else if ( m_boundaryCond[face] == Face_Adjacency_Event::Boundary_Escape )
+  else if ( m_boundaryCond[face] == faceAdjacencyEvent::Boundary_Escape )
   {
     // The particle will escape across the system boundary.
-    m_particleLastEvent[particle] = Tally_Event::Facet_Crossing_Escape;
+    m_particleLastEvent[particle] = faceEvent::Facet_Crossing_Escape;
   }
-  else if ( m_boundaryCond[face] == Face_Adjacency_Event::Boundary_Reflection )
+  else if ( m_boundaryCond[face] == faceAdjacencyEvent::Boundary_Reflection )
   {
     // The particle will reflect off of the system boundary.
-    m_particleLastEvent[particle] = Tally_Event::Facet_Crossing_Reflection;
+    m_particleLastEvent[particle] = faceEvent::Facet_Crossing_Reflection;
   }
-  else if ( m_boundaryCond[face] == Face_Adjacency_Event::Transit_Off_Processor )
+  else if ( m_boundaryCond[face] == faceAdjacencyEvent::Transit_Off_Processor )
   {
     // The particle will enter into an adjacent cell on a spatial neighbor.
     
@@ -884,13 +877,13 @@ facetCrossingEvent(Particle particle)
     m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
 
     m_particleFacet[particle]     = (m_particleFacet[particle] < 12 ? m_particleFacet[particle] + 12 : m_particleFacet[particle] - 12);
-    m_particleLastEvent[particle] = Tally_Event::Facet_Crossing_Communication;
+    m_particleLastEvent[particle] = faceEvent::Facet_Crossing_Communication;
 
     m_local_ids_out.add(particle.localId());
     m_rank_out.add(cell.owner());
   }
 
-  return (Tally_Event) m_particleLastEvent[particle];
+  return (faceEvent) m_particleLastEvent[particle];
 }
 
 
@@ -902,8 +895,8 @@ reflectParticle(Particle particle)
     Cell cell = particle.cell();
     Face face = cell.face(m_particleFace[particle]);
 
-    Integer first_pos_node = (ordre_qs3[m_indexArc[face]] ? ((facet == 3) ? 0 : facet+1) : facet);
-    Integer second_pos_node = (ordre_qs3[m_indexArc[face]] ? facet : ((facet == 3) ? 0 : facet+1));
+    Integer first_pos_node = (ordre_qs[m_indexArc[face]] ? ((facet == 3) ? 0 : facet+1) : facet);
+    Integer second_pos_node = (ordre_qs[m_indexArc[face]] ? facet : ((facet == 3) ? 0 : facet+1));
 
     Node first_node = face.node(first_pos_node);
     Node second_node = face.node(second_pos_node);
@@ -979,9 +972,7 @@ copyParticle(Particle pSrc, Particle pNew)
   m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
   m_particleNumColl[pNew] = m_particleNumColl[pSrc];
   m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
-  m_particleTask[pNew] = m_particleTask[pSrc];
   m_particleSpecies[pNew] = m_particleSpecies[pSrc];
-  m_particleBreed[pNew] = m_particleBreed[pSrc];
   m_particleEneGrp[pNew] = m_particleEneGrp[pSrc];
   m_particleFace[pNew] = m_particleFace[pSrc];
   m_particleFacet[pNew] = m_particleFacet[pSrc];
@@ -1128,8 +1119,8 @@ computeFindNearestFacet(Particle particle)
         //{
         //  ARCANE_FATAL("Erreur facet index");
         //}
-        Integer first_pos_node = (ordre_qs3[iface.index()] ? ((i == 3) ? 0 : i+1) : i);
-        Integer second_pos_node = (ordre_qs3[iface.index()] ? i : ((i == 3) ? 0 : i+1));
+        Integer first_pos_node = (ordre_qs[iface.index()] ? ((i == 3) ? 0 : i+1) : i);
+        Integer second_pos_node = (ordre_qs[iface.index()] ? i : ((i == 3) ? 0 : i+1));
 
         Node first_node = face.node(first_pos_node);
         Node second_node = face.node(second_pos_node);

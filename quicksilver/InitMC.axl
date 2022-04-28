@@ -264,18 +264,6 @@
         dump="true"
         need-sync="true" />
 
-
-    <variable
-        field-name="particleTask"
-        name="ParticleTask"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-
     <variable
         field-name="particleSpecies"
         name="ParticleSpecies"
@@ -285,18 +273,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
-
-    <variable
-        field-name="particleBreed"
-        name="ParticleBreed"
-        family-name="ArcaneParticles"
-        data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
 
     <variable
         field-name="particleEneGrp"

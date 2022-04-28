@@ -41,15 +41,6 @@
         need-sync="true" />
 
     <variable
-        field-name="coord"
-        name="Coord"
-        data-type="real"
-        item-kind="node"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-    <variable
         field-name="coordCm"
         name="CoordCm"
         data-type="real"
@@ -59,26 +50,8 @@
         need-sync="true" />
 
     <variable
-        field-name="coordMid"
-        name="CoordMid"
-        data-type="real"
-        item-kind="face"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-    <variable
         field-name="coordMidCm"
         name="CoordMidCm"
-        data-type="real"
-        item-kind="face"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-     <variable
-        field-name="coordFace"
-        name="CoordFace"
         data-type="real"
         item-kind="face"
         dim="1"
@@ -274,39 +247,6 @@
         dump="true"
         need-sync="true" />
 
-    <variable
-        field-name="particleCoord"
-        name="ParticleCoord"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="particleVelocity"
-        name="ParticleVelocity"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-
-    <variable
-        field-name="particleDirCos"
-        name="ParticleDirCos"
-        family-name="ArcaneParticles"
-        data-type="real"
-        item-kind="particle"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-
-
   </variables>
 
   <entry-points>
@@ -366,11 +306,11 @@
     </simple>
 
     <enumeration name="boundaryCondition" type="eBoundaryCondition" default="reflect">
-        <description>Type de condition au limites</description>
-        <enumvalue name="reflect" genvalue="reflect"  />
-        <enumvalue name="escape" genvalue="escape" />
-        <enumvalue name="octant" genvalue="octant"  />
-      </enumeration>
+      <description>Type de condition au limites</description>
+      <enumvalue name="reflect" genvalue="reflect"  />
+      <enumvalue name="escape" genvalue="escape" />
+      <enumvalue name="octant" genvalue="octant"  />
+    </enumeration>
 
   </options>
 

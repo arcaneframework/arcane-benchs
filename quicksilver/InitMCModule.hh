@@ -25,31 +25,14 @@
 #include "arcane/materials/MeshEnvironmentVariableRef.h"
 #include "arcane/materials/MaterialVariableBuildInfo.h"
 #include "arcane/materials/MeshEnvironmentBuildInfo.h"
+#include "structEnum.hh"
+
 #include "InitMC_axl.h"
 
 #include "MC_Vector.hh"
 
 
-enum CosDir
-{
-  MD_DirA = 0, // Alpha
-  MD_DirB,     // Beta
-  MD_DirG      // Gamma
-};
-enum Tally_Event
-{
-  Collision1,
-  Facet_Crossing_Transit_Exit,
-  Census1,
-  Facet_Crossing_Tracking_Error,
-  Facet_Crossing_Escape,
-  Facet_Crossing_Reflection,
-  Facet_Crossing_Communication
-};
-
-
 using namespace Arcane;
-using namespace Arcane::Materials;
 
 /*!
  * \brief Module InitMC.
@@ -69,14 +52,12 @@ public:
 public:
   IItemFamily* m_particle_family;
   ParticleVectorView m_processingView;
-  Int32UniqueArray m_local_ids_processed;
   Real m_source_particle_weight;
-  std::atomic<Int64> m_source_a{0}; // TODO A partager
+
+  std::atomic<Int64> m_source_a{0};
   std::atomic<Int64> m_rr_a{0};
   std::atomic<Int64> m_split_a{0};
 
-  ICartesianMesh* m_cartesian_mesh;
-  Arcane::Materials::IMeshMaterialMng* m_material_mng;
 
 public:
   void updateTallies();
@@ -84,8 +65,8 @@ public:
   void sourceParticles();
   void populationControl();
   void populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles);
-  void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
-  void copyParticle(Particle pSrc, Particle pNew);
+  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
+  void cloneParticle(Particle pSrc, Particle pNew);
   Real computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3);
 
   void rouletteLowWeightParticles();
