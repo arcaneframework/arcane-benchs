@@ -84,7 +84,7 @@ namespace
 {
 HOST_DEVICE
   // Function used to hash a 64 bit int to get an initial state.
-  Int64 hash_state( Int64 initial_number )
+  uint64_t hash_state( uint64_t initial_number )
   {
     // break initial number apart into 2 32 bit ints
     uint32_t front_bits, back_bits;
@@ -95,7 +95,7 @@ HOST_DEVICE
     
     // put the hashed parts together into 1 64 bit int
     uint64_t fin = reconstruct_uint64( front_bits, back_bits );
-    fin &= ~(1UL << 63);
+    //fin &= ~(1UL << 63);
     return fin;
   }
 HOST_DEVICE_END

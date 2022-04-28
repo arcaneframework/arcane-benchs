@@ -38,7 +38,7 @@ protected:
   void cycleFinalizeTallies();
   void initMesh();
   void initTallies();
-  faceAdjacencyEvent getBoundaryCondition(Integer pos);
+  particleEvent getBoundaryCondition(Integer pos);
 };
 
 /*---------------------------------------------------------------------------*/

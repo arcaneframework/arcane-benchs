@@ -27,7 +27,7 @@
 #include "arcane/materials/MeshEnvironmentBuildInfo.h"
 #include "structEnum.hh"
 
-#include "InitMC_axl.h"
+#include "SamplingMC_axl.h"
 
 #include "MC_Vector.hh"
 
@@ -35,12 +35,12 @@
 using namespace Arcane;
 
 /*!
- * \brief Module InitMC.
+ * \brief Module SamplingMC.
  */
-class InitMCModule : 
-public ArcaneInitMCObject {
+class SamplingMCModule : 
+public ArcaneSamplingMCObject {
 public:
-  explicit InitMCModule(const ModuleBuildInfo &mbi) : ArcaneInitMCObject(mbi) {}
+  explicit SamplingMCModule(const ModuleBuildInfo &mbi) : ArcaneSamplingMCObject(mbi) {}
 
 public:
   void initModule() override;
@@ -65,8 +65,8 @@ public:
   void sourceParticles();
   void populationControl();
   void populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles);
-  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
-  void cloneParticle(Particle pSrc, Particle pNew);
+  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
+  void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
   Real computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3);
 
   void rouletteLowWeightParticles();
@@ -80,7 +80,7 @@ public:
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-ARCANE_REGISTER_MODULE_INITMC(InitMCModule);
+ARCANE_REGISTER_MODULE_SAMPLINGMC(SamplingMCModule);
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/

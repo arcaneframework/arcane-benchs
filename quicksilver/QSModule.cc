@@ -63,13 +63,13 @@ initMesh()
   m_eMax = options()->getEMax();
   m_nGroups = options()->getNGroups();
 
-  Real lx = options()->getLx();
-  Real ly = options()->getLy();
-  Real lz = options()->getLz();
+  m_lx = options()->getLx();
+  m_ly = options()->getLy();
+  m_lz = options()->getLz();
 
-  Real dx = lx / m_nx;
-  Real dy = ly / m_ny;
-  Real dz = lz / m_nz;
+  Real dx = m_lx() / m_nx;
+  Real dy = m_ly() / m_ny;
+  Real dz = m_lz() / m_nz;
 
   // Extrait de GlobalFccGrid.cc.
   UniqueArray<IntegerUniqueArray> offset;
@@ -91,9 +91,6 @@ initMesh()
   offset.push_back(IntegerUniqueArray{1, 0, 0, 1}); // 8
   offset.push_back(IntegerUniqueArray{0, 1, 0, 2}); // 10
   
-  bool ordre_qs[]  = {true, true, false, false, false, true};
-
-
   // Ici, les cells ont déjà une numérotation (cell.uniqueId() (G)  ou  cell.localId() (L))
   // On doit numéroter les nodes selon cell.uniqueId.
   //////////////////// Début Numérotation Node/Face /////////////////////////
@@ -184,22 +181,18 @@ initMesh()
       // Si la face est au bord du sous-domaine.
       else if(face.frontCell().owner() != face.backCell().owner())
       {
-        m_boundaryCond[iface] = faceAdjacencyEvent::Transit_Off_Processor;
+        m_boundaryCond[iface] = particleEvent::subDChange;
       }
       // Face interne au sous-domaine.
       else
       {
-        m_boundaryCond[iface] = faceAdjacencyEvent::Transit_On_Processor;
+        m_boundaryCond[iface] = particleEvent::cellChange;
       }
       
-
       for (Integer i = 0; i < 4; i++)
       {
-        Integer first_pos_node = (ordre_qs[iface.index()] ? ((i == 3) ? 0 : i+1) : i);
-        Integer second_pos_node = (ordre_qs[iface.index()] ? i : ((i == 3) ? 0 : i+1));
-
-        Node first_node = face.node(first_pos_node);
-        Node second_node = face.node(second_pos_node);
+        Node first_node  = face.node(i);
+        Node second_node = face.node(((i == 3) ? 0 : i+1));
 
         MC_Vector aa = MC_Vector(m_coordCm[first_node]) - cellCenter;
         MC_Vector bb = MC_Vector(m_coordCm[second_node]) - cellCenter;
@@ -212,9 +205,7 @@ initMesh()
     volume /= 6.0;
 
     m_volume[cell] = volume;
-    //////////////////// Fin Volume Cell /////////////////////////
   }
-  //////////////////// Fin Numérotation Node/Face /////////////////////////
 
   m_total.fill(0.0);
   m_cellNumberDensity.fill(1.0);
@@ -224,7 +215,7 @@ initMesh()
 void QSModule::
 initTallies()
 {
-  info() << "Initialisation des tallies";
+  info() << "Init tallies";
   m_absorb = 0;      // Number of particles absorbed
   m_census = 0;      // Number of particles that enter census
   m_escape = 0;      // Number of particles that escape
@@ -261,21 +252,21 @@ cycleFinalizeTallies()
   m_start.reduce(Parallel::ReduceSum); // Non utilisée dans code d'origine.
   m_end.reduce(Parallel::ReduceSum); // Non utilisée dans code d'origine.
 
-  info() << "Fin itération #" << m_global_iteration();
-  info() << "Informations :";
-  //info() << "m_start : " << m_start.value();
-  info() << "m_source : " << m_source.value();
-  info() << "m_rr : " << m_rr.value();
-  info() << "m_split : " << m_split.value();
-  info() << "m_absorb : " << m_absorb.value();
-  info() << "m_scatter : " << m_scatter.value();
-  info() << "m_fission : " << m_fission.value();
-  info() << "m_produce : " << m_produce.value();
-  info() << "m_collision : " << m_collision.value();
-  info() << "m_escape : " << m_escape.value();
-  info() << "m_census : " << m_census.value();
-  info() << "m_numSegments : " << m_numSegments.value();
-  //info() << "m_end : " << m_end.value();
+  info() << "End iteration #" << m_global_iteration();
+  info() << "  Informations:";
+  //info() << "Number of particles at beginning of cycle (m_start): " << m_start.value();
+  info() << "    Number of particles sourced in                          (m_source): " << m_source.value();
+  info() << "    Number of particles Russian Rouletted in population control (m_rr): " << m_rr.value();
+  info() << "    Number of particles split in population control          (m_split): " << m_split.value();
+  info() << "    Number of particles absorbed                            (m_absorb): " << m_absorb.value();
+  info() << "    Number of scatters                                     (m_scatter): " << m_scatter.value();
+  info() << "    Number of fission events                               (m_fission): " << m_fission.value();
+  info() << "    Number of particles created by collisions              (m_produce): " << m_produce.value();
+  info() << "    Number of collisions                                 (m_collision): " << m_collision.value();
+  info() << "    Number of particles that escape                         (m_escape): " << m_escape.value();
+  info() << "    Number of particles that enter census                   (m_census): " << m_census.value();
+  info() << "    Number of segements                                (m_numSegments): " << m_numSegments.value();
+  //info() << "Number of particles at end of cycle (m_end): " << m_end.value();
 
   m_absorb = 0;
   m_census = 0;
@@ -292,24 +283,24 @@ cycleFinalizeTallies()
 }
 
 
-faceAdjacencyEvent QSModule::
+particleEvent QSModule::
 getBoundaryCondition(Integer pos)
 {
   switch (options()->getBoundaryCondition())
   {
-  case eBoundaryCondition::reflect:
-    return faceAdjacencyEvent::Boundary_Reflection;
+  case eBoundaryCondition::REFLECT:
+    return particleEvent::reflection;
 
-  case eBoundaryCondition::escape:
-    return faceAdjacencyEvent::Boundary_Escape;
+  case eBoundaryCondition::ESCAPE:
+    return particleEvent::escape;
 
-  case eBoundaryCondition::octant:
-    if (pos % 2 == 0) return faceAdjacencyEvent::Boundary_Escape;
-    if (pos % 2 == 1) return faceAdjacencyEvent::Boundary_Reflection;
+  case eBoundaryCondition::OCTANT:
+    if (pos % 2 == 0) return particleEvent::escape;
+    if (pos % 2 == 1) return particleEvent::reflection;
   
   default:
     qs_assert(false);
-    return faceAdjacencyEvent::Adjacency_Undefined;
+    return particleEvent::undefined;
   }
 }
 
@@ -346,5 +337,23 @@ getBoundaryCondition(Integer pos)
 *I-QS         m_census : 943222
 *I-QS         m_numSegments : 5835735
 *I-QS         m_end : 0
+
+*I-TrackingMC P0 - End SubIter #6 : Total number of particles processed : 1305004
+*I-QS         End iteration #1
+*I-QS           Informations:
+*I-QS             Number of particles sourced in                          (m_source): 100000
+*I-QS             Number of particles Russian Rouletted in population control (m_rr): 0
+*I-QS             Number of particles split in population control          (m_split): 900000
+*I-QS             Number of particles absorbed                            (m_absorb): 203537
+*I-QS             Number of scatters                                     (m_scatter): 5084900
+*I-QS             Number of fission events                               (m_fission): 253874
+*I-QS             Number of particles created by collisions              (m_produce): 406376
+*I-QS             Number of collisions                                 (m_collision): 5542311
+*I-QS             Number of particles that escape                         (m_escape): 0
+*I-QS             Number of particles that enter census                   (m_census): 948965
+*I-QS             Number of segements                                (m_numSegments): 7042210
+
+
+
 
 */

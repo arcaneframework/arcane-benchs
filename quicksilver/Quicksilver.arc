@@ -47,10 +47,10 @@
     <lz>100.0</lz>
   </q-s>
 
-  <init-m-c>
+  <sampling-m-c>
     <nParticles>1000000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
-  </init-m-c>
+  </sampling-m-c>
 
   <tracking-m-c>
     

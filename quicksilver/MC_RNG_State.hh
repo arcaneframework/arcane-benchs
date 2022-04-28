@@ -34,12 +34,12 @@ HOST_DEVICE
 inline Real rngSample(Int64 *seed)
 {
   // Reset the state from the previous value.
-  *seed = 2862933555777941757L*(*seed) + 3037000493L;
-  *seed &= ~(1UL << 63);
+  *seed = 2862933555777941757ULL * (uint64_t)(*seed) + 3037000493ULL;
+  //*seed &= ~(1UL << 63);
   // Map the int state in (0,2**64) to double (0,1)
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.
-  volatile Real fin = 5.4210108624275222e-20 * (*seed);
+  volatile Real fin = 5.4210108624275222e-20 * (uint64_t)(*seed);
   if(fin < 0) qs_assert(false);
   return fin;
 }

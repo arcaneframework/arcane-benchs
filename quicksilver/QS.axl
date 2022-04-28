@@ -30,6 +30,33 @@
         dim="0"
         dump="true"
         need-sync="true" />
+
+    <variable
+        field-name="lx"
+        name="Lx"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="ly"
+        name="Ly"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="lz"
+        name="Lz"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
   
     <variable
         field-name="volume"
@@ -307,9 +334,9 @@
 
     <enumeration name="boundaryCondition" type="eBoundaryCondition" default="reflect">
       <description>Type de condition au limites</description>
-      <enumvalue name="reflect" genvalue="reflect"  />
-      <enumvalue name="escape" genvalue="escape" />
-      <enumvalue name="octant" genvalue="octant"  />
+      <enumvalue name="reflect" genvalue="REFLECT"  />
+      <enumvalue name="escape" genvalue="ESCAPE" />
+      <enumvalue name="octant" genvalue="OCTANT"  />
     </enumeration>
 
   </options>

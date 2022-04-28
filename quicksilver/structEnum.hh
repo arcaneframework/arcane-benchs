@@ -4,7 +4,7 @@
 using namespace Arcane;
 
 
-enum eBoundaryCondition{reflect, escape, octant};
+enum eBoundaryCondition{REFLECT, ESCAPE, OCTANT};
 enum eShape{UNDEFINED, BRICK, SPHERE};
 
 enum cosDir
@@ -14,45 +14,16 @@ enum cosDir
   MD_DirG      // Gamma
 };
 
-enum faceEvent
-{
-  Collision,
-  Facet_Crossing_Transit_Exit,
-  Census,
-  Facet_Crossing_Tracking_Error,
-  Facet_Crossing_Escape,
-  Facet_Crossing_Reflection,
-  Facet_Crossing_Communication
-};
-
-enum faceAdjacencyEvent
-{
-  Adjacency_Undefined = 0,
-  Boundary_Escape,
-  Boundary_Reflection,
-  Transit_On_Processor,
-  Transit_Off_Processor
-};
-
-enum segmentOutcomeType
-{
-  Initialize                    = -1,
-  Collision1                     = 0,
-  Facet_Crossing                = 1,
-  Census1                        = 2,
-  Max_Number                    = 3
-};
-
 enum particleEvent
 {
-  undefined,
   collision,
   census,
-  faceEscape,
-  faceReflection,
+  faceEventUndefined,
+  escape,
+  reflection,
   cellChange,
-  sdChange,
-  errorEvent
+  subDChange,
+  undefined
 };
 
 struct Nearest_Facet
@@ -81,7 +52,7 @@ struct Distance_To_Facet
     {}
 };
 
-static bool ordre_qs[]  = {true, true, false, false, false, true};
+static bool scan_order[]  = {true, true, false, false, false, true};
 
 static Integer QS2ArcaneFace[] = {4, 1, 5, 2, 3, 0};
 

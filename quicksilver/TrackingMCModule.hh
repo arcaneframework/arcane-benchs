@@ -67,6 +67,7 @@ public:
   Int32UniqueArray m_local_ids_extra_srcP;   //Particle localId source
   Int32UniqueArray m_local_ids_extra_cellId; //Cell localId dst
   Int64UniqueArray m_local_ids_extra_gId;    //Futur globalId
+  Int64UniqueArray m_local_ids_extra_rns;
   RealUniqueArray  m_local_ids_extra_energyOut;    //updateTrajectory
   RealUniqueArray  m_local_ids_extra_angleOut;    //updateTrajectory
   RealUniqueArray  m_local_ids_extra_energyOut_pSrc;    //updateTrajectory
@@ -94,19 +95,16 @@ public:
   void cycleTrackingGuts( Particle particle );
   void cycleTrackingFunction(Particle particle);
   void collisionEventSuite();
-  segmentOutcomeType computeNextEvent(Particle particle);
+  void computeNextEvent(Particle particle);
   Integer collisionEvent(Particle particle);
-  faceEvent facetCrossingEvent(Particle particle);
+  void facetCrossingEvent(Particle particle);
   void reflectParticle(Particle particle);
-  void copyParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew);
-  void copyParticle(Particle pSrc, Particle pNew);
+  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
+  void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
   void updateTrajectory( Real energy, Real angle, Particle particle );
   Real weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
   Real macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup);
-  Nearest_Facet getNearestFacet( Particle particle, Real distance_threshold,
-                        Real current_best_distance,
-                        bool new_segment);
-  Nearest_Facet computeFindNearestFacet(Particle particle);
+  Nearest_Facet getNearestFacet( Particle particle);
   Real distanceToSegmentFacet(Real plane_tolerance,
                                                       Real facet_normal_dot_direction_cosine,//=
                                                       Real A, Real B, Real C, Real D,//=
@@ -121,8 +119,6 @@ public:
                                     Distance_To_Facet *distance_to_facet,
                                     Integer &retry /* output */ );
   Nearest_Facet nearestFacet( Distance_To_Facet *distance_to_facet);
-  void nearestFacet3DMoveParticle( Particle particle, // input/output: move this coordinate
-                              Real move_factor);
   template<typename T>
   Integer findMin(UniqueArray<T> array);
   void rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi);

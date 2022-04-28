@@ -1,6 +1,6 @@
 // -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 
-#include "InitMCModule.hh"
+#include "SamplingMCModule.hh"
 #include "NVTX_Range.hh"
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
@@ -8,7 +8,7 @@
 
 
 
-void InitMCModule::
+void SamplingMCModule::
 initModule()
 {
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
@@ -24,7 +24,7 @@ initModule()
 }
 
 
-void InitMCModule::
+void SamplingMCModule::
 cycleInit()
 {
   clearCrossSectionCache();
@@ -32,16 +32,23 @@ cycleInit()
 
   // Création des particules.
   sourceParticles();
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SourceParticles: " << m_source_a << " particle(s) created.";
+
 
   // Réduction ou augmentation du nombre de particules.
   populationControl(); // controls particle population
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - PopulationControl: " << m_rr_a << " particle(s) killed / " << m_split_a << " particle(s) created by splitting.";
+
+  Int64 tmpLog = m_rr_a;
 
   // Roulette sur les particules avec faible poids.
   rouletteLowWeightParticles(); // Delete particles with low statistical weight
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog << " particle(s) killed.";
+
   updateTallies();
 }
 
-void InitMCModule::
+void SamplingMCModule::
 endModule()
 {
 }
@@ -49,7 +56,7 @@ endModule()
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-void InitMCModule::
+void SamplingMCModule::
 clearCrossSectionCache()
 {
   ENUMERATE_CELL(icell, ownCells())
@@ -62,7 +69,7 @@ clearCrossSectionCache()
 }
 
 
-void InitMCModule::
+void SamplingMCModule::
 sourceParticles()
 {
   NVTX_Range range("MC_Source_Now");
@@ -120,7 +127,10 @@ sourceParticles()
       random_number_seed += (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
 
       rns = rngSpawn_Random_Number_Seed(&random_number_seed);
+      //rns &= ~(1UL << 63);
+
       id = random_number_seed;
+      id &= ~(1UL << 63);
 
       rng[particle_index_g] = rns;
       uids[particle_index_g] = id;
@@ -129,7 +139,6 @@ sourceParticles()
       particle_index_g++;
     }
   }
-
   m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells, particles_lid);
   m_particle_family->endUpdate();
 
@@ -166,7 +175,7 @@ sourceParticles()
 }
 
 
-void InitMCModule::
+void SamplingMCModule::
 populationControl()
 {
   NVTX_Range range("populationControl");
@@ -184,7 +193,7 @@ populationControl()
 }
 
 
-void InitMCModule::
+void SamplingMCModule::
 populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
 {
   // March backwards through the vault so killed particles doesn't mess up the indexing
@@ -213,6 +222,7 @@ populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
   else if (splitRRFactor > 1)
   {
     Int64UniqueArray addIdP;
+    Int64UniqueArray addRns;
     Int32UniqueArray addCellIdP;
     Int32UniqueArray addSrcP;
     ENUMERATE_PARTICLE(iparticle, m_processingView)
@@ -231,6 +241,8 @@ populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
         m_split_a++;
 
         Int64 rns = rngSpawn_Random_Number_Seed(&m_particleRNS[iparticle]);
+        addRns.add(rns);
+        rns &= ~(1UL << 63);
         addIdP.add(rns);
         addCellIdP.add(particle.cell().localId());
         addSrcP.add(iparticle.localId());
@@ -241,13 +253,13 @@ populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles)
     m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
     m_particle_family->toParticleFamily()->endUpdate();
 
-    cloneParticles(addSrcP, particles_lid);
+    cloneParticles(addSrcP, particles_lid, addRns);
   }
 
   m_processingView = m_particle_family->view();
 }
 
-void InitMCModule::
+void SamplingMCModule::
 initParticle(Particle p, Int64 rns)
 {
   m_particleRNS[p] = rns;
@@ -281,22 +293,22 @@ initParticle(Particle p, Int64 rns)
   m_particleNormalDot[p] = 0.0;
 }
 
-void InitMCModule::
-cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew)
+void SamplingMCModule::
+cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew)
 {
   ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
   ParticleVectorView viewNewP = m_particle_family->view(idsNew);
   ENUMERATE_PARTICLE(iparticle, viewSrcP)
   {
     Particle pNew(viewNewP[iparticle.index()].internal());
-    cloneParticle((*iparticle), pNew);
+    cloneParticle((*iparticle), pNew, rnsNew[iparticle.index()]);
   }
 }
 
-void InitMCModule::
-cloneParticle(Particle pSrc, Particle pNew)
+void SamplingMCModule::
+cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
 {
-  m_particleRNS[pNew] = pNew.uniqueId().asInt64();
+  m_particleRNS[pNew] = rns;
 
   m_particleCoord[pNew][MD_DirX] = m_particleCoord[pSrc][MD_DirX];
   m_particleCoord[pNew][MD_DirY] = m_particleCoord[pSrc][MD_DirY];
@@ -328,7 +340,7 @@ cloneParticle(Particle pSrc, Particle pNew)
   m_particleNormalDot[pNew] = m_particleNormalDot[pSrc];
 }
 
-void InitMCModule::
+void SamplingMCModule::
 rouletteLowWeightParticles()
 {
   NVTX_Range range("rouletteLowWeightParticles");
@@ -368,7 +380,7 @@ rouletteLowWeightParticles()
   }
 }
 
-void InitMCModule::
+void SamplingMCModule::
 generate3DCoordinate(Particle p)
 {
   Cell cell = p.cell();
@@ -451,7 +463,7 @@ generate3DCoordinate(Particle p)
 ///  \return 6 times the volume of the tet.
 ///
 ///  subtract v3 from v0, v1 and v2.  Then take the triple product of v0, v1 and v2.
-Real InitMCModule::
+Real SamplingMCModule::
 computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3)
 {
   MC_Vector v0(v0_), v1(v1_), v2(v2_);
@@ -467,19 +479,19 @@ computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2
 }
 
 
-void InitMCModule::
+void SamplingMCModule::
 sampleIsotropic(Particle p)
 {
-  m_particleDirCos[p][MD_DirG] = 1.0 - 2.0*(uint64_t)rngSample(&m_particleRNS[p]);
+  m_particleDirCos[p][MD_DirG] = 1.0 - 2.0*rngSample(&m_particleRNS[p]);
   Real sine_gamma  = sqrt((1.0 - (m_particleDirCos[p][MD_DirG]*m_particleDirCos[p][MD_DirG])));
-  Real phi         = PhysicalConstants::_pi*(2.0*(uint64_t)rngSample(&m_particleRNS[p]) - 1.0);
+  Real phi         = PhysicalConstants::_pi*(2.0*rngSample(&m_particleRNS[p]) - 1.0);
 
   m_particleDirCos[p][MD_DirA]  = sine_gamma * cos(phi);
   m_particleDirCos[p][MD_DirB]  = sine_gamma * sin(phi);
 }
 
 
-Real InitMCModule::
+Real SamplingMCModule::
 getSpeedFromEnergy(Particle p)
 {
   Real energy = m_particleKinEne[p];
@@ -491,7 +503,7 @@ getSpeedFromEnergy(Particle p)
                                 ((energy + rest_mass_energy) * (energy + rest_mass_energy)));
 }
 
-void InitMCModule::
+void SamplingMCModule::
 updateTallies()
 {
   m_source = m_source_a;

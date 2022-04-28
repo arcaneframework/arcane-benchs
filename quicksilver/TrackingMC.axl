@@ -32,6 +32,33 @@
         need-sync="true" />
 
     <variable
+        field-name="lx"
+        name="Lx"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="ly"
+        name="Ly"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="lz"
+        name="Lz"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
         field-name="coordCm"
         name="CoordCm"
         data-type="real"
@@ -498,10 +525,10 @@
 	  </service-instance>
 
     <!-- Infos sur les Geometry -->
-    <complex name="geometry" type="Geometry" minOccurs="0" maxOccurs="unbounded">
+    <complex name="geometry" type="Geometry" minOccurs="1" maxOccurs="unbounded">
       <description>Geometrie</description>
 
-      <simple name="material" type="string" default="sourceMaterial">
+      <simple name="material" type="string" default="defaultMaterial">
         <description>material de la geometrie</description>
       </simple>
 
@@ -514,55 +541,55 @@
 
 
       <!-- Si brick -->
-      <simple name="xMax" type="real" default="0.0">
+      <simple name="xMax" type="real" default="-1.0">
         <description>xMax</description>
       </simple>
 
-      <simple name="xMin" type="real" default="0.0">
+      <simple name="xMin" type="real" default="-1.0">
         <description>xMin</description>
       </simple>
 
-      <simple name="yMax" type="real" default="0.0">
+      <simple name="yMax" type="real" default="-1.0">
         <description>yMax</description>
       </simple>
 
-      <simple name="yMin" type="real" default="0.0">
+      <simple name="yMin" type="real" default="-1.0">
         <description>yMin</description>
       </simple>
 
-      <simple name="zMax" type="real" default="0.0">
+      <simple name="zMax" type="real" default="-1.0">
         <description>zMax</description>
       </simple>
 
-      <simple name="zMin" type="real" default="0.0">
+      <simple name="zMin" type="real" default="-1.0">
         <description>zMin</description>
       </simple>
 
 
       <!-- Si sphere -->
-      <simple name="radius" type="real" default="0.0">
+      <simple name="radius" type="real" default="-1.0">
         <description>radius</description>
       </simple>
 
-      <simple name="xCenter" type="real" default="0.0">
+      <simple name="xCenter" type="real" default="-1.0">
         <description>xCenter</description>
       </simple>
 
-      <simple name="yCenter" type="real" default="0.0">
+      <simple name="yCenter" type="real" default="-1.0">
         <description>yCenter</description>
       </simple>
 
-      <simple name="zCenter" type="real" default="0.0">
+      <simple name="zCenter" type="real" default="-1.0">
         <description>zCenter</description>
       </simple>
 
     </complex>
 
     <!-- Infos sur les materiaux -->
-    <complex name="material" type="Material" minOccurs="0" maxOccurs="unbounded">
+    <complex name="material" type="Material" minOccurs="1" maxOccurs="unbounded">
       <description>Materiaux</description>
 
-      <simple name="name" type="string" default="sourceMaterial">
+      <simple name="name" type="string" default="defaultMaterial">
         <description>Nom du materiau</description>
       </simple>
 
@@ -586,15 +613,15 @@
         <description>sourceRate</description>
       </simple>
 
-      <simple name="scatteringCrossSection" type="string" default="flat">
+      <simple name="scatteringCrossSection" type="string" default="defaultCS">
         <description>scatteringCrossSection</description>
       </simple>
 
-      <simple name="absorptionCrossSection" type="string" default="flat">
+      <simple name="absorptionCrossSection" type="string" default="defaultCS">
         <description>absorptionCrossSection</description>
       </simple>
 
-      <simple name="fissionCrossSection" type="string" default="flat">
+      <simple name="fissionCrossSection" type="string" default="defaultCS">
         <description>fissionCrossSection</description>
       </simple>
 
@@ -614,10 +641,10 @@
 
 
     <!-- Infos sur les CrossSection -->
-    <complex name="cross_section" type="CrossSection" minOccurs="0" maxOccurs="unbounded">
+    <complex name="cross_section" type="CrossSection" minOccurs="1" maxOccurs="unbounded">
       <description>CrossSection</description>
 
-      <simple name="name" type="string" default="flat">
+      <simple name="name" type="string" default="defaultCS">
         <description>Nom de la CrossSection</description>
       </simple>
 
@@ -637,7 +664,7 @@
         <description>dd</description>
       </simple>
 
-      <simple name="E" type="real" default="0.0">
+      <simple name="E" type="real" default="1.0">
         <description>ee</description>
       </simple>
 
