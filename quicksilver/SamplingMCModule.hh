@@ -34,8 +34,9 @@
 
 using namespace Arcane;
 
-/*!
- * \brief Module SamplingMC.
+/**
+ * @brief Module SamplingMC.
+ * Module permettant de créer des particules et de controler la population.
  */
 class SamplingMCModule : 
 public ArcaneSamplingMCObject {
@@ -49,26 +50,25 @@ public:
   
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
-public:
+protected:
   IItemFamily* m_particle_family;
   ParticleVectorView m_processingView;
   Real m_source_particle_weight;
 
+  std::atomic<Int64> m_start_a{0};
   std::atomic<Int64> m_source_a{0};
   std::atomic<Int64> m_rr_a{0};
   std::atomic<Int64> m_split_a{0};
 
 
-public:
+protected:
   void updateTallies();
   void clearCrossSectionCache();
   void sourceParticles();
   void populationControl();
-  void populationControlGuts(const Real splitRRFactor, Int64 currentNumParticles);
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
   void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
   Real computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3);
-
   void rouletteLowWeightParticles();
   void initParticle(Particle p, Int64 rns);
   void generate3DCoordinate(Particle p);

@@ -18,17 +18,17 @@
 
         <x>
           <length>10.0</length>
-          <n>4</n>
+          <n>10</n>
         </x>
 
         <y>
           <length>10.0</length>
-          <n>4</n>
+          <n>10</n>
         </y>
 
         <z>
           <length>10.0</length>
-          <n>4</n>
+          <n>10</n>
         </z>
 
       </generator>
@@ -38,17 +38,13 @@
   <q-s>
     <dt>2e-09</dt>
     <boundaryCondition>reflect</boundaryCondition>
-    <nSteps>2</nSteps>
+    <nSteps>10</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <lx>100.0</lx>
-    <ly>100.0</ly>
-    <lz>100.0</lz>
   </q-s>
 
   <sampling-m-c>
-    <nParticles>1000000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 

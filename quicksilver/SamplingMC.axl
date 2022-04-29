@@ -5,7 +5,7 @@
   <variables>
 
     <variable
-        field-name="eMin"
+        field-name="e_min"
         name="EMin"
         data-type="real"
         item-kind="none"
@@ -14,7 +14,7 @@
         need-sync="true" />
 
     <variable
-        field-name="eMax"
+        field-name="e_max"
         name="EMax"
         data-type="real"
         item-kind="none"
@@ -23,7 +23,7 @@
         need-sync="true" />
 
     <variable
-        field-name="nGroups"
+        field-name="n_groups"
         name="NGroups"
         data-type="integer"
         item-kind="none"
@@ -50,7 +50,7 @@
         need-sync="true" />
 
       <variable
-        field-name="sourceTally"
+        field-name="source_tally"
         name="SourceTally"
         data-type="int32"
         item-kind="cell"
@@ -59,7 +59,7 @@
         need-sync="true" />
 
     <variable
-        field-name="coordCm"
+        field-name="coord_cm"
         name="CoordCm"
         data-type="real"
         item-kind="node"
@@ -68,7 +68,7 @@
         need-sync="true" />
 
     <variable
-        field-name="coordMidCm"
+        field-name="coord_mid_cm"
         name="CoordMidCm"
         data-type="real"
         item-kind="face"
@@ -77,11 +77,20 @@
         need-sync="true" />
 
       <variable
-        field-name="coordCenter"
+        field-name="coord_center"
         name="CoordCenter"
         data-type="real"
         item-kind="cell"
         dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="start"
+        name="Start"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
         dump="true"
         need-sync="true" />
 
@@ -113,7 +122,7 @@
         need-sync="true" />
 
     <variable
-        field-name="particleCoord"
+        field-name="particle_coord"
         name="ParticleCoord"
         family-name="ArcaneParticles"
         data-type="real"
@@ -123,7 +132,7 @@
         need-sync="true" />
 
     <variable
-        field-name="particleVelocity"
+        field-name="particle_velocity"
         name="ParticleVelocity"
         family-name="ArcaneParticles"
         data-type="real"
@@ -134,7 +143,7 @@
 
 
     <variable
-        field-name="particleDirCos"
+        field-name="particle_dir_cos"
         name="ParticleDirCos"
         family-name="ArcaneParticles"
         data-type="real"
@@ -145,7 +154,7 @@
 
 
     <variable
-        field-name="particleKinEne"
+        field-name="particle_kin_ene"
         name="ParticleKinEne"
         family-name="ArcaneParticles"
         data-type="real"
@@ -156,7 +165,7 @@
 
 
     <variable
-        field-name="particleWeight"
+        field-name="particle_weight"
         name="ParticleWeight"
         family-name="ArcaneParticles"
         data-type="real"
@@ -167,7 +176,7 @@
 
 
     <variable
-        field-name="particleTimeCensus"
+        field-name="particle_time_census"
         name="ParticleTimeCensus"
         family-name="ArcaneParticles"
         data-type="real"
@@ -178,7 +187,7 @@
 
 
     <variable
-        field-name="particleTotalCrossSection"
+        field-name="particle_total_cross_section"
         name="ParticleTotalCrossSection"
         family-name="ArcaneParticles"
         data-type="real"
@@ -189,7 +198,7 @@
 
 
     <variable
-        field-name="particleAge"
+        field-name="particle_age"
         name="ParticleAge"
         family-name="ArcaneParticles"
         data-type="real"
@@ -200,8 +209,8 @@
 
 
     <variable
-        field-name="particleNumMeanFreeP"
-        name="ParticleNumMeanFreeP"
+        field-name="particle_num_mean_free_path"
+        name="ParticleNumMeanFreePath"
         family-name="ArcaneParticles"
         data-type="real"
         item-kind="particle"
@@ -211,8 +220,8 @@
 
 
     <variable
-        field-name="particleMeanFreeP"
-        name="ParticleMeanFreeP"
+        field-name="particle_mean_free_path"
+        name="ParticleMeanFreePath"
         family-name="ArcaneParticles"
         data-type="real"
         item-kind="particle"
@@ -222,7 +231,7 @@
 
 
     <variable
-        field-name="particleSegPathLength"
+        field-name="particle_seg_path_length"
         name="ParticleSegPathLength"
         family-name="ArcaneParticles"
         data-type="real"
@@ -233,7 +242,7 @@
 
 
     <variable
-        field-name="particleRNS"
+        field-name="particle_rns"
         name="ParticleRNS"
         family-name="ArcaneParticles"
         data-type="int64"
@@ -244,7 +253,7 @@
 
 
     <variable
-        field-name="particleLastEvent"
+        field-name="particle_last_event"
         name="ParticleLastEvent"
         family-name="ArcaneParticles"
         data-type="integer"
@@ -255,7 +264,7 @@
 
 
     <variable
-        field-name="particleNumColl"
+        field-name="particle_num_coll"
         name="ParticleNumColl"
         family-name="ArcaneParticles"
         data-type="integer"
@@ -265,7 +274,7 @@
         need-sync="true" />
 
     <variable
-        field-name="particleSpecies"
+        field-name="particle_species"
         name="ParticleSpecies"
         family-name="ArcaneParticles"
         data-type="integer"
@@ -275,7 +284,7 @@
         need-sync="true" />
 
     <variable
-        field-name="particleEneGrp"
+        field-name="particle_ene_grp"
         name="ParticleEneGrp"
         family-name="ArcaneParticles"
         data-type="integer"
@@ -286,7 +295,7 @@
 
 
     <variable
-        field-name="particleFacet"
+        field-name="particle_facet"
         name="ParticleFacet"
         family-name="ArcaneParticles"
         data-type="integer"
@@ -297,7 +306,7 @@
 
 
     <variable
-        field-name="particleFace"
+        field-name="particle_face"
         name="ParticleFace"
         family-name="ArcaneParticles"
         data-type="integer"
@@ -308,7 +317,7 @@
 
 
     <variable
-        field-name="particleNormalDot"
+        field-name="particle_normal_dot"
         name="ParticleNormalDot"
         family-name="ArcaneParticles"
         data-type="real"
@@ -319,7 +328,7 @@
 
 
     <variable
-        field-name="particleNumSeg"
+        field-name="particle_num_seg"
         name="ParticleNumSeg"
         family-name="ArcaneParticles"
         data-type="real"
@@ -329,7 +338,7 @@
         need-sync="true" />
 
     <variable 
-        field-name="sourceRate"
+        field-name="source_rate"
         name="SourceRate"
         data-type="real"
         item-kind="cell"
@@ -350,13 +359,25 @@
 
     <simple name="nParticles" type="int64" default="1000000">
       <description>
-        number of particles
+        Number of particles
       </description>
     </simple>
 
     <simple name="lowWeightCutoff" type="real" default="0.001">
       <description>
-        low weight roulette cutoff
+        Low weight roulette cutoff
+      </description>
+    </simple>
+
+    <simple name="seed" type="int64" default="1029384756">
+      <description>
+        Random number seed
+      </description>
+    </simple>
+
+    <simple name="fMax" type="real" default="0.1">
+      <description>
+        Max random mesh node displacement
       </description>
     </simple>
 

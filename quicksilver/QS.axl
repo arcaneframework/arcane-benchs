@@ -5,7 +5,7 @@
   <variables>
 
     <variable
-        field-name="eMin"
+        field-name="e_min"
         name="EMin"
         data-type="real"
         item-kind="none"
@@ -14,7 +14,7 @@
         need-sync="true" />
 
     <variable
-        field-name="eMax"
+        field-name="e_max"
         name="EMax"
         data-type="real"
         item-kind="none"
@@ -23,7 +23,7 @@
         need-sync="true" />
 
     <variable
-        field-name="nGroups"
+        field-name="n_groups"
         name="NGroups"
         data-type="integer"
         item-kind="none"
@@ -68,7 +68,7 @@
         need-sync="true" />
 
     <variable
-        field-name="coordCm"
+        field-name="coord_cm"
         name="CoordCm"
         data-type="real"
         item-kind="node"
@@ -77,7 +77,7 @@
         need-sync="true" />
 
     <variable
-        field-name="coordMidCm"
+        field-name="coord_mid_cm"
         name="CoordMidCm"
         data-type="real"
         item-kind="face"
@@ -86,7 +86,7 @@
         need-sync="true" />
 
     <variable
-        field-name="boundaryCond"
+        field-name="boundary_cond"
         name="BoundaryCond"
         data-type="integer"
         item-kind="face"
@@ -95,7 +95,7 @@
         need-sync="true" />
 
     <variable
-        field-name="indexArc"
+        field-name="index_arc"
         name="IndexArc"
         data-type="integer"
         item-kind="face"
@@ -104,7 +104,7 @@
         need-sync="true" />
 
     <variable
-        field-name="cellNumberDensity"
+        field-name="cell_number_density"
         name="CellNumberDensity"
         data-type="real"
         item-kind="cell"
@@ -113,10 +113,19 @@
         need-sync="true" />
 
     <variable
-        field-name="sourceTally"
+        field-name="source_tally"
         name="SourceTally"
         data-type="int32"
         item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="start"
+        name="Start"
+        data-type="int64"
+        item-kind="none"
         dim="0"
         dump="true"
         need-sync="true" />
@@ -158,15 +167,6 @@
         need-sync="true" />
 
     <variable
-        field-name="end"
-        name="End"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
         field-name="fission"
         name="Fission"
         data-type="int64"
@@ -187,15 +187,6 @@
     <variable
         field-name="scatter"
         name="Scatter"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="start"
-        name="Start"
         data-type="int64"
         item-kind="none"
         dim="0"
@@ -230,7 +221,7 @@
         need-sync="true" />
 
     <variable
-        field-name="numSegments"
+        field-name="num_segments"
         name="NumSegments"
         data-type="int64"
         item-kind="none"
@@ -239,16 +230,16 @@
         need-sync="true" />
 
     <variable
-        field-name="cellTally"
-        name="CellTally"
-        data-type="real"
-        item-kind="cell"
+        field-name="end"
+        name="End"
+        data-type="int64"
+        item-kind="none"
         dim="0"
         dump="true"
         need-sync="true" />
 
     <variable
-        field-name="scalarFluxTally"
+        field-name="scalar_flux_tally"
         name="ScalarFluxTally"
         data-type="real"
         item-kind="cell"
@@ -266,7 +257,7 @@
         need-sync="true" />
 
     <variable
-        field-name="coordCenter"
+        field-name="coord_center"
         name="CoordCenter"
         data-type="real"
         item-kind="cell"
@@ -286,31 +277,31 @@
 
     <simple name="dt" type="real" default="1e-8">
       <description>
-        time step (seconds)
+        Time step (seconds)
       </description>
     </simple>
 
     <simple name="eMin" type="real" default="1e-9">
       <description>
-        min energy of cross section
+        Min energy of cross section
       </description>
     </simple>
 
     <simple name="eMax" type="real" default="20">
       <description>
-        max energy of cross section
+        Max energy of cross section
       </description>
     </simple>
 
     <simple name="nGroups" type="integer" default="230">
       <description>
-        number of groups for cross sections
+        Number of groups for cross sections
       </description>
     </simple>
 
     <simple name="nSteps" type="integer" default="10">
       <description>
-        number of time steps
+        Number of time steps
       </description>
     </simple>
 
@@ -333,7 +324,7 @@
     </simple>
 
     <enumeration name="boundaryCondition" type="eBoundaryCondition" default="reflect">
-      <description>Type de condition au limites</description>
+      <description>Boundary Condition</description>
       <enumvalue name="reflect" genvalue="REFLECT"  />
       <enumvalue name="escape" genvalue="ESCAPE" />
       <enumvalue name="octant" genvalue="OCTANT"  />

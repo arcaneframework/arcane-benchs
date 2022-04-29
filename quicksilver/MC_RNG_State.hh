@@ -7,7 +7,6 @@
 #include <cstdint>
 #endif
 
-#include "DeclareMacro.hh"
 #include <math.h>
 #include <arcane/ITimeLoopMng.h>
 #include "qs_assert.hh"
@@ -21,16 +20,16 @@ using namespace Arcane;
 //----------------------------------------------------------------------------------------------------------------------
 
 // Generate a new random number seed
-HOST_DEVICE
+
 Int64 rngSpawn_Random_Number_Seed(Int64 *parent_seed);
-HOST_DEVICE_END
+
 
 //----------------------------------------------------------------------------------------------------------------------
 //  Sample returns the pseudo-random number produced by a call to a random
 //  number generator.
 //----------------------------------------------------------------------------------------------------------------------
 
-HOST_DEVICE
+
 inline Real rngSample(Int64 *seed)
 {
   // Reset the state from the previous value.
@@ -43,6 +42,6 @@ inline Real rngSample(Int64 *seed)
   if(fin < 0) qs_assert(false);
   return fin;
 }
-HOST_DEVICE_END
+
 
 #endif

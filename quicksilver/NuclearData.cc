@@ -1,7 +1,6 @@
 #include "NuclearData.hh"
 #include <cmath>
 #include "MC_RNG_State.hh"
-#include "DeclareMacro.hh"
 #include "qs_assert.hh"
 
 using std::log10;
@@ -26,7 +25,7 @@ NuclearDataReaction::NuclearDataReaction(
 
    // Find the normalization value for the polynomial.  This is the
    // value of the energy group that contains 1 MeV
-   Real normalization = 0.0;
+   Real normalization = 1.0;
    for (Integer ii=0; ii<nGroups; ++ii)
       if (energies[ii+1] > 1. ) //1 MeV
       {
@@ -41,7 +40,7 @@ NuclearDataReaction::NuclearDataReaction(
       _crossSection[ii] *= scale;
 }
 
-HOST_DEVICE
+
 
 void NuclearDataReaction::sampleCollision(
    Real incidentEnergy, Real material_mass, Real* energyOut,
@@ -79,7 +78,7 @@ void NuclearDataReaction::sampleCollision(
    }
 }
 
-HOST_DEVICE_END
+
 
 // Then call this for each reaction to set cross section values
 void NuclearDataSpecies::addReaction(
@@ -173,25 +172,25 @@ Integer NuclearData::addIsotope(
    return _isotopes.size() - 1;
 }
 
-HOST_DEVICE
+
 // Return the cross section for this energy group
 Real NuclearDataReaction::getCrossSection(Integer group)
 {
    qs_assert(group < _crossSection.size());
    return _crossSection[group];
 }
-HOST_DEVICE_END
 
-HOST_DEVICE
+
+
 Integer NuclearData::getNumberReactions(Integer isotopeIndex)
 {
    qs_assert(isotopeIndex < _isotopes.size());
    return _isotopes[isotopeIndex]._species[0]._reactions.size();
 }
-HOST_DEVICE_END
+
 
 // For this energy, return the group index
-HOST_DEVICE
+
 Integer NuclearData::getEnergyGroup(Real energy)
 {
    Integer numEnergies = _energies.size();
@@ -212,11 +211,11 @@ Integer NuclearData::getEnergyGroup(Real energy)
 
    return low;
 }
-HOST_DEVICE_END
+
 
 // General routines to help access data lower down
 // Return the total cross section for this energy group
-HOST_DEVICE
+
 Real NuclearData::getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
    qs_assert(isotopeIndex < _isotopes.size());
@@ -228,10 +227,10 @@ Real NuclearData::getTotalCrossSection(Integer isotopeIndex, Integer group)
    }
    return totalCrossSection;
 }
-HOST_DEVICE_END
+
 
 // Return the total cross section for this energy group
-HOST_DEVICE
+
 Real NuclearData::getReactionCrossSection(
    Integer reactIndex, Integer isotopeIndex, Integer group)
 {
@@ -239,5 +238,5 @@ Real NuclearData::getReactionCrossSection(
    qs_assert(reactIndex < _isotopes[isotopeIndex]._species[0]._reactions.size());
    return _isotopes[isotopeIndex]._species[0]._reactions[reactIndex].getCrossSection(group);
 }
-HOST_DEVICE_END
+
 

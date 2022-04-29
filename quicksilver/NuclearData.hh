@@ -7,7 +7,6 @@
 #include <cmath>
 #include <algorithm>
 #include "qs_assert.hh"
-#include "DeclareMacro.hh"
 #include "arcane/ItemVector.h"
 
 using namespace Arcane;
@@ -48,9 +47,9 @@ class NuclearDataReaction
                        const Polynomial& polynomial, Real reationCrossSection);
    
 
-   HOST_DEVICE_CUDA
+   
    Real getCrossSection(Integer group);
-   HOST_DEVICE_CUDA
+   
    void sampleCollision(Real incidentEnergy, Real material_mass, Real* energyOut,
                         Real* angleOut, Integer &nOut, Int64* seed, Integer max_production_size);
    
@@ -98,13 +97,13 @@ class NuclearData
                   Real totalCrossSection,
                   Real fissionWeight, Real scatterWeight, Real absorptionWeight);
 
-   HOST_DEVICE_CUDA
+   
    Integer getEnergyGroup(Real energy);
-   HOST_DEVICE_CUDA
+   
    Integer getNumberReactions(Integer isotopeIndex);
-   HOST_DEVICE_CUDA
+   
    Real getTotalCrossSection(Integer isotopeIndex, Integer group);
-   HOST_DEVICE_CUDA
+   
    Real getReactionCrossSection(Integer reactIndex, Integer isotopeIndex, Integer group);
 
    // Store the cross sections and reactions by isotope, which stores
@@ -117,34 +116,3 @@ class NuclearData
 };
 
 #endif
-
-// The input for the nuclear data comes from the material section
-// The input looks may like
-//
-// material NAME
-// nIsotope=XXX
-// nReactions=XXX
-// fissionCrossSection="XXX"
-// scatterCrossSection="XXX"
-// absorptionCrossSection="XXX"
-// nuBar=XXX
-// totalCrossSection=XXX
-// fissionWeight=XXX
-// scatterWeight=XXX
-// absorptionWeight=XXX
-//
-// Material NAME2
-// ...
-//
-// table NAME
-// a=XXX
-// b=XXX
-// c=XXX
-// d=XXX
-// e=XXX
-//
-// table NAME2
-//
-// Each isotope inside a material will have identical cross sections.
-// However, it will be treated as unique in the nuclear data.
-// Cross sectionsare strings that refer to tables

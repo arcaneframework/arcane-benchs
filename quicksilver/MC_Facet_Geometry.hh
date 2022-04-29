@@ -12,7 +12,6 @@ public:
     Real C;
     Real D;
 
-   // Code to compute coefficients stolen from MCT_Facet_Adjacency_3D_G
    MC_General_Plane(){};
    MC_General_Plane(const MC_Vector& r0, const MC_Vector& r1, const MC_Vector& r2)
    {

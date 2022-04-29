@@ -4,10 +4,14 @@
 #include "PhysicalConstants.hh"
 #include "MC_RNG_State.hh"
 #include "MC_Facet_Geometry.hh"
-#define MAX_PRODUCTION_SIZE 4
 
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
-
+/**
+ * @brief Méthode permettant d'initialiser le ParticleExchanger
+ * et les materiaux du maillage.
+ */
 void TrackingMCModule::
 initModule()
 {
@@ -15,26 +19,45 @@ initModule()
   m_material_mng = IMeshMaterialMng::getReference(mesh());
 
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
-  m_particle_family->setHasUniqueIdMap(false);
 
   IParticleExchanger* pe = options()->particleExchanger();
   pe->initialize(m_particle_family);
 
-  initNuclearData(); // Configuration des materiaux.
+  // Configuration des materiaux.
+  initNuclearData(); 
 }
 
+/**
+ * @brief Méthode permettant de lancer le suivi des particules.
+ */
+void TrackingMCModule::
+cycleTracking()
+{
+  tracking();
+  updateTallies();
+}
+
+/**
+ * @brief Méthode appelée à la fin de la boucle en temps.
+ */
 void TrackingMCModule::
 endModule()
 {
 
 }
 
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+
+/**
+ * @brief Méthode permettant d'initialiser les matériaux du maillage.
+ */
 void TrackingMCModule::
 initNuclearData()
 {
   info() << "Initialisation des matériaux";
 
-  m_nuclearData = new NuclearData(m_nGroups(), m_eMin(), m_eMax());
+  m_nuclearData = new NuclearData(m_n_groups(), m_e_min(), m_e_max());
 
   Integer num_cross_sections = options()->cross_section().size();
   Integer num_materials = options()->material().size();
@@ -62,7 +85,8 @@ initNuclearData()
   Int32UniqueArray localIdMat[num_geometries];
   ENUMERATE_CELL(icell, ownCells())
   {
-    for( Integer i = 0; i < num_geometries; i++ )
+    // On prend le dernier materiau de la liste (si des geométries ont des zones communes) comme dans QS original.
+    for( Integer i = num_geometries-1; i >= 0; i-- )
     {
       if(isInGeometry(i, (*icell)))
       {
@@ -78,7 +102,6 @@ initNuclearData()
     String mat_name = options()->material[i].getName();
     num_isotopes += options()->material[i].getNIsotopes();
     MeshMaterialInfo* newMaterial = m_material_mng->registerMaterialInfo(mat_name);
-    info() << "Creation du materiau : " << mat_name;
     MeshEnvironmentBuildInfo ebi1(mat_name);
     ebi1.addMaterial(mat_name);
     m_material_mng->createEnvironment(ebi1);
@@ -88,7 +111,6 @@ initNuclearData()
   m_nuclearData->_isotopes.reserve( num_isotopes );
 
   ConstArrayView<IMeshMaterial*> materials = m_material_mng->materials();
-  info() << "Size materiau : " << materials.size();
   {
     MeshMaterialModifier modifier(m_material_mng);
     for( Integer i = 0; i < num_geometries; i++ )
@@ -97,8 +119,7 @@ initNuclearData()
 
       for (Integer j = 0; j < num_materials; j++)
       {
-        info() << "Compare materiau : " << materials[j]->name() << " et " << materialName+"_"+materialName;
-
+        // Le nom du materiau est "nomEnvironnement_nomMateriau" et nomEnvironnement = nomMateriau.
         if(materials[j]->name() == materialName+"_"+materialName)
         {
           modifier.addCells(materials[j], localIdMat[i]);
@@ -116,6 +137,7 @@ initNuclearData()
     Integer nIsotopes = options()->material[i].getNIsotopes();
     Integer nReactions = options()->material[i].getNReactions();
     Real sourceRate = options()->material[i].getSourceRate();
+    if(mat_name == "defaultMaterial" && sourceRate == 0.0) sourceRate = 1e10;
     String fissionCrossSection = options()->material[i].getFissionCrossSection();
     String scatteringCrossSection = options()->material[i].getScatteringCrossSection();
     String absorptionCrossSection = options()->material[i].getAbsorptionCrossSection();
@@ -129,10 +151,10 @@ initNuclearData()
     ENUMERATE_MATCELL(icell, materials[i])
     {
       m_mass[icell] = mass;
-      m_sourceRate[icell] = sourceRate;
+      m_source_rate[icell] = sourceRate;
     }
-    m_isoGid.resize(nIsotopes);
-    m_atomFraction.resize(nIsotopes);
+    m_iso_gid.resize(nIsotopes);
+    m_atom_fraction.resize(nIsotopes);
 
 
     for (Integer iIso=0; iIso<nIsotopes; ++iIso)
@@ -148,97 +170,109 @@ initNuclearData()
         scatteringCrossSectionRatio,
         absorptionCrossSectionRatio);
       
-      // atomFraction for each isotope is 1/nIsotopes.  Treats all
+      // atom_fraction for each isotope is 1/nIsotopes.  Treats all
       // isotopes as equally prevalent.
       ENUMERATE_MATCELL(icell, materials[i])
       {
-        m_isoGid[icell][iIso] = isotopeGid;
-        m_atomFraction[icell][iIso] = 1.0/nIsotopes;
+        m_iso_gid[icell][iIso] = isotopeGid;
+        m_atom_fraction[icell][iIso] = 1.0/nIsotopes;
       }
     }
   }
 }
 
-
-void TrackingMCModule::
-cycleTracking()
-{
-  tracking();
-  updateTallies();
-}
-
-
+/**
+ * @brief Méthode permettant de suivre les particules jusqu'a que leur temps
+ * de census soit atteint.
+ * Cette méthode effectue une itération et plusieurs sous-itérations.
+ */
 void TrackingMCModule::
 tracking()
 {
   bool done = false;
-  ParticleVectorView inView;
 
   // Ne sert qu'a debug maintenant.
   m_local_ids_processed.clear();
 
+  // Toutes les particles de m_particle_family sont à suivre.
   ParticleVectorView m_processingView = m_particle_family->view();
+  ParticleVectorView inView;
 
-  // A partir d'ici, toutes les particles de m_particle_family sont à suivre.
+  #if LOG
   pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << m_processingView.size() << " particles.";
+  #endif
 
   Integer particle_count = 0; // Initialize count of num_particles processed
-  Integer iter = 0;
+  Integer iter = 1;
   
   while (!done)
   {
-
     ENUMERATE_PARTICLE(iparticle, m_processingView)
     {
       Particle particle = (*iparticle);
       cycleTrackingGuts(particle);
-
+      #if LOG
       if(iparticle.index() % 50000 == 0)
       {
         debug() << "--------";
-        pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " : Number of particles processed : " << iparticle.index() << "/" << m_processingView.size();
+        pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << m_processingView.size();
         debug() << "  m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
         debug() << "--------";
       }
+      #endif
     }
     particle_count += m_processingView.size();
-    if(m_processingView.size() != 0) pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " : Number of particles processed : " << m_processingView.size() << "/" << m_processingView.size();
+    #if LOG
+    if(m_processingView.size() != 0) pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << m_processingView.size() << "/" << m_processingView.size();
+    #endif
 
     
     
     if(mesh()->parallelMng()->commSize() > 1 && inView.size() > 0)
     {
-      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " : Computing incoming particles";
+      #if LOG
+      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Computing incoming particles";
+      #endif
       ENUMERATE_PARTICLE(iparticle, inView)
       {
         Particle particle = (*iparticle);
         cycleTrackingGuts(particle);
 
+        #if LOG
         if(iparticle.index() % 50000 == 0)
         {
-          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " : Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
+          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
         }
+        #endif
       }
       particle_count += inView.size();
-      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " : Number of incoming particles processed : " << inView.size() << "/" << inView.size();
+      #if LOG
+      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << inView.size() << "/" << inView.size();
+      #endif
     }
 
+    #if LOG
     debug() << "========";
-    pinfo() << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter  << " : Total number of particles processed : " << particle_count;
+    pinfo() << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter  << " - Total number of particles processed : " << particle_count;
     debug() << "  m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
     debug() << "  m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_exit : " << m_local_ids_exit.size();
     debug() << "========";
+    #endif
 
     
-
+    // On retire les particules qui sont sortie du maillage.
     m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
     // endUpdate fait par collisionEventSuite;
     m_local_ids_exit.clear();
 
+    // On effectue la suite des collisions, si besoin.
     collisionEventSuite();
 
     if(mesh()->parallelMng()->commSize() > 1)
     {
+      //if(m_local_ids_out.size() > 1000 || m_local_ids_extra.size() == 0)
+      //{
+      // On essaye de recevoir tant que quelqu'un bosse encore.
       do{
 
         // Echange particles.
@@ -252,11 +286,13 @@ tracking()
           )) == 0
         );
 
+        #if LOG
         debug() << "/////////";
         debug() << "Proc#" << mesh()->parallelMng()->commRank();
         debug() << "Nb Particles out : " << m_local_ids_out.size();
         debug() << "Nb Particles in : " << m_local_ids_in.size();
         debug() << "/////////";
+        #endif
 
         m_rank_out.clear();
         m_local_ids_out.clear();
@@ -264,6 +300,7 @@ tracking()
 
       inView = m_particle_family->view(m_local_ids_in);
       m_local_ids_in.clear();
+      //}
     }
 
     else if(m_local_ids_extra.size() == 0)
@@ -275,8 +312,12 @@ tracking()
     m_local_ids_extra.clear();
     iter++;
   }
+  m_end_a = m_particle_family->view().size();
 }
 
+/**
+ * @brief Méthode permettant de copier les atomics dans les variables Arcane.
+ */
 void TrackingMCModule::
 updateTallies()
 {
@@ -287,7 +328,8 @@ updateTallies()
   m_fission = m_fission_a;
   m_produce = m_produce_a;
   m_scatter = m_scatter_a;
-  m_numSegments = m_numSegments_a;
+  m_num_segments = m_num_segments_a;
+  m_end = m_end_a;
   
   m_absorb_a = 0;
   m_census_a = 0;
@@ -296,12 +338,24 @@ updateTallies()
   m_fission_a = 0;
   m_produce_a = 0;
   m_scatter_a = 0;
-  m_numSegments_a = 0;
+  m_num_segments_a = 0;
+  m_end_a = 0;
 }
-
 
 // Returns true if the specified coordinate in inside the specified
 // geometry.  False otherwise
+
+/**
+ * @brief Méthode permettant de savoir si une cellule est dans un matériau.
+ * On a les dimensions du matériau (en cm) et la position du centre de la cellule
+ * (en cm), cette méthode permet de savoir si le centre de la cellule est dans le 
+ * matériau.
+ * 
+ * @param pos La position de la géométrie du matériau dans le fichier d'entrée.
+ * @param cell La cellule étudiée.
+ * @return true Si la cellule à son centre dans le matériau.
+ * @return false Si la cellule n'a pas son centre dans le matériau.
+ */
 bool TrackingMCModule::
 isInGeometry(Integer pos, Cell cell)
 {
@@ -319,9 +373,9 @@ isInGeometry(Integer pos, Cell cell)
         Real zMin = ((options()->geometry[pos].getZMin() == -1.0) ? 0.0 : options()->geometry[pos].getZMin());
         Real zMax = ((options()->geometry[pos].getZMax() == -1.0) ? m_lz() : options()->geometry[pos].getZMax());
 
-        if ((m_coordCenter[cell][MD_DirX] >= xMin && m_coordCenter[cell][MD_DirX] <= xMax) &&
-            (m_coordCenter[cell][MD_DirY] >= yMin && m_coordCenter[cell][MD_DirY] <= yMax) &&
-            (m_coordCenter[cell][MD_DirZ] >= zMin && m_coordCenter[cell][MD_DirZ] <= zMax) )
+        if ((m_coord_center[cell][MD_DirX] >= xMin && m_coord_center[cell][MD_DirX] <= xMax) &&
+            (m_coord_center[cell][MD_DirY] >= yMin && m_coord_center[cell][MD_DirY] <= yMax) &&
+            (m_coord_center[cell][MD_DirZ] >= zMin && m_coord_center[cell][MD_DirZ] <= zMax) )
           inside = true;
       }
       break;
@@ -334,7 +388,7 @@ isInGeometry(Integer pos, Cell cell)
         Real radius  = ((options()->geometry[pos].getRadius()  == -1.0) ? (m_lx()/2) : options()->geometry[pos].getRadius() );
 
         MC_Vector center(xCenter, yCenter, zCenter);
-        MC_Vector rr(m_coordCenter[cell]);
+        MC_Vector rr(m_coord_center[cell]);
         if ( (rr-center).Length() <= radius)
           inside = true;
       }
@@ -346,31 +400,41 @@ isInGeometry(Integer pos, Cell cell)
   return inside;
 }
 
-
+/**
+ * @brief Méthode permettant d'initialiser des grandeurs de la particule puis de lancer son tracking.
+ * 
+ * @param particle La particule à suivre.
+ */
 void TrackingMCModule::
 cycleTrackingGuts( Particle particle )
 {
-  if ( m_particleTimeCensus[particle] <= 0.0 )
+  if ( m_particle_time_census[particle] <= 0.0 )
   {
-      m_particleTimeCensus[particle] += m_global_deltat();
+      m_particle_time_census[particle] += m_global_deltat();
   }
 
-  // Age
-  if (m_particleAge[particle] < 0.0) 
+  if (m_particle_age[particle] < 0.0) 
   { 
-    m_particleAge[particle] = 0.0;
+    m_particle_age[particle] = 0.0;
   }
 
-  //    Energy Group
-  m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+  m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
 
   // loop over this particle until we cannot do anything more with it on this processor
   cycleTrackingFunction(particle);
 
   //Make sure this particle is marked as completed
-  m_particleSpecies[particle] = -1;
+  m_particle_species[particle] = -1;
 }
 
+/**
+ * @brief Méthode permettant de suivre la particule p.
+ * Suivi de la particule jusqu'a que son temps de suivi (census) soit fini ou
+ * jusqu'a qu'elle sorte du maillage ou
+ * jusqu'a qu'elle se split (dans ce cas, elle sera resuivi à la prochaine sous-itération).
+ * 
+ * @param particle La particule à suivre.
+ */
 void TrackingMCModule::
 cycleTrackingFunction(Particle particle)
 {
@@ -383,56 +447,53 @@ cycleTrackingFunction(Particle particle)
       //   (1) Cross a facet of the current cell,
       //   (2) Reach the end of the time step and enter census,
       //
-
       computeNextEvent(particle);
-      m_numSegments_a++;
+      m_num_segments_a++;
 
-      m_particleNumSeg[particle] += 1.;  /* Track the number of segments this particle has
+      m_particle_num_seg[particle] += 1.;  /* Track the number of segments this particle has
                                           undergone this cycle on all processes. */
-      switch (m_particleLastEvent[particle]) {
-      case particleEvent::collision:
+      switch (m_particle_last_event[particle]) {
+      case ParticleEvent::collision:
         {
 
           switch (collisionEvent(particle))
           {
-
-          case 0:
+          case 0: // La particule est absorbée.
             m_local_ids_exit.add(particle.localId());
             keepTrackingThisParticle = false;
             break;
 
-          case 1:
+          case 1: // La particule a juste changée de trajectoire.
             keepTrackingThisParticle = true;
             break;
           
-          default:
+          default: // La particule splitte.
             // On arrete pour pouvoir cloner la particle source.
             keepTrackingThisParticle = false;
             break;
-
           }
         }
         break;
   
-      case particleEvent::faceEventUndefined:
+      // On a la particule sur la face, plus qu'à déterminer la suite.
+      case ParticleEvent::faceEventUndefined:
         {
-          // The particle has reached a cell facet.
           facetCrossingEvent(particle);
 
-          switch (m_particleLastEvent[particle])
+          switch (m_particle_last_event[particle])
           {
-          case particleEvent::cellChange:
+          case ParticleEvent::cellChange:
             keepTrackingThisParticle = true;
             break;
 
-          case particleEvent::escape:
+          case ParticleEvent::escape:
             m_escape_a++;
-            m_particleSpecies[particle] = -1;
+            m_particle_species[particle] = -1;
             keepTrackingThisParticle = false;
             m_local_ids_exit.add(particle.localId());
             break;
 
-          case particleEvent::reflection:
+          case ParticleEvent::reflection:
             reflectParticle(particle);
             keepTrackingThisParticle = true;
             break;
@@ -446,7 +507,7 @@ cycleTrackingFunction(Particle particle)
         }
         break;
   
-      case particleEvent::census:
+      case ParticleEvent::census:
         {
           // The particle has reached the end of the time step.
           m_local_ids_processed.add(particle.localId());
@@ -463,22 +524,29 @@ cycleTrackingFunction(Particle particle)
   } while ( keepTrackingThisParticle );
 }
 
-
+/**
+ * @brief Méthode permettant de finir une collision.
+ * Une collision peut aboutir en un dédoublement de particule.
+ * Dans ce cas, la particule doit être dédoublé en dehors de l'ENUMERATE_PARTICLE
+ * pour que la vue ne soit pas modifié 'en vol' (et donc que le ENUMERATE reste valide).
+ */
 void TrackingMCModule::
 collisionEventSuite()
 {
+  // On créé les particules.
   Int32UniqueArray particles_lid(m_local_ids_extra_gId.size());
   m_particle_family->toParticleFamily()->addParticles(m_local_ids_extra_gId, m_local_ids_extra_cellId, particles_lid);
   m_particle_family->toParticleFamily()->endUpdate();
 
+  // On leur donne les bonnes propriétés.
   cloneParticles(m_local_ids_extra_srcP, particles_lid, m_local_ids_extra_rns);
 
   ParticleVectorView viewP = m_particle_family->view(particles_lid);
 
+  // On effectue la suite de la collision.
   for(Integer i = 0; i < particles_lid.size(); i++)
   {
     Particle particle = Particle(viewP[i].internal());
-    //if(particle.uniqueId().asInt64() != m_local_ids_extra_gId[i]) ARCANE_FATAL("Erreur ordre particle");
     updateTrajectory(m_local_ids_extra_energyOut[i], m_local_ids_extra_angleOut[i], particle);
   }
 
@@ -488,12 +556,13 @@ collisionEventSuite()
   {
     Particle particle = Particle(viewP[i].internal());
     updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
-    m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
   //m_local_ids_extra.copy(particles_lid);
 
   //m_local_ids_extra.resize(m_local_ids_extra.size() + particles_lid.size());
+  // On fusionne la liste des particules sources et la liste des nouvelles particules.
   for(Integer i = 0; i < particles_lid.size(); i++)
   {
     m_local_ids_extra.add(particles_lid[i]);
@@ -509,6 +578,16 @@ collisionEventSuite()
   m_local_ids_extra_angleOut_pSrc.clear();
 }
 
+/**
+ * @brief Méthode permettant de trouver le prochain événement de la particule.
+ * On a le choix entre Census, Collision et faceEvent.
+ * Census : La particule a fini son itération.
+ * Collision : La particule fait une collision avec son environnement.
+ * faceEvent : La particule se trouve sur le bord de la cellule et doit faire une action.
+ * On choisi l'événement le plus proche.
+ * 
+ * @param particle La particule à étudier.
+ */
 void TrackingMCModule::
 computeNextEvent(Particle particle)
 {
@@ -518,45 +597,45 @@ computeNextEvent(Particle particle)
   distance[0] = distance[1] = distance[2] = 1e80;
 
   // Calculate the particle speed
-  MC_Vector velo(m_particleVelocity[particle]);
+  MC_Vector velo(m_particle_velocity[particle]);
   Real particle_speed = velo.Length();
 
   // Force collision if a census event narrowly preempts a collision
   Integer force_collision = 0 ;
-  if ( m_particleNumMeanFreeP[particle] < 0.0 )
+  if ( m_particle_num_mean_free_path[particle] < 0.0 )
   {
     force_collision = 1 ;
 
-    if ( m_particleNumMeanFreeP[particle] > -900.0 )
+    if ( m_particle_num_mean_free_path[particle] > -900.0 )
     {
-      printf(" computeNextEvent: m_particleNumMeanFreeP[particle] > -900.0 \n");
+      printf(" computeNextEvent: m_particle_num_mean_free_path[particle] > -900.0 \n");
     }
 
-    m_particleNumMeanFreeP[particle] = PhysicalConstants::_smallDouble;
+    m_particle_num_mean_free_path[particle] = PhysicalConstants::_smallDouble;
   }
 
   // Randomly determine the distance to the next collision
   // based upon the composition of the current cell.
-  Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(particle.cell(), m_particleEneGrp[particle]);
+  Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(particle.cell(), m_particle_ene_grp[particle]);
     
   // Cache the cross section
-  m_particleTotalCrossSection[particle] = macroscopic_total_cross_section;
+  m_particle_total_cross_section[particle] = macroscopic_total_cross_section;
   if (macroscopic_total_cross_section == 0.0)
   {
-    m_particleMeanFreeP[particle] = PhysicalConstants::_hugeDouble;
+    m_particle_mean_free_path[particle] = PhysicalConstants::_hugeDouble;
   }
   else
   {
-    m_particleMeanFreeP[particle] = 1.0 / macroscopic_total_cross_section;
+    m_particle_mean_free_path[particle] = 1.0 / macroscopic_total_cross_section;
   }
 
-  if ( m_particleNumMeanFreeP[particle] == 0.0)
+  if ( m_particle_num_mean_free_path[particle] == 0.0)
   {
     // Sample the number of mean-free-paths remaining before
     // the next collision from an exponential distribution.
-    Real random_number = rngSample(&m_particleRNS[particle]);
+    Real random_number = rngSample(&m_particle_rns[particle]);
 
-    m_particleNumMeanFreeP[particle] = -1.0*std::log(random_number);
+    m_particle_num_mean_free_path[particle] = -1.0*std::log(random_number);
   }
 
   // Calculate the distances to collision, nearest facet, and census.
@@ -564,15 +643,15 @@ computeNextEvent(Particle particle)
   // Forced collisions do not need to move far.
   if (force_collision)
   {
-    distance[particleEvent::collision] = PhysicalConstants::_smallDouble;
+    distance[ParticleEvent::collision] = PhysicalConstants::_smallDouble;
   }
   else
   {
-    distance[particleEvent::collision] = m_particleNumMeanFreeP[particle] * m_particleMeanFreeP[particle];
+    distance[ParticleEvent::collision] = m_particle_num_mean_free_path[particle] * m_particle_mean_free_path[particle];
   }
 
   // process census
-  distance[particleEvent::census] = particle_speed*m_particleTimeCensus[particle];
+  distance[ParticleEvent::census] = particle_speed*m_particle_time_census[particle];
 
 
   //  DEBUG  Turn off threshold for now
@@ -581,18 +660,18 @@ computeNextEvent(Particle particle)
   //Real current_best_distance = PhysicalConstants::_hugeDouble;
 
 
-  //bool new_segment =  (m_particleNumSeg[particle] == 0 ||
-  //                     m_particleLastEvent[particle] == particleEvent::collision);
+  //bool new_segment =  (m_particle_num_seg[particle] == 0 ||
+  //                     m_particle_last_event[particle] == ParticleEvent::collision);
 
   // Calculate the minimum distance to each facet of the cell.
-  Nearest_Facet nearest_facet = getNearestFacet(particle);
+  NearestFacet nearest_facet = getNearestFacet(particle);
 
-  m_particleNormalDot[particle] = nearest_facet.dot_product;
+  m_particle_normal_dot[particle] = nearest_facet.dot_product;
 
-  distance[particleEvent::faceEventUndefined] = nearest_facet.distance_to_facet;
+  distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance_to_facet;
 
   // Get out of here if the tracker failed to bound this particle's volume.
-  if (m_particleLastEvent[particle] == particleEvent::faceEventUndefined)
+  if (m_particle_last_event[particle] == ParticleEvent::faceEventUndefined)
   {
     return;
   }
@@ -602,13 +681,13 @@ computeNextEvent(Particle particle)
   // Force a collision (if required).
   if ( force_collision == 1 )
   {
-    distance[particleEvent::faceEventUndefined] = PhysicalConstants::_hugeDouble;
-    distance[particleEvent::census]             = PhysicalConstants::_hugeDouble;
-    distance[particleEvent::collision]          = PhysicalConstants::_tinyDouble;
+    distance[ParticleEvent::faceEventUndefined] = PhysicalConstants::_hugeDouble;
+    distance[ParticleEvent::census]             = PhysicalConstants::_hugeDouble;
+    distance[ParticleEvent::collision]          = PhysicalConstants::_tinyDouble;
   }
 
   // we choose our segment outcome here
-  particleEvent segment_outcome = (particleEvent) findMin(distance);
+  ParticleEvent segment_outcome = (ParticleEvent) findMin(distance);
   
 
   if (distance[segment_outcome] < 0)
@@ -616,40 +695,40 @@ computeNextEvent(Particle particle)
     qs_assert(false);
   }
   
-  m_particleSegPathLength[particle] = distance[segment_outcome];
-  m_particleNumMeanFreeP[particle] -= m_particleSegPathLength[particle] / m_particleMeanFreeP[particle];
-  m_particleLastEvent[particle] = segment_outcome;
+  m_particle_seg_path_length[particle] = distance[segment_outcome];
+  m_particle_num_mean_free_path[particle] -= m_particle_seg_path_length[particle] / m_particle_mean_free_path[particle];
+  m_particle_last_event[particle] = segment_outcome;
 
   // Set the segment path length to be the minimum of
   //   (i)   the distance to collision in the cell, or
   //   (ii)  the minimum distance to a facet of the cell, or
   //   (iii) the distance to census at the end of the time step
-  if (segment_outcome == particleEvent::collision)
+  if (segment_outcome == ParticleEvent::collision)
   {
-    m_particleNumMeanFreeP[particle] = 0.0;
+    m_particle_num_mean_free_path[particle] = 0.0;
   }
 
-  else if (segment_outcome == particleEvent::faceEventUndefined)
+  else if (segment_outcome == ParticleEvent::faceEventUndefined)
   {
-    m_particleFace[particle] = nearest_facet.facet / 4;
-    m_particleFacet[particle] = nearest_facet.facet % 4;
+    m_particle_face[particle] = nearest_facet.facet / 4;
+    m_particle_facet[particle] = nearest_facet.facet % 4;
   }
   
-  else if (segment_outcome == particleEvent::census)
+  else if (segment_outcome == ParticleEvent::census)
   {
-    m_particleTimeCensus[particle] = std::min(m_particleTimeCensus[particle], 0.0);
+    m_particle_time_census[particle] = std::min(m_particle_time_census[particle], 0.0);
   }
 
   // If collision was forced, set mc_particle.num_mean_free_paths = 0
   // so that a new value is randomly selected on next pass.
   if (force_collision == 1)
   {
-    m_particleNumMeanFreeP[particle] = 0.0;
+    m_particle_num_mean_free_path[particle] = 0.0;
   }
 
   // Do not perform any tallies if the segment path length is zero.
   //   This only introduces roundoff errors.
-  if (m_particleSegPathLength[particle] == 0.0)
+  if (m_particle_seg_path_length[particle] == 0.0)
   {
     return;
   }
@@ -658,28 +737,35 @@ computeNextEvent(Particle particle)
 
   // Project the particle trajectory along the segment path length.
 
-  m_particleCoord[particle][MD_DirX] += (m_particleDirCos[particle][MD_DirA] * m_particleSegPathLength[particle]);
-  m_particleCoord[particle][MD_DirY] += (m_particleDirCos[particle][MD_DirB] * m_particleSegPathLength[particle]);
-  m_particleCoord[particle][MD_DirZ] += (m_particleDirCos[particle][MD_DirG] * m_particleSegPathLength[particle]);
+  m_particle_coord[particle][MD_DirX] += (m_particle_dir_cos[particle][MD_DirA] * m_particle_seg_path_length[particle]);
+  m_particle_coord[particle][MD_DirY] += (m_particle_dir_cos[particle][MD_DirB] * m_particle_seg_path_length[particle]);
+  m_particle_coord[particle][MD_DirZ] += (m_particle_dir_cos[particle][MD_DirG] * m_particle_seg_path_length[particle]);
 
-  Real segment_path_time = (m_particleSegPathLength[particle]/particle_speed);
+  Real segment_path_time = (m_particle_seg_path_length[particle]/particle_speed);
 
   // Decrement the time to census and increment age.
-  m_particleTimeCensus[particle] -= segment_path_time;
-  m_particleAge[particle] += segment_path_time;
+  m_particle_time_census[particle] -= segment_path_time;
+  m_particle_age[particle] += segment_path_time;
 
   // Ensure mc_particle.time_to_census is non-negative.
-  if (m_particleTimeCensus[particle] < 0.0)
+  if (m_particle_time_census[particle] < 0.0)
   {
-    m_particleTimeCensus[particle] = 0.0;
+    m_particle_time_census[particle] = 0.0;
   }
 
   // Accumulate the particle's contribution to the scalar flux.
   // TODO : Atomic
-  m_scalarFluxTally[particle.cell()][m_particleEneGrp[particle]] += m_particleSegPathLength[particle] * m_particleWeight[particle];
+  m_scalar_flux_tally[particle.cell()][m_particle_ene_grp[particle]] += m_particle_seg_path_length[particle] * m_particle_weight[particle];
 }
 
-
+/**
+ * @brief Méthode permettant d'exécuter l'événement Collision sur la particule p.
+ * 
+ * @param particle La particule à modifier.
+ * @return Integer 0 si la particule est absorbé par la maille.
+ * 1 si la particule fait simplement une collision.
+ * 2 ou plus si la particule doit se splitter.
+ */
 Integer TrackingMCModule::
 collisionEvent(Particle particle)
 {
@@ -688,22 +774,22 @@ collisionEvent(Particle particle)
   //------------------------------------------------------------------------------------------------------------------
   //    Pick the isotope and reaction.
   //------------------------------------------------------------------------------------------------------------------
-  Real randomNumber = rngSample(&m_particleRNS[particle]);
-  Real totalCrossSection = m_particleTotalCrossSection[particle];
+  Real randomNumber = rngSample(&m_particle_rns[particle]);
+  Real totalCrossSection = m_particle_total_cross_section[particle];
   Real currentCrossSection = totalCrossSection * randomNumber;
   Integer selectedIso = -1;
   Integer selectedUniqueNumber = -1;
   Integer selectedReact = -1;
-  Integer numIsos = m_isoGid[cell].size();
+  Integer numIsos = m_iso_gid[cell].size();
   
   for (Integer isoIndex = 0; isoIndex < numIsos && currentCrossSection >= 0; isoIndex++)
   {
-    Integer uniqueNumber = m_isoGid[cell][isoIndex];
+    Integer uniqueNumber = m_iso_gid[cell][isoIndex];
     Integer numReacts = m_nuclearData->getNumberReactions(uniqueNumber);
     for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++)
     {
       currentCrossSection -= macroscopicCrossSection(reactIndex, cell,
-                isoIndex, m_particleEneGrp[particle]);
+                isoIndex, m_particle_ene_grp[particle]);
       if (currentCrossSection < 0)
       {
         selectedIso = isoIndex;
@@ -724,7 +810,7 @@ collisionEvent(Particle particle)
   Real mat_mass = m_mass[cell];
 
   m_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact].sampleCollision(
-    m_particleKinEne[particle], mat_mass, &energyOut[0], &angleOut[0], nOut, &(m_particleRNS[particle]), MAX_PRODUCTION_SIZE );
+    m_particle_kin_ene[particle], mat_mass, &energyOut[0], &angleOut[0], nOut, &(m_particle_rns[particle]), MAX_PRODUCTION_SIZE );
 
   //--------------------------------------------------------------------------------------------------------------
   //  Post-Collision Phase 1:
@@ -761,14 +847,14 @@ collisionEvent(Particle particle)
   else if (nOut == 1)
   {
     updateTrajectory(energyOut[0], angleOut[0], particle);
-    m_particleEneGrp[particle] = m_nuclearData->getEnergyGroup(m_particleKinEne[particle]);
+    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
   else
   {
     for (Integer secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
     {
-      Int64 rns = rngSpawn_Random_Number_Seed(&m_particleRNS[particle]);
+      Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[particle]);
       m_local_ids_extra_rns.add(rns);
       rns &= ~(1UL << 63);
       m_local_ids_extra_gId.add(rns);
@@ -778,10 +864,6 @@ collisionEvent(Particle particle)
       m_local_ids_extra_angleOut.add(angleOut[secondaryIndex]);
     }
 
-    // If a fission reaction produces secondary particles we also add the original
-    // particle to the "extras" that we will handle later.  This avoids the 
-    // possibility of a particle doing multiple fission reactions in a single
-    // kernel invocation and overflowing the extra storage with secondary particles.
     m_local_ids_extra.add(particle.localId());
     m_local_ids_extra_energyOut_pSrc.add(energyOut[0]);
     m_local_ids_extra_angleOut_pSrc.add(angleOut[0]);
@@ -791,13 +873,23 @@ collisionEvent(Particle particle)
 }
 
 
+/**
+ * @brief Méthode permettant d'exécuter l'événement faceEventUndefined.
+ * Et de définir le 'Undefined' :
+ * Soit escape (sortie de maillage).
+ * Soit reflection (rebondie sur la face)
+ * Soit cellChange (changement de maille interne au sous-domaine)
+ * Soit subDChange (changement de maille externe au sous-domaine)
+ * 
+ * @param particle La particule à étudier.
+ */
 void TrackingMCModule::
 facetCrossingEvent(Particle particle)
 {
-  Face face = particle.cell().face(m_particleFace[particle]);
-  m_particleLastEvent[particle] = m_boundaryCond[face];
+  Face face = particle.cell().face(m_particle_face[particle]);
+  m_particle_last_event[particle] = m_boundary_cond[face];
 
-  if ( m_boundaryCond[face] == particleEvent::cellChange )
+  if ( m_boundary_cond[face] == ParticleEvent::cellChange )
   {
     // The particle will enter into an adjacent cell.
     Cell cell = face.frontCell();
@@ -809,7 +901,7 @@ facetCrossingEvent(Particle particle)
     
     m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
   }
-  else if ( m_boundaryCond[face] == particleEvent::subDChange )
+  else if ( m_boundary_cond[face] == ParticleEvent::subDChange )
   {
     // The particle will enter into an adjacent cell on a spatial neighbor.
     
@@ -827,50 +919,63 @@ facetCrossingEvent(Particle particle)
   }
 }
 
-
+/**
+ * @brief Méthode permettant d'exécuter l'événement reflection.
+ * 
+ * @param particle La particule à étudier.
+ */
 void TrackingMCModule::
 reflectParticle(Particle particle)
 {
-  Integer facet = m_particleFacet[particle];
+  Integer facet = m_particle_facet[particle];
 
   Cell cell = particle.cell();
-  Face face = cell.face(m_particleFace[particle]);
+  Face face = cell.face(m_particle_face[particle]);
 
-  Integer first_pos_node = (scan_order[m_indexArc[face]] ? ((facet == 3) ? 0 : facet+1) : facet);
-  Integer second_pos_node = (scan_order[m_indexArc[face]] ? facet : ((facet == 3) ? 0 : facet+1));
+  Integer first_pos_node = (scan_order[m_index_arc[face]] ? ((facet == 3) ? 0 : facet+1) : facet);
+  Integer second_pos_node = (scan_order[m_index_arc[face]] ? facet : ((facet == 3) ? 0 : facet+1));
 
   Node first_node = face.node(first_pos_node);
   Node second_node = face.node(second_pos_node);
 
-  MC_Vector point0(m_coordCm[first_node]);
-  MC_Vector point1(m_coordCm[second_node]);
-  MC_Vector point2(m_coordMidCm[face]);
+  MC_Vector point0(m_coord_cm[first_node]);
+  MC_Vector point1(m_coord_cm[second_node]);
+  MC_Vector point2(m_coord_mid_cm[face]);
 
   MC_General_Plane plane(point0, point1, point2);
 
   MC_Vector facet_normal(plane.A, plane.B, plane.C);
 
 
-  Real dot = 2.0*( m_particleDirCos[particle][MD_DirA] * facet_normal.x +
-                      m_particleDirCos[particle][MD_DirB] * facet_normal.y +
-                      m_particleDirCos[particle][MD_DirG] * facet_normal.z );
+  Real dot = 2.0*( m_particle_dir_cos[particle][MD_DirA] * facet_normal.x +
+                      m_particle_dir_cos[particle][MD_DirB] * facet_normal.y +
+                      m_particle_dir_cos[particle][MD_DirG] * facet_normal.z );
 
   if ( dot > 0 ) // do not reflect a particle that is ALREADY pointing inward
   {
       // reflect the particle
-      m_particleDirCos[particle][MD_DirA] -= dot * facet_normal.x;
-      m_particleDirCos[particle][MD_DirB] -= dot * facet_normal.y;
-      m_particleDirCos[particle][MD_DirG] -= dot * facet_normal.z;
+      m_particle_dir_cos[particle][MD_DirA] -= dot * facet_normal.x;
+      m_particle_dir_cos[particle][MD_DirB] -= dot * facet_normal.y;
+      m_particle_dir_cos[particle][MD_DirG] -= dot * facet_normal.z;
   }
 
   // Calculate the reflected, velocity components.
-  MC_Vector velo(m_particleVelocity[particle]);
+  MC_Vector velo(m_particle_velocity[particle]);
   Real particle_speed = velo.Length();
-  m_particleVelocity[particle][MD_DirX] = particle_speed * m_particleDirCos[particle][MD_DirA];
-  m_particleVelocity[particle][MD_DirY] = particle_speed * m_particleDirCos[particle][MD_DirB];
-  m_particleVelocity[particle][MD_DirZ] = particle_speed * m_particleDirCos[particle][MD_DirG];
+  m_particle_velocity[particle][MD_DirX] = particle_speed * m_particle_dir_cos[particle][MD_DirA];
+  m_particle_velocity[particle][MD_DirY] = particle_speed * m_particle_dir_cos[particle][MD_DirB];
+  m_particle_velocity[particle][MD_DirZ] = particle_speed * m_particle_dir_cos[particle][MD_DirG];
 }
 
+/**
+ * @brief Méthode permettant de cloner des particules.
+ * Copie des propriétés de particules sources vers les particules destinations.
+ * La taille des trois tableaux doit être identique.
+ * 
+ * @param idsSrc Tableau des ids des particules sources.
+ * @param idsNew Tableau des ids des particules destinations.
+ * @param rnsNew Tableau contenant les graines à donner aux particules.
+ */
 void TrackingMCModule::
 cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew)
 {
@@ -883,47 +988,62 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
   }
 }
 
+/**
+ * @brief Méthode permettant de cloner une particule.
+ * Copie des propriétés d'une particule source vers une particule destination.
+ * 
+ * @param pSrc La particule source.
+ * @param pNew La particule destination.
+ * @param rns La graine à donner à la particule destination.
+ */
 void TrackingMCModule::
 cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
 {
-  m_particleRNS[pNew] = rns;
+  m_particle_rns[pNew] = rns;
 
-  m_particleCoord[pNew][MD_DirX] = m_particleCoord[pSrc][MD_DirX];
-  m_particleCoord[pNew][MD_DirY] = m_particleCoord[pSrc][MD_DirY];
-  m_particleCoord[pNew][MD_DirZ] = m_particleCoord[pSrc][MD_DirZ];
+  m_particle_coord[pNew][MD_DirX] = m_particle_coord[pSrc][MD_DirX];
+  m_particle_coord[pNew][MD_DirY] = m_particle_coord[pSrc][MD_DirY];
+  m_particle_coord[pNew][MD_DirZ] = m_particle_coord[pSrc][MD_DirZ];
 
-  m_particleVelocity[pNew][MD_DirX] = m_particleVelocity[pSrc][MD_DirX];
-  m_particleVelocity[pNew][MD_DirY] = m_particleVelocity[pSrc][MD_DirY];
-  m_particleVelocity[pNew][MD_DirZ] = m_particleVelocity[pSrc][MD_DirZ];
+  m_particle_velocity[pNew][MD_DirX] = m_particle_velocity[pSrc][MD_DirX];
+  m_particle_velocity[pNew][MD_DirY] = m_particle_velocity[pSrc][MD_DirY];
+  m_particle_velocity[pNew][MD_DirZ] = m_particle_velocity[pSrc][MD_DirZ];
 
-  m_particleDirCos[pNew][MD_DirA] = m_particleDirCos[pSrc][MD_DirA];
-  m_particleDirCos[pNew][MD_DirB] = m_particleDirCos[pSrc][MD_DirB];
-  m_particleDirCos[pNew][MD_DirG] = m_particleDirCos[pSrc][MD_DirG];
+  m_particle_dir_cos[pNew][MD_DirA] = m_particle_dir_cos[pSrc][MD_DirA];
+  m_particle_dir_cos[pNew][MD_DirB] = m_particle_dir_cos[pSrc][MD_DirB];
+  m_particle_dir_cos[pNew][MD_DirG] = m_particle_dir_cos[pSrc][MD_DirG];
 
-  m_particleKinEne[pNew] = m_particleKinEne[pSrc];
-  m_particleWeight[pNew] = m_particleWeight[pSrc];
-  m_particleTimeCensus[pNew] = m_particleTimeCensus[pSrc];
-  m_particleTotalCrossSection[pNew] = m_particleTotalCrossSection[pSrc];
-  m_particleAge[pNew] = m_particleAge[pSrc];
-  m_particleNumMeanFreeP[pNew] = m_particleNumMeanFreeP[pSrc];
-  m_particleMeanFreeP[pNew] = m_particleMeanFreeP[pSrc];
-  m_particleSegPathLength[pNew] = m_particleSegPathLength[pSrc];
-  m_particleLastEvent[pNew] = m_particleLastEvent[pSrc];
-  m_particleNumColl[pNew] = m_particleNumColl[pSrc];
-  m_particleNumSeg[pNew] = m_particleNumSeg[pSrc];
-  m_particleSpecies[pNew] = m_particleSpecies[pSrc];
-  m_particleEneGrp[pNew] = m_particleEneGrp[pSrc];
-  m_particleFace[pNew] = m_particleFace[pSrc];
-  m_particleFacet[pNew] = m_particleFacet[pSrc];
-  m_particleNormalDot[pNew] = m_particleNormalDot[pSrc];
+  m_particle_kin_ene[pNew] = m_particle_kin_ene[pSrc];
+  m_particle_weight[pNew] = m_particle_weight[pSrc];
+  m_particle_time_census[pNew] = m_particle_time_census[pSrc];
+  m_particle_total_cross_section[pNew] = m_particle_total_cross_section[pSrc];
+  m_particle_age[pNew] = m_particle_age[pSrc];
+  m_particle_num_mean_free_path[pNew] = m_particle_num_mean_free_path[pSrc];
+  m_particle_mean_free_path[pNew] = m_particle_mean_free_path[pSrc];
+  m_particle_seg_path_length[pNew] = m_particle_seg_path_length[pSrc];
+  m_particle_last_event[pNew] = m_particle_last_event[pSrc];
+  m_particle_num_coll[pNew] = m_particle_num_coll[pSrc];
+  m_particle_num_seg[pNew] = m_particle_num_seg[pSrc];
+  m_particle_species[pNew] = m_particle_species[pSrc];
+  m_particle_ene_grp[pNew] = m_particle_ene_grp[pSrc];
+  m_particle_face[pNew] = m_particle_face[pSrc];
+  m_particle_facet[pNew] = m_particle_facet[pSrc];
+  m_particle_normal_dot[pNew] = m_particle_normal_dot[pSrc];
 }
 
+/**
+ * @brief Méthode permettant de mettre à jour la trajectoire de la particule.
+ * 
+ * @param energy Energie cinétique de la particule.
+ * @param angle Angle permettant de mettre à jour la trajectoire de la particule.
+ * @param particle La particule à traiter.
+ */
 void TrackingMCModule::
 updateTrajectory( Real energy, Real angle, Particle particle )
 {
-  m_particleKinEne[particle] = energy;
+  m_particle_kin_ene[particle] = energy;
   Real cosTheta = angle;
-  Real randomNumber = rngSample(&m_particleRNS[particle]);
+  Real randomNumber = rngSample(&m_particle_rns[particle]);
   Real phi = 2 * 3.14159265 * randomNumber;
   Real sinPhi = sin(phi);
   Real cosPhi = cos(phi);
@@ -937,15 +1057,21 @@ updateTrajectory( Real energy, Real angle, Particle particle )
           ((energy + PhysicalConstants::_neutronRestMassEnergy) *
           (energy + PhysicalConstants::_neutronRestMassEnergy))))));
 
-  m_particleVelocity[particle][MD_DirX] = speed * m_particleDirCos[particle][MD_DirA];
-  m_particleVelocity[particle][MD_DirY] = speed * m_particleDirCos[particle][MD_DirB];
-  m_particleVelocity[particle][MD_DirZ] = speed * m_particleDirCos[particle][MD_DirG];
+  m_particle_velocity[particle][MD_DirX] = speed * m_particle_dir_cos[particle][MD_DirA];
+  m_particle_velocity[particle][MD_DirY] = speed * m_particle_dir_cos[particle][MD_DirB];
+  m_particle_velocity[particle][MD_DirZ] = speed * m_particle_dir_cos[particle][MD_DirG];
 
-  randomNumber = rngSample(&m_particleRNS[particle]);
-  m_particleNumMeanFreeP[particle] = -1.0*std::log(randomNumber);
+  randomNumber = rngSample(&m_particle_rns[particle]);
+  m_particle_num_mean_free_path[particle] = -1.0*std::log(randomNumber);
 }
 
-
+/**
+ * @brief Méthode permettant de déterminer la distance entre la particule p et la prochaine collision.
+ * 
+ * @param cell La cellule où se trouve la particule
+ * @param energyGroup Le groupe d'energie.
+ * @return Real La distance entre la particule et la prochaine collision.
+ */
 Real TrackingMCModule::
 weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
 {
@@ -954,7 +1080,7 @@ weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
   if (precomputedCrossSection > 0.0)
     return precomputedCrossSection;
   
-  Integer nIsotopes = m_isoGid[cell].size();
+  Integer nIsotopes = m_iso_gid[cell].size();
   Real sum = 0.0;
   for (Integer isoIndex = 0; isoIndex < nIsotopes; isoIndex++)
   {
@@ -966,28 +1092,32 @@ weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
   return sum;
 }
 
-//----------------------------------------------------------------------------------------------------------------------
-//  Routine MacroscopicCrossSection calculates the number-density-weighted macroscopic cross
-//  section of a cell.
-//
-//  A reactionIndex of -1 means total cross section.
-//----------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Routine MacroscopicCrossSection calculates the number-density-weighted 
+ * macroscopic cross section of a cell.
+ * 
+ * @param reactionIndex 
+ * @param cell 
+ * @param isoIndex 
+ * @param energyGroup 
+ * @return Real 
+ */
 Real TrackingMCModule::
 macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup)
 {
   // Initialize various data items.
 
-  Real atomFraction = m_atomFraction[cell][isoIndex];
+  Real atom_fraction = m_atom_fraction[cell][isoIndex];
 
   Real microscopicCrossSection = 0.0;
   // The cell number density is the fraction of the atoms in cell
   // volume of this isotope.  We set this (elsewhere) to 1/nIsotopes.
   // This is a statement that we treat materials as if all of their
   // isotopes are present in equal amounts
-  Real cellNumberDensity = m_cellNumberDensity[cell];
+  Real cell_number_density = m_cell_number_density[cell];
 
-  Integer isotopeGid = m_isoGid[cell][isoIndex];
-  if ( atomFraction == 0.0 || cellNumberDensity == 0.0) 
+  Integer isotopeGid = m_iso_gid[cell][isoIndex];
+  if ( atom_fraction == 0.0 || cell_number_density == 0.0) 
   { 
     return 1e-20;
   }
@@ -1004,28 +1134,34 @@ macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Inte
               isotopeGid, energyGroup);
   }
 
-  return atomFraction * cellNumberDensity * microscopicCrossSection;
+  return atom_fraction * cell_number_density * microscopicCrossSection;
 }
 
-Nearest_Facet TrackingMCModule::
+/**
+ * @brief Méthode permettant de trouver la facet la plus proche de la particule p.
+ * 
+ * @param particle La particule à étudier.
+ * @return NearestFacet Les caractéristiques de la facet la plus proche.
+ */
+NearestFacet TrackingMCModule::
 getNearestFacet(Particle particle)
 {
   Cell cell = particle.cell();
   MC_Vector *facet_coords[3];
   Integer iteration = 0;
   Real move_factor = 0.5 * PhysicalConstants::_smallDouble;
-  Nearest_Facet nearest_facet;
+  NearestFacet nearest_facet;
   Integer retry = 1;
 
   while (retry) // will break out when distance is found
   {
     // Determine the distance to each facet of the cell.
     // (1e-8 * Radius)^2
-    Real plane_tolerance = 1e-16*(m_particleCoord[particle][MD_DirX]*m_particleCoord[particle][MD_DirX] +
-                                    m_particleCoord[particle][MD_DirY]*m_particleCoord[particle][MD_DirY] +
-                                    m_particleCoord[particle][MD_DirZ]*m_particleCoord[particle][MD_DirZ]);
+    Real plane_tolerance = 1e-16*(m_particle_coord[particle][MD_DirX]*m_particle_coord[particle][MD_DirX] +
+                                    m_particle_coord[particle][MD_DirY]*m_particle_coord[particle][MD_DirY] +
+                                    m_particle_coord[particle][MD_DirZ]*m_particle_coord[particle][MD_DirZ]);
 
-    Distance_To_Facet distance_to_facet[24];
+    DistanceToFacet distance_to_facet[24];
 
     Integer facet_index = -1;
     ENUMERATE_FACE(iface, cell.faces())
@@ -1042,18 +1178,18 @@ getNearestFacet(Particle particle)
         Node first_node = face.node(first_pos_node);
         Node second_node = face.node(second_pos_node);
 
-        MC_Vector point0(m_coordCm[first_node]);
-        MC_Vector point1(m_coordCm[second_node]);
-        MC_Vector point2(m_coordMidCm[iface]);
+        MC_Vector point0(m_coord_cm[first_node]);
+        MC_Vector point1(m_coord_cm[second_node]);
+        MC_Vector point2(m_coord_mid_cm[iface]);
 
         distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
 
         MC_General_Plane plane(point0, point1, point2);
 
         Real facet_normal_dot_direction_cosine =
-            (plane.A * m_particleDirCos[particle][MD_DirA] +
-            plane.B * m_particleDirCos[particle][MD_DirB] +
-            plane.C * m_particleDirCos[particle][MD_DirG]);
+            (plane.A * m_particle_dir_cos[particle][MD_DirA] +
+            plane.B * m_particle_dir_cos[particle][MD_DirB] +
+            plane.C * m_particle_dir_cos[particle][MD_DirG]);
 
         // Consider only those facets whose outer normals have
         // a positive dot product with the direction cosine.
@@ -1069,7 +1205,6 @@ getNearestFacet(Particle particle)
         distance_to_facet[facet_index].distance = t;
       }
     }
-    //ARCANE_FATAL("aaa");
 
 
     nearest_facet = findNearestFacet(
@@ -1091,6 +1226,22 @@ getNearestFacet(Particle particle)
   return nearest_facet;
 }
 
+/**
+ * @brief 
+ * 
+ * @param plane_tolerance 
+ * @param facet_normal_dot_direction_cosine 
+ * @param A 
+ * @param B 
+ * @param C 
+ * @param D 
+ * @param facet_coords0 
+ * @param facet_coords1 
+ * @param facet_coords2 
+ * @param particle 
+ * @param allow_enter 
+ * @return Real 
+ */
 Real TrackingMCModule::
 distanceToSegmentFacet( Real plane_tolerance,
                         Real facet_normal_dot_direction_cosine,
@@ -1102,9 +1253,9 @@ distanceToSegmentFacet( Real plane_tolerance,
                         bool allow_enter)
 {
   Real boundingBox_tolerance = 1e-9;
-  Real numerator = -1.0*(A * m_particleCoord[particle][MD_DirX] +
-                            B * m_particleCoord[particle][MD_DirY] +
-                            C * m_particleCoord[particle][MD_DirZ] +
+  Real numerator = -1.0*(A * m_particle_coord[particle][MD_DirX] +
+                            B * m_particle_coord[particle][MD_DirY] +
+                            C * m_particle_coord[particle][MD_DirZ] +
                             D);
 
   /* Plane equation: numerator = -P(x,y,z) = -(Ax + By + Cz + D)
@@ -1124,9 +1275,9 @@ distanceToSegmentFacet( Real plane_tolerance,
 
   // see if the intersection point of the ray and the plane is within the triangular facet
   MC_Vector intersection_pt;
-  intersection_pt.x = m_particleCoord[particle][MD_DirX] + distance * m_particleDirCos[particle][MD_DirA];
-  intersection_pt.y = m_particleCoord[particle][MD_DirY] + distance * m_particleDirCos[particle][MD_DirB];
-  intersection_pt.z = m_particleCoord[particle][MD_DirZ] + distance * m_particleDirCos[particle][MD_DirG];
+  intersection_pt.x = m_particle_coord[particle][MD_DirX] + distance * m_particle_dir_cos[particle][MD_DirA];
+  intersection_pt.y = m_particle_coord[particle][MD_DirY] + distance * m_particle_dir_cos[particle][MD_DirB];
+  intersection_pt.z = m_particle_coord[particle][MD_DirZ] + distance * m_particle_dir_cos[particle][MD_DirG];
 
   // if the point is completely below the triangle, it is not in the triangle
 #define IF_POINT_BELOW_CONTINUE(axis)                                    \
@@ -1212,21 +1363,27 @@ distanceToSegmentFacet( Real plane_tolerance,
   return PhysicalConstants::_hugeDouble;
 }
 
-Nearest_Facet TrackingMCModule::
+/**
+ * @brief Méthode permettant de trouver la facet la plus proche de la particule.
+ * Cette méthode essaye de trouver la facet la plus proche en appelant nearestFacet.
+ * Si on ne trouve pas, la méthode déplace la particule et rééssaye.
+ * 
+ */
+NearestFacet TrackingMCModule::
 findNearestFacet(Particle particle,
-                                  Integer &iteration, // input/output
-                                  Real &move_factor, // input/output
-                                  Distance_To_Facet *distance_to_facet,
-                                  Integer &retry /* output */ )
+                  Integer &iteration, // input/output
+                  Real &move_factor, // input/output
+                  DistanceToFacet *distance_to_facet,
+                  Integer &retry /* output */ )
 {
-  Nearest_Facet nearest_facet = nearestFacet(distance_to_facet);
+  NearestFacet nearest_facet = nearestFacet(distance_to_facet);
 
   const Integer max_allowed_segments = 10000000;
 
   retry = 0;
 
   if ( (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble && move_factor > 0) ||
-      ( m_particleNumSeg[particle] > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0 ) )
+      ( m_particle_num_seg[particle] > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0 ) )
   {
     info() << "Attention, peut-être problème de facet.";
 
@@ -1234,9 +1391,9 @@ findNearestFacet(Particle particle,
     // and try again.
     Cell cell = particle.cell();
 
-    m_particleCoord[particle][MD_DirX] += move_factor * ( m_coordCenter[cell][MD_DirX] - m_particleCoord[particle][MD_DirX] );
-    m_particleCoord[particle][MD_DirY] += move_factor * ( m_coordCenter[cell][MD_DirY] - m_particleCoord[particle][MD_DirY] );
-    m_particleCoord[particle][MD_DirZ] += move_factor * ( m_coordCenter[cell][MD_DirZ] - m_particleCoord[particle][MD_DirZ] );
+    m_particle_coord[particle][MD_DirX] += move_factor * ( m_coord_center[cell][MD_DirX] - m_particle_coord[particle][MD_DirX] );
+    m_particle_coord[particle][MD_DirY] += move_factor * ( m_coord_center[cell][MD_DirY] - m_particle_coord[particle][MD_DirY] );
+    m_particle_coord[particle][MD_DirZ] += move_factor * ( m_coord_center[cell][MD_DirZ] - m_particle_coord[particle][MD_DirZ] );
 
     iteration++;
     move_factor *= 2.0;
@@ -1262,13 +1419,16 @@ findNearestFacet(Particle particle,
   return nearest_facet;
 }
 
-Nearest_Facet TrackingMCModule::
-nearestFacet( Distance_To_Facet *distance_to_facet)
+/**
+ * @brief Méthode permettant de trouver la facet la plus proche de la particule.
+ */
+NearestFacet TrackingMCModule::
+nearestFacet( DistanceToFacet *distance_to_facet)
 {
-  Nearest_Facet nearest_facet;
+  NearestFacet nearest_facet;
 
   // largest negative distance (smallest magnitude, but negative)
-  Nearest_Facet nearest_negative_facet;
+  NearestFacet nearest_negative_facet;
   nearest_negative_facet.distance_to_facet = -PhysicalConstants::_hugeDouble;
 
   // Determine the facet that is closest to the specified coordinates.
@@ -1307,6 +1467,13 @@ nearestFacet( Distance_To_Facet *distance_to_facet)
   return nearest_facet;
 }
 
+/**
+ * @brief Méthode permettant de trouver le plus petit élément d'un UniqueArray.
+ * 
+ * @tparam T Le type de l'UniqueArray.
+ * @param array L'UniqueArray.
+ * @return Integer La position du plus petit élément.
+ */
 template<typename T>
 Integer TrackingMCModule::
 findMin(UniqueArray<T> array)
@@ -1326,12 +1493,20 @@ findMin(UniqueArray<T> array)
   return min_index;
 }
 
-
+/**
+ * @brief Méthode permettant de faire une rotation à une particule.
+ * 
+ * @param particle La particule à tourner.
+ * @param sin_Theta 
+ * @param cos_Theta 
+ * @param sin_Phi 
+ * @param cos_Phi 
+ */
 void TrackingMCModule::
 rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi)
 {
   // Calculate additional variables in the rotation matrix.
-  Real cos_theta = m_particleDirCos[particle][MD_DirG];
+  Real cos_theta = m_particle_dir_cos[particle][MD_DirG];
   Real sin_theta = sqrt((1.0 - (cos_theta*cos_theta)));
 
   Real cos_phi;
@@ -1343,12 +1518,12 @@ rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, 
   }
   else
   {
-    cos_phi = m_particleDirCos[particle][MD_DirA]/sin_theta;
-    sin_phi = m_particleDirCos[particle][MD_DirB]/sin_theta;
+    cos_phi = m_particle_dir_cos[particle][MD_DirA]/sin_theta;
+    sin_phi = m_particle_dir_cos[particle][MD_DirB]/sin_theta;
   }
 
   // Calculate the rotated direction cosine
-  m_particleDirCos[particle][MD_DirA] =  cos_theta*cos_phi*(sin_Theta*cos_Phi) - sin_phi*(sin_Theta*sin_Phi) + sin_theta*cos_phi*cos_Theta;
-  m_particleDirCos[particle][MD_DirB] =  cos_theta*sin_phi*(sin_Theta*cos_Phi) + cos_phi*(sin_Theta*sin_Phi) + sin_theta*sin_phi*cos_Theta;
-  m_particleDirCos[particle][MD_DirG] = -sin_theta        *(sin_Theta*cos_Phi) +                               cos_theta        *cos_Theta;
+  m_particle_dir_cos[particle][MD_DirA] =  cos_theta*cos_phi*(sin_Theta*cos_Phi) - sin_phi*(sin_Theta*sin_Phi) + sin_theta*cos_phi*cos_Theta;
+  m_particle_dir_cos[particle][MD_DirB] =  cos_theta*sin_phi*(sin_Theta*cos_Phi) + cos_phi*(sin_Theta*sin_Phi) + sin_theta*sin_phi*cos_Theta;
+  m_particle_dir_cos[particle][MD_DirG] = -sin_theta        *(sin_Theta*cos_Phi) +                               cos_theta        *cos_Theta;
 }

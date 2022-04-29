@@ -13,16 +13,15 @@
 using namespace Arcane;
 
 /*!
- * \brief Module QS.
+  \brief Module QS.
+  Ce module permet d'initialiser les grandeurs au maillage et
+  les tallies et permet d'afficher les résultats finaux.
  */
 class QSModule : 
 public ArcaneQSObject {
 
 public:
-  explicit QSModule(const ModuleBuildInfo &mbi) : 
-  ArcaneQSObject(mbi)
-{
-}
+  explicit QSModule(const ModuleBuildInfo &mbi) : ArcaneQSObject(mbi){}
 
 public:
   void initModule() override;
@@ -38,7 +37,7 @@ protected:
   void cycleFinalizeTallies();
   void initMesh();
   void initTallies();
-  particleEvent getBoundaryCondition(Integer pos);
+  ParticleEvent getBoundaryCondition(Integer pos);
 };
 
 /*---------------------------------------------------------------------------*/
