@@ -48,7 +48,7 @@
   </q-s>
 
   <sampling-m-c>
-    <nParticles>100000</nParticles>
+    <nParticles>1000000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
     <seed>1029384756</seed>
@@ -95,3 +95,36 @@
   </tracking-m-c>
 
 </case>
+<!-- 
+*I-QS         End iteration #1
+*I-QS           Informations:
+*I-QS             Number of particles at beginning of cycle                    (m_start): 0
+*I-QS             Number of particles sourced in                              (m_source): 99968
+*I-QS             Number of particles Russian Rouletted in population control     (m_rr): 0
+*I-QS             Number of particles split in population control              (m_split): 900005
+*I-QS             Number of particles absorbed                                (m_absorb): 203417
+*I-QS             Number of scatters                                         (m_scatter): 5082229
+*I-QS             Number of fission events                                   (m_fission): 254032
+*I-QS             Number of particles created by collisions                  (m_produce): 406826
+*I-QS             Number of collisions                                     (m_collision): 5539678
+*I-QS             Number of particles that escape                             (m_escape): 0
+*I-QS             Number of particles that enter census                       (m_census): 949350
+*I-QS             Number of segements                                   (m_num_segments): 6711690
+*I-QS             Number of particles at end of cycle                            (m_end): 949350
+
+*I-QS         End iteration #2
+*I-QS           Informations:
+*I-QS             Number of particles at beginning of cycle                    (m_start): 949350
+*I-QS             Number of particles sourced in                              (m_source): 99968
+*I-QS             Number of particles Russian Rouletted in population control     (m_rr): 49354
+*I-QS             Number of particles split in population control              (m_split): 0
+*I-QS             Number of particles absorbed                                (m_absorb): 356811
+*I-QS             Number of scatters                                         (m_scatter): 8909894
+*I-QS             Number of fission events                                   (m_fission): 445311
+*I-QS             Number of particles created by collisions                  (m_produce): 711828
+*I-QS             Number of collisions                                     (m_collision): 9712016
+*I-QS             Number of particles that escape                             (m_escape): 0
+*I-QS             Number of particles that enter census                       (m_census): 909670
+*I-QS             Number of segements                                   (m_num_segments): 11013245
+*I-QS             Number of particles at end of cycle                            (m_end): 909670
+ -->

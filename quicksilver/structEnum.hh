@@ -4,7 +4,7 @@
 using namespace Arcane;
 
 #define MAX_PRODUCTION_SIZE 4
-#define LOG true
+#define LOG false
 
 enum eBoundaryCondition{REFLECT, ESCAPE, OCTANT};
 enum eShape{UNDEFINED, BRICK, SPHERE};

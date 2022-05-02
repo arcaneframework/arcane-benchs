@@ -4,6 +4,7 @@
 #include <iostream>
 #include "NVTX_Range.hh"
 #include "qs_assert.hh"
+#include "arcane/Concurrency.h"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -108,115 +109,123 @@ initMesh()
   m_coord_center.resize(4);
   m_total.resize(options()->getNGroups());
 
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    Cell cell = *icell;
+  Arcane::ParallelLoopOptions options;
 
-    // Position de la cellule dans le maillage entier.
-    Integer index = cell.uniqueId().asInt32();
-    Integer x = index % m_nx;
-    index /= m_nx;
-    Integer y = index % m_ny;
-    Integer z = index / m_ny;
+  // Exécute la boucle par parties d'environ 50 mailles.
+  //options.setGrainSize(50);
+  //options.setMaxThread(3);
 
-    m_coord_center[icell][MD_DirX] = 0.0;
-    m_coord_center[icell][MD_DirY] = 0.0;
-    m_coord_center[icell][MD_DirZ] = 0.0;
-
-    ENUMERATE_NODE(inode, cell.nodes())
+  arcaneParallelForeach(ownCells(), options, [&](CellVectorView cells){
+    ENUMERATE_CELL(icell, cells)
     {
-      Real m_coordX = offset[inode.index()][0] + x;
-      Real m_coordY = offset[inode.index()][1] + y;
-      Real m_coordZ = offset[inode.index()][2] + z;
+      Cell cell = *icell;
 
-      // Coordonnées du noeud en cm.
-      m_coord_cm[inode][MD_DirX] = m_coordX * dx;
-      m_coord_cm[inode][MD_DirY] = m_coordY * dy;
-      m_coord_cm[inode][MD_DirZ] = m_coordZ * dz;
+      // Position de la cellule dans le maillage entier.
+      Integer index = cell.uniqueId().asInt32();
+      Integer x = index % m_nx;
+      index /= m_nx;
+      Integer y = index % m_ny;
+      Integer z = index / m_ny;
 
-      m_coord_center[icell][MD_DirX] += m_coord_cm[inode][MD_DirX];
-      m_coord_center[icell][MD_DirY] += m_coord_cm[inode][MD_DirY];
-      m_coord_center[icell][MD_DirZ] += m_coord_cm[inode][MD_DirZ];
+      m_coord_center[icell][MD_DirX] = 0.0;
+      m_coord_center[icell][MD_DirY] = 0.0;
+      m_coord_center[icell][MD_DirZ] = 0.0;
+
+      ENUMERATE_NODE(inode, cell.nodes())
+      {
+        Real m_coordX = offset[inode.index()][0] + x;
+        Real m_coordY = offset[inode.index()][1] + y;
+        Real m_coordZ = offset[inode.index()][2] + z;
+
+        // Coordonnées du noeud en cm.
+        m_coord_cm[inode][MD_DirX] = m_coordX * dx;
+        m_coord_cm[inode][MD_DirY] = m_coordY * dy;
+        m_coord_cm[inode][MD_DirZ] = m_coordZ * dz;
+
+        m_coord_center[icell][MD_DirX] += m_coord_cm[inode][MD_DirX];
+        m_coord_center[icell][MD_DirY] += m_coord_cm[inode][MD_DirY];
+        m_coord_center[icell][MD_DirZ] += m_coord_cm[inode][MD_DirZ];
+      }
+
+      m_coord_center[icell][MD_DirX] /= cell.nbNode();
+      m_coord_center[icell][MD_DirY] /= cell.nbNode();
+      m_coord_center[icell][MD_DirZ] /= cell.nbNode();
+
+      Integer compt = 8;
+      Real volume = 0;
+      MC_Vector cellCenter(m_coord_center[icell]);
+
+      ENUMERATE_FACE(iface, cell.faces())
+      {
+        Face face = *iface;
+
+        m_index_arc[iface] = iface.index();
+
+        Real m_coordX = offset[compt][0] + x;
+        Real m_coordY = offset[compt][1] + y;
+        Real m_coordZ = offset[compt][2] + z;
+        Real m_coordB = offset[compt][3];
+
+        // Coordonnées du millieux de la face (point commun à toutes les facets de la face).
+        m_coord_mid_cm[iface][MD_DirX] = m_coordX * dx;
+        m_coord_mid_cm[iface][MD_DirY] = m_coordY * dy;
+        m_coord_mid_cm[iface][MD_DirZ] = m_coordZ * dz;
+
+        if(m_coordB == 1)
+        {
+          m_coord_mid_cm[iface][MD_DirY] += dy / 2;
+          m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
+        }
+        else if(m_coordB == 2)
+        {
+          m_coord_mid_cm[iface][MD_DirX] += dx / 2;
+          m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
+        }
+        else
+        {
+          m_coord_mid_cm[iface][MD_DirX] += dx / 2;
+          m_coord_mid_cm[iface][MD_DirY] += dy / 2;
+        }
+
+        //info() << "  Face #" << m_index_arc[iface];
+
+        // Si la face est au bord du domaine entier.
+        if(face.isSubDomainBoundary())
+        {
+          // D'origine, dans le code QS, dans le cas octant : 
+          //   les faces 0, 1, 2 sont escape (donc compt = 8, 9, 10 => getBoundaryCondition(impair))
+          //   les faces 3, 4, 5 sont reflection (donc compt = 11, 12, 13 => getBoundaryCondition(pair))
+          m_boundary_cond[iface] = getBoundaryCondition((compt/11) + 1); 
+        }
+        // Si la face est au bord du sous-domaine.
+        else if(face.frontCell().owner() != face.backCell().owner())
+        {
+          m_boundary_cond[iface] = ParticleEvent::subDChange;
+        }
+        // Face interne au sous-domaine.
+        else
+        {
+          m_boundary_cond[iface] = ParticleEvent::cellChange;
+        }
+        
+        for (Integer i = 0; i < 4; i++)
+        {
+          Node first_node  = face.node(i);
+          Node second_node = face.node(((i == 3) ? 0 : i+1));
+
+          MC_Vector aa = MC_Vector(m_coord_cm[first_node]) - cellCenter;
+          MC_Vector bb = MC_Vector(m_coord_cm[second_node]) - cellCenter;
+          MC_Vector cc = MC_Vector(m_coord_mid_cm[iface]) - cellCenter;
+
+          volume += abs(aa.Dot(bb.Cross(cc)));
+        }
+        compt++;
+      }
+      volume /= 6.0;
+
+      m_volume[cell] = volume;
     }
-
-    m_coord_center[icell][MD_DirX] /= cell.nbNode();
-    m_coord_center[icell][MD_DirY] /= cell.nbNode();
-    m_coord_center[icell][MD_DirZ] /= cell.nbNode();
-
-    Integer compt = 8;
-    Real volume = 0;
-    MC_Vector cellCenter(m_coord_center[icell]);
-
-    ENUMERATE_FACE(iface, cell.faces())
-    {
-      Face face = *iface;
-
-      m_index_arc[iface] = iface.index();
-
-      Real m_coordX = offset[compt][0] + x;
-      Real m_coordY = offset[compt][1] + y;
-      Real m_coordZ = offset[compt][2] + z;
-      Real m_coordB = offset[compt][3];
-
-      // Coordonnées du millieux de la face (point commun à toutes les facets de la face).
-      m_coord_mid_cm[iface][MD_DirX] = m_coordX * dx;
-      m_coord_mid_cm[iface][MD_DirY] = m_coordY * dy;
-      m_coord_mid_cm[iface][MD_DirZ] = m_coordZ * dz;
-
-      if(m_coordB == 1)
-      {
-        m_coord_mid_cm[iface][MD_DirY] += dy / 2;
-        m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
-      }
-      else if(m_coordB == 2)
-      {
-        m_coord_mid_cm[iface][MD_DirX] += dx / 2;
-        m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
-      }
-      else
-      {
-        m_coord_mid_cm[iface][MD_DirX] += dx / 2;
-        m_coord_mid_cm[iface][MD_DirY] += dy / 2;
-      }
-
-      //info() << "  Face #" << m_index_arc[iface];
-
-      // Si la face est au bord du domaine entier.
-      if(face.isSubDomainBoundary())
-      {
-        // D'origine, dans le code QS, dans le cas octant : 
-        //   les faces 0, 1, 2 sont escape (donc compt = 8, 9, 10 => getBoundaryCondition(impair))
-        //   les faces 3, 4, 5 sont reflection (donc compt = 11, 12, 13 => getBoundaryCondition(pair))
-        m_boundary_cond[iface] = getBoundaryCondition((compt/11) + 1); 
-      }
-      // Si la face est au bord du sous-domaine.
-      else if(face.frontCell().owner() != face.backCell().owner())
-      {
-        m_boundary_cond[iface] = ParticleEvent::subDChange;
-      }
-      // Face interne au sous-domaine.
-      else
-      {
-        m_boundary_cond[iface] = ParticleEvent::cellChange;
-      }
-      
-      for (Integer i = 0; i < 4; i++)
-      {
-        Node first_node  = face.node(i);
-        Node second_node = face.node(((i == 3) ? 0 : i+1));
-
-        MC_Vector aa = MC_Vector(m_coord_cm[first_node]) - cellCenter;
-        MC_Vector bb = MC_Vector(m_coord_cm[second_node]) - cellCenter;
-        MC_Vector cc = MC_Vector(m_coord_mid_cm[iface]) - cellCenter;
-
-        volume += abs(aa.Dot(bb.Cross(cc)));
-      }
-      compt++;
-    }
-    volume /= 6.0;
-
-    m_volume[cell] = volume;
-  }
+  });
 
   m_total.fill(0.0);
   m_cell_number_density.fill(1.0);

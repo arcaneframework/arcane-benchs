@@ -4,7 +4,10 @@
 #include "NVTX_Range.hh"
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
-#include "arcane/Assertion.h"
+#include <set>
+#include <map>
+#include <mutex>
+#include "arcane/Concurrency.h"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -118,28 +121,37 @@ sourceParticles()
   m_source_particle_weight = source_particle_weight;
 
   Int64 particle_count = 0;
+  //Int64UniqueArray num_particles_cells_decal(ownCells().size()+1);
+  //num_particles_cells_decal[0] = 0;
 
   // On compte le nombre de particule total qui sera créé.
   ENUMERATE_CELL(icell, ownCells())
   {
+    //if(icell.index() != icell.localId()) ARCANE_FATAL("Trouve une autre solution");
     Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
     Real cell_num_particles_float = cell_weight_particles / source_particle_weight;
     particle_count += (Int64)cell_num_particles_float;
+    //num_particles_cells_decal[icell.localId()] = particle_count;
   }
 
   Int64UniqueArray uids(particle_count);
   Int32UniqueArray local_id_cells(particle_count);
   Int32UniqueArray particles_lid(particle_count);
-  Int64UniqueArray rng(particle_count);
+  std::map<Int64, Int64> rng;
   Integer particle_index_g = 0;
 
+
   // On gérère les uniqueId et les graines des futures particules.
+  // TODO : On a besoin d'un index global si parallélisation.
   ENUMERATE_CELL(icell, ownCells())
   {
     Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
     Real cell_num_particles_float = cell_weight_particles / source_particle_weight;
     Integer cell_num_particles = (Integer)cell_num_particles_float;
 
+    //for ( Integer particle_index = num_particles_cells_decal[icell.localId()];
+    //      particle_index < num_particles_cells_decal[icell.localId()+1];
+    //      particle_index++ )
     for ( Integer particle_index = 0; particle_index < cell_num_particles; particle_index++ )
     {
       Int64 random_number_seed;
@@ -158,9 +170,9 @@ sourceParticles()
       id = random_number_seed;
       id &= ~(1UL << 63);
 
-      rng[particle_index_g] = rns;
       uids[particle_index_g] = id;
       local_id_cells[particle_index_g] = icell.localId();
+      rng[id] = rns;
 
       particle_index_g++;
     }
@@ -171,32 +183,37 @@ sourceParticles()
   ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
 
   // Les particules sont créées, on les initialise donc.
-  ENUMERATE_PARTICLE(ipartic, viewSrcP)
-  {
-    Particle p = (*ipartic);
-    initParticle(p, rng[ipartic.index()]);
+  Arcane::ParallelLoopOptions options;
+  options.setGrainSize(1000);
 
-    generate3DCoordinate(p);
-    sampleIsotropic(p);
-    m_particle_kin_ene[p] = (m_e_max() - m_e_min())*
-                            rngSample(&m_particle_rns[p]) + m_e_min();
+  arcaneParallelForeach(viewSrcP, options, [&](ParticleVectorView particles){
+    ENUMERATE_PARTICLE(ipartic, particles)
+    {
+      Particle p = (*ipartic);
+      initParticle(p, rng[p.uniqueId().asInt64()]);
 
-    Real speed = getSpeedFromEnergy(p);
+      generate3DCoordinate(p);
+      sampleIsotropic(p);
+      m_particle_kin_ene[p] = (m_e_max() - m_e_min())*
+                              rngSample(&m_particle_rns[p]) + m_e_min();
 
-    m_particle_velocity[p][MD_DirX] = speed * m_particle_dir_cos[p][MD_DirA];
-    m_particle_velocity[p][MD_DirY] = speed * m_particle_dir_cos[p][MD_DirB];
-    m_particle_velocity[p][MD_DirZ] = speed * m_particle_dir_cos[p][MD_DirG];
+      Real speed = getSpeedFromEnergy(p);
 
-    m_particle_weight[p] = source_particle_weight;
+      m_particle_velocity[p][MD_DirX] = speed * m_particle_dir_cos[p][MD_DirA];
+      m_particle_velocity[p][MD_DirY] = speed * m_particle_dir_cos[p][MD_DirB];
+      m_particle_velocity[p][MD_DirZ] = speed * m_particle_dir_cos[p][MD_DirG];
 
-    Real randomNumber = rngSample(&m_particle_rns[p]);
-    m_particle_num_mean_free_path[p] = -1.0*std::log(randomNumber);
+      m_particle_weight[p] = source_particle_weight;
 
-    randomNumber = rngSample(&m_particle_rns[p]);
-    m_particle_time_census[p] = m_global_deltat() * randomNumber;
+      Real randomNumber = rngSample(&m_particle_rns[p]);
+      m_particle_num_mean_free_path[p] = -1.0*std::log(randomNumber);
 
-    m_source_a++;
-  }
+      randomNumber = rngSample(&m_particle_rns[p]);
+      m_particle_time_census[p] = m_global_deltat() * randomNumber;
+
+      m_source_a++;
+    }
+  });
 
   m_processingView = m_particle_family->view();
 }
@@ -228,21 +245,28 @@ populationControl()
   else if (splitRRFactor < 1)
   {
     Int32UniqueArray supprP;
-    ENUMERATE_PARTICLE(iparticle, m_processingView)
-    {
-      Real randomNumber = rngSample(&m_particle_rns[iparticle]);
-      if (randomNumber > splitRRFactor)
+    std::mutex g_i_mutex;
+
+    Arcane::ParallelLoopOptions options;
+    options.setGrainSize(1000);
+    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles){
+      ENUMERATE_PARTICLE(iparticle, particles)
       {
-        // Kill
-        supprP.add(iparticle.localId());
-        m_rr_a++; 
+        Real randomNumber = rngSample(&m_particle_rns[iparticle]);
+        if (randomNumber > splitRRFactor)
+        {
+          // Kill
+          m_rr_a++; 
+          GlobalMutex::ScopedLock(m_mutex);
+          supprP.add(iparticle.localId());
+        }
+        else
+        {
+          // Ici, splitRRFactor < 1 donc on augmente la taille de la particule.
+          m_particle_weight[iparticle] /= splitRRFactor;
+        }
       }
-      else
-      {
-        // Ici, splitRRFactor < 1 donc on augmente la taille de la particule.
-        m_particle_weight[iparticle] /= splitRRFactor;
-      }
-    }
+    });
     m_particle_family->toParticleFamily()->removeParticles(supprP);
     m_particle_family->toParticleFamily()->endUpdate();
   }
@@ -253,29 +277,35 @@ populationControl()
     Int64UniqueArray addRns;
     Int32UniqueArray addCellIdP;
     Int32UniqueArray addSrcP;
-    ENUMERATE_PARTICLE(iparticle, m_processingView)
-    {
-      Particle particle = (*iparticle);
-      Real randomNumber = rngSample(&m_particle_rns[iparticle]);
 
-      // Split
-      Integer splitFactor = (Integer)floor(splitRRFactor);
-      if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
+    Arcane::ParallelLoopOptions options;
+    options.setGrainSize(1000);
 
-      m_particle_weight[iparticle] /= splitRRFactor;
-
-      for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
+    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles){
+      ENUMERATE_PARTICLE(iparticle, particles)
       {
-        m_split_a++;
+        Particle particle = (*iparticle);
+        Real randomNumber = rngSample(&m_particle_rns[iparticle]);
 
-        Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
-        addRns.add(rns);
-        rns &= ~(1UL << 63); // On passe en positif.
-        addIdP.add(rns);
-        addCellIdP.add(particle.cell().localId());
-        addSrcP.add(iparticle.localId());
+        // Split
+        Integer splitFactor = (Integer)floor(splitRRFactor);
+        if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
+
+        m_particle_weight[iparticle] /= splitRRFactor;
+
+        GlobalMutex::ScopedLock(m_mutex);
+        for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
+        {
+          m_split_a++;
+          Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
+          addRns.add(rns);
+          rns &= ~(1UL << 63); // On passe en positif.
+          addIdP.add(rns);
+          addCellIdP.add(particle.cell().localId());
+          addSrcP.add(iparticle.localId());
+        }
       }
-    }
+    });
 
     Int32UniqueArray particles_lid(addIdP.size());
     m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
@@ -408,25 +438,29 @@ rouletteLowWeightParticles()
 
     // March backwards through the vault so killed particles don't mess up the indexing
     const Real weightCutoff = lowWeightCutoff * m_source_particle_weight;
-
-    ENUMERATE_PARTICLE(iparticle, m_processingView)
-    {
-      if (m_particle_weight[iparticle] <= weightCutoff)
+    Arcane::ParallelLoopOptions options;
+    options.setGrainSize(1000);
+    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles){
+      ENUMERATE_PARTICLE(iparticle, particles)
       {
-        Real randomNumber = rngSample(&m_particle_rns[iparticle]);
-        if (randomNumber <= lowWeightCutoff)
+        if (m_particle_weight[iparticle] <= weightCutoff)
         {
-          // The particle history continues with an increased weight.
-          m_particle_weight[iparticle] /= lowWeightCutoff;
+          Real randomNumber = rngSample(&m_particle_rns[iparticle]);
+          if (randomNumber <= lowWeightCutoff)
+          {
+            // The particle history continues with an increased weight.
+            m_particle_weight[iparticle] /= lowWeightCutoff;
+          }
+          else
+          {
+            // Kill
+            m_rr_a++;
+            GlobalMutex::ScopedLock(m_mutex);
+            supprP.add(iparticle.localId());
+          } 
         }
-        else
-        {
-          // Kill
-          supprP.add(iparticle.localId());
-          m_rr_a++;
-        } 
       }
-    }
+    });
 
     m_particle_family->toParticleFamily()->removeParticles(supprP);
     m_particle_family->toParticleFamily()->endUpdate();

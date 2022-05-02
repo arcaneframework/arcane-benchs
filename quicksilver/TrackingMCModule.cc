@@ -4,6 +4,8 @@
 #include "PhysicalConstants.hh"
 #include "MC_RNG_State.hh"
 #include "MC_Facet_Geometry.hh"
+#include "arcane/Concurrency.h"
+#include <thread>
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -33,6 +35,7 @@ initModule()
 void TrackingMCModule::
 cycleTracking()
 {
+  computeCrossSection();
   tracking();
   updateTallies();
 }
@@ -192,11 +195,16 @@ tracking()
   bool done = false;
 
   // Ne sert qu'a debug maintenant.
-  m_local_ids_processed.clear();
+  //m_local_ids_processed.clear();
 
   // Toutes les particles de m_particle_family sont à suivre.
   ParticleVectorView m_processingView = m_particle_family->view();
   ParticleVectorView inView;
+  Int32UniqueArray extraClone;
+  Int32UniqueArray incomingClone;
+  Arcane::ParallelLoopOptions optionns;
+  optionns.setGrainSize(1000);
+
 
   #if LOG
   pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << m_processingView.size() << " particles.";
@@ -204,47 +212,52 @@ tracking()
 
   Integer particle_count = 0; // Initialize count of num_particles processed
   Integer iter = 1;
+
   
   while (!done)
   {
-    ENUMERATE_PARTICLE(iparticle, m_processingView)
-    {
-      Particle particle = (*iparticle);
-      cycleTrackingGuts(particle);
-      #if LOG
-      if(iparticle.index() % 50000 == 0)
+    arcaneParallelForeach(m_processingView, optionns, [&](ParticleVectorView particles){
+      ENUMERATE_PARTICLE(iparticle, particles)
       {
-        debug() << "--------";
-        pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << m_processingView.size();
-        debug() << "  m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
-        debug() << "--------";
+        Particle particle = (*iparticle);
+        
+        cycleTrackingGuts(particle);
+        #if LOG
+        if(iparticle.index() % 50000 == 0)
+        {
+          debug() << "--------";
+          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << m_processingView.size();
+          debug() << "  m_local_ids_processed : " << m_census_a << " m_local_ids_extra : " << m_local_ids_extra.size();
+          debug() << "--------";
+        }
+        #endif
       }
-      #endif
-    }
+    });
+
     particle_count += m_processingView.size();
     #if LOG
     if(m_processingView.size() != 0) pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << m_processingView.size() << "/" << m_processingView.size();
     #endif
-
-    
     
     if(mesh()->parallelMng()->commSize() > 1 && inView.size() > 0)
     {
       #if LOG
       pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Computing incoming particles";
       #endif
-      ENUMERATE_PARTICLE(iparticle, inView)
-      {
-        Particle particle = (*iparticle);
-        cycleTrackingGuts(particle);
-
-        #if LOG
-        if(iparticle.index() % 50000 == 0)
+      arcaneParallelForeach(inView, optionns, [&](ParticleVectorView particles){
+        ENUMERATE_PARTICLE(iparticle, particles)
         {
-          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
+          Particle particle = (*iparticle);
+          cycleTrackingGuts(particle);
+
+          #if LOG
+          if(iparticle.index() % 50000 == 0)
+          {
+            pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
+          }
+          #endif
         }
-        #endif
-      }
+      });
       particle_count += inView.size();
       #if LOG
       pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << inView.size() << "/" << inView.size();
@@ -255,7 +268,7 @@ tracking()
     debug() << "========";
     pinfo() << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter  << " - Total number of particles processed : " << particle_count;
     debug() << "  m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size()<< " m_local_ids_extra : " << m_local_ids_extra.size();
-    debug() << "  m_local_ids_processed : " << m_local_ids_processed.size() << " m_local_ids_exit : " << m_local_ids_exit.size();
+    debug() << "  m_local_ids_processed : " << m_census_a << " m_local_ids_exit : " << m_local_ids_exit.size();
     debug() << "========";
     #endif
 
@@ -298,8 +311,9 @@ tracking()
         m_local_ids_out.clear();
       } while(m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
 
-      inView = m_particle_family->view(m_local_ids_in);
+      incomingClone = m_local_ids_in.clone();
       m_local_ids_in.clear();
+      inView = m_particle_family->view(incomingClone);
       //}
     }
 
@@ -308,8 +322,10 @@ tracking()
       done = true;
     }
 
-    m_processingView = m_particle_family->view(m_local_ids_extra);
+    extraClone = m_local_ids_extra.clone();
     m_local_ids_extra.clear();
+    
+    m_processingView = m_particle_family->view(extraClone);
     iter++;
   }
   m_end_a = m_particle_family->view().size();
@@ -459,7 +475,10 @@ cycleTrackingFunction(Particle particle)
           switch (collisionEvent(particle))
           {
           case 0: // La particule est absorbée.
-            m_local_ids_exit.add(particle.localId());
+            {
+              GlobalMutex::ScopedLock(m_mutex_exit);
+              m_local_ids_exit.add(particle.localId());
+            }
             keepTrackingThisParticle = false;
             break;
 
@@ -490,7 +509,10 @@ cycleTrackingFunction(Particle particle)
             m_escape_a++;
             m_particle_species[particle] = -1;
             keepTrackingThisParticle = false;
-            m_local_ids_exit.add(particle.localId());
+            {
+              GlobalMutex::ScopedLock(m_mutex_exit);
+              m_local_ids_exit.add(particle.localId());
+            }
             break;
 
           case ParticleEvent::reflection:
@@ -510,7 +532,10 @@ cycleTrackingFunction(Particle particle)
       case ParticleEvent::census:
         {
           // The particle has reached the end of the time step.
-          m_local_ids_processed.add(particle.localId());
+          // {
+          //   GlobalMutex::ScopedLock(m_mutex_processed);
+          //   m_local_ids_processed.add(particle.localId());
+          // }
           m_census_a++;
           keepTrackingThisParticle = false;
           break;
@@ -535,6 +560,7 @@ collisionEventSuite()
 {
   // On créé les particules.
   Int32UniqueArray particles_lid(m_local_ids_extra_gId.size());
+
   m_particle_family->toParticleFamily()->addParticles(m_local_ids_extra_gId, m_local_ids_extra_cellId, particles_lid);
   m_particle_family->toParticleFamily()->endUpdate();
 
@@ -616,7 +642,8 @@ computeNextEvent(Particle particle)
 
   // Randomly determine the distance to the next collision
   // based upon the composition of the current cell.
-  Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(particle.cell(), m_particle_ene_grp[particle]);
+  //Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(particle.cell(), m_particle_ene_grp[particle]);
+  Real macroscopic_total_cross_section = m_total[particle.cell()][m_particle_ene_grp[particle]];
     
   // Cache the cross section
   m_particle_total_cross_section[particle] = macroscopic_total_cross_section;
@@ -754,7 +781,8 @@ computeNextEvent(Particle particle)
   }
 
   // Accumulate the particle's contribution to the scalar flux.
-  // TODO : Atomic
+  // Atomic
+  GlobalMutex::ScopedLock(m_mutex_total);
   m_scalar_flux_tally[particle.cell()][m_particle_ene_grp[particle]] += m_particle_seg_path_length[particle] * m_particle_weight[particle];
 }
 
@@ -852,6 +880,7 @@ collisionEvent(Particle particle)
 
   else
   {
+    GlobalMutex::ScopedLock(m_mutex_extra);
     for (Integer secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++)
     {
       Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[particle]);
@@ -886,6 +915,7 @@ collisionEvent(Particle particle)
 void TrackingMCModule::
 facetCrossingEvent(Particle particle)
 {
+  GlobalMutex::ScopedLock(m_mutex_out);
   Face face = particle.cell().face(m_particle_face[particle]);
   m_particle_last_event[particle] = m_boundary_cond[face];
 
@@ -1066,19 +1096,40 @@ updateTrajectory( Real energy, Real angle, Particle particle )
 }
 
 /**
+ * @brief Méthode permettant de déterminer les cross sections de toutes les mailles.
+ */
+void TrackingMCModule::
+computeCrossSection()
+{
+  Arcane::ParallelLoopOptions options;
+  //options.setGrainSize(50);
+
+  arcaneParallelForeach(ownCells(), options, [&](CellVectorView cells){
+    ENUMERATE_CELL(icell, cells)
+    {
+      for(Integer i = 0; i < m_n_groups(); i++)
+      {
+        weightedMacroscopicCrossSection((*icell), i);
+      }
+    }
+  });
+}
+
+/**
  * @brief Méthode permettant de déterminer la distance entre la particule p et la prochaine collision.
  * 
  * @param cell La cellule où se trouve la particule
  * @param energyGroup Le groupe d'energie.
  * @return Real La distance entre la particule et la prochaine collision.
  */
-Real TrackingMCModule::
+void TrackingMCModule::
 weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
 {
-  Real precomputedCrossSection = m_total[cell][energyGroup];
+  // GlobalMutex::ScopedLock(m_mutex_total);
+  // Real precomputedCrossSection = m_total[cell][energyGroup];
 
-  if (precomputedCrossSection > 0.0)
-    return precomputedCrossSection;
+  // if (precomputedCrossSection > 0.0)
+  //   return precomputedCrossSection;
   
   Integer nIsotopes = m_iso_gid[cell].size();
   Real sum = 0.0;
@@ -1087,9 +1138,9 @@ weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
     sum += macroscopicCrossSection(-1, cell, isoIndex, energyGroup);
   }
 
-  m_total[cell][energyGroup] = sum; // TODO Atomic
+  m_total[cell][energyGroup] = sum; // Atomic
 
-  return sum;
+  //return sum;
 }
 
 /**
@@ -1385,7 +1436,9 @@ findNearestFacet(Particle particle,
   if ( (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble && move_factor > 0) ||
       ( m_particle_num_seg[particle] > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0 ) )
   {
-    info() << "Attention, peut-être problème de facet.";
+    error() << "Attention, peut-être problème de facet.";
+    error() << (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble) << " && " << (move_factor > 0)
+            << " || " << (m_particle_num_seg[particle] > max_allowed_segments) << " && " << (nearest_facet.distance_to_facet <= 0.0);
 
     // Could not find a solution, so move the particle towards the center of the cell
     // and try again.

@@ -25,6 +25,7 @@
 #include "arcane/materials/MeshEnvironmentVariableRef.h"
 #include "arcane/materials/MaterialVariableBuildInfo.h"
 #include "arcane/materials/MeshEnvironmentBuildInfo.h"
+#include <arccore/concurrency/Mutex.h>
 #include "structEnum.hh"
 
 #include "SamplingMC_axl.h"
@@ -59,7 +60,7 @@ protected:
   std::atomic<Int64> m_source_a{0};
   std::atomic<Int64> m_rr_a{0};
   std::atomic<Int64> m_split_a{0};
-
+  GlobalMutex m_mutex;
 
 protected:
   void updateTallies();

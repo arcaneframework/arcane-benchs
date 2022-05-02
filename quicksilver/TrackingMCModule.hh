@@ -25,6 +25,7 @@
 #include "arcane/materials/MeshEnvironmentVariableRef.h"
 #include "arcane/materials/MaterialVariableBuildInfo.h"
 #include "arcane/materials/MeshEnvironmentBuildInfo.h"
+#include <arccore/concurrency/Mutex.h>
 #include "structEnum.hh"
 
 #include "TrackingMC_axl.h"
@@ -65,7 +66,7 @@ protected:
   NuclearData* m_nuclearData;
 
   Int32UniqueArray m_local_ids_exit;
-  Int32UniqueArray m_local_ids_processed;
+  //Int32UniqueArray m_local_ids_processed;
 
   Int32UniqueArray m_local_ids_extra;
 
@@ -92,6 +93,12 @@ protected:
   std::atomic<Int64> m_absorb_a{0};
   std::atomic<Int64> m_produce_a{0};
   std::atomic<Int64> m_end_a{0};
+
+  GlobalMutex m_mutex_exit;
+  GlobalMutex m_mutex_processed;
+  GlobalMutex m_mutex_extra;
+  GlobalMutex m_mutex_out;
+  GlobalMutex m_mutex_total;
   
 protected:
   void tracking();
@@ -108,7 +115,8 @@ protected:
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
   void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
   void updateTrajectory( Real energy, Real angle, Particle particle );
-  Real weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
+  void computeCrossSection();
+  void weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
   Real macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup);
   NearestFacet getNearestFacet( Particle particle);
   Real distanceToSegmentFacet(Real plane_tolerance,
