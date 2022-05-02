@@ -48,7 +48,7 @@
   </q-s>
 
   <sampling-m-c>
-    <nParticles>1000000</nParticles>
+    <nParticles>100000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
     <seed>1029384756</seed>

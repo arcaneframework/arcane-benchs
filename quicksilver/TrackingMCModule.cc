@@ -6,6 +6,7 @@
 #include "MC_Facet_Geometry.hh"
 #include "arcane/Concurrency.h"
 #include <thread>
+#include <arcane/utils/IThreadMng.h>
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -194,20 +195,18 @@ tracking()
 {
   bool done = false;
 
-  // Ne sert qu'a debug maintenant.
-  //m_local_ids_processed.clear();
-
   // Toutes les particles de m_particle_family sont à suivre.
-  ParticleVectorView m_processingView = m_particle_family->view();
+  ParticleVectorView processingView = m_particle_family->view();
   ParticleVectorView inView;
+
   Int32UniqueArray extraClone;
   Int32UniqueArray incomingClone;
-  Arcane::ParallelLoopOptions optionns;
-  optionns.setGrainSize(1000);
 
+  Arcane::ParallelLoopOptions options_mt;
+  options_mt.setGrainSize(1000);
 
   #if LOG
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << m_processingView.size() << " particles.";
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
   #endif
 
   Integer particle_count = 0; // Initialize count of num_particles processed
@@ -216,17 +215,17 @@ tracking()
   
   while (!done)
   {
-    arcaneParallelForeach(m_processingView, optionns, [&](ParticleVectorView particles){
+    arcaneParallelForeach(processingView, options_mt, [&](ParticleVectorView particles){
       ENUMERATE_PARTICLE(iparticle, particles)
       {
         Particle particle = (*iparticle);
-        
         cycleTrackingGuts(particle);
+        
         #if LOG
         if(iparticle.index() % 50000 == 0)
         {
           debug() << "--------";
-          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << m_processingView.size();
+          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << processingView.size();
           debug() << "  m_local_ids_processed : " << m_census_a << " m_local_ids_extra : " << m_local_ids_extra.size();
           debug() << "--------";
         }
@@ -234,9 +233,9 @@ tracking()
       }
     });
 
-    particle_count += m_processingView.size();
+    particle_count += processingView.size();
     #if LOG
-    if(m_processingView.size() != 0) pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << m_processingView.size() << "/" << m_processingView.size();
+    if(processingView.size() != 0) pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << processingView.size() << "/" << processingView.size();
     #endif
     
     if(mesh()->parallelMng()->commSize() > 1 && inView.size() > 0)
@@ -244,7 +243,7 @@ tracking()
       #if LOG
       pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Computing incoming particles";
       #endif
-      arcaneParallelForeach(inView, optionns, [&](ParticleVectorView particles){
+      arcaneParallelForeach(inView, options_mt, [&](ParticleVectorView particles){
         ENUMERATE_PARTICLE(iparticle, particles)
         {
           Particle particle = (*iparticle);
@@ -283,8 +282,6 @@ tracking()
 
     if(mesh()->parallelMng()->commSize() > 1)
     {
-      //if(m_local_ids_out.size() > 1000 || m_local_ids_extra.size() == 0)
-      //{
       // On essaye de recevoir tant que quelqu'un bosse encore.
       do{
 
@@ -314,7 +311,6 @@ tracking()
       incomingClone = m_local_ids_in.clone();
       m_local_ids_in.clear();
       inView = m_particle_family->view(incomingClone);
-      //}
     }
 
     else if(m_local_ids_extra.size() == 0)
@@ -325,7 +321,7 @@ tracking()
     extraClone = m_local_ids_extra.clone();
     m_local_ids_extra.clear();
     
-    m_processingView = m_particle_family->view(extraClone);
+    processingView = m_particle_family->view(extraClone);
     iter++;
   }
   m_end_a = m_particle_family->view().size();
@@ -357,9 +353,6 @@ updateTallies()
   m_num_segments_a = 0;
   m_end_a = 0;
 }
-
-// Returns true if the specified coordinate in inside the specified
-// geometry.  False otherwise
 
 /**
  * @brief Méthode permettant de savoir si une cellule est dans un matériau.
@@ -782,7 +775,7 @@ computeNextEvent(Particle particle)
 
   // Accumulate the particle's contribution to the scalar flux.
   // Atomic
-  GlobalMutex::ScopedLock(m_mutex_total);
+  GlobalMutex::ScopedLock(m_mutex_flux);
   m_scalar_flux_tally[particle.cell()][m_particle_ene_grp[particle]] += m_particle_seg_path_length[particle] * m_particle_weight[particle];
 }
 

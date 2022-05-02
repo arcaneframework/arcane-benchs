@@ -95,10 +95,9 @@ protected:
   std::atomic<Int64> m_end_a{0};
 
   GlobalMutex m_mutex_exit;
-  GlobalMutex m_mutex_processed;
   GlobalMutex m_mutex_extra;
   GlobalMutex m_mutex_out;
-  GlobalMutex m_mutex_total;
+  GlobalMutex m_mutex_flux;
   
 protected:
   void tracking();

@@ -21,9 +21,17 @@ cd ${QS_BUILD_DIR}
 cmake -S ${QS_SOURCE_DIR} -B ${QS_BUILD_DIR} -DCMAKE_PREFIX_PATH=${ARCANE_INSTALL_PATH} -DCMAKE_BUILD_TYPE=${QS_BUILD_TYPE}
 make
 
+# Sequential:
 ${QS_EXE} ${QS_ARC}
-#or
+
+# MPI 4 procs:
 mpirun -n 4 ${QS_EXE} ${QS_ARC}
+
+# 2 tasks:
+${QS_EXE} -A,T=2 ${QS_ARC}
+
+# MPI 4 procs and 2 tasks/proc:
+mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 ```
 
 Arc input files examples:
