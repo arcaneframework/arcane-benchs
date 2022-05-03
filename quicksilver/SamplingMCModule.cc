@@ -1,13 +1,12 @@
 // -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 
 #include "SamplingMCModule.hh"
-#include "NVTX_Range.hh"
-#include "MC_RNG_State.hh"
-#include "PhysicalConstants.hh"
-#include <set>
 #include <map>
-#include <mutex>
-#include "arcane/Concurrency.h"
+#include <set>
+#include <arcane/Concurrency.h>
+#include "MC_RNG_State.hh"
+#include "NVTX_Range.hh"
+#include "PhysicalConstants.hh"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -26,7 +25,7 @@ initModule()
 
   m_particle_velocity.resize(3);
   m_particle_velocity.fill(0.0);
-  
+
   m_particle_dir_cos.resize(3);
   m_particle_dir_cos.fill(0.0);
 }
@@ -48,17 +47,22 @@ cycleInit()
   // Réduction ou augmentation du nombre de particules.
   populationControl(); // controls particle population
 
-  #if LOG
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SourceParticles: " << m_source_a << " particle(s) created.";
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - PopulationControl: " << m_rr_a << " particle(s) killed / " << m_split_a << " particle(s) created by splitting.";
+#if LOG
+  pinfo() << "P" << mesh()->parallelMng()->commRank()
+          << " - SourceParticles: " << m_source_a << " particle(s) created.";
+  pinfo() << "P" << mesh()->parallelMng()->commRank()
+          << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
+          << m_split_a << " particle(s) created by splitting.";
   Int64 tmpLog = m_rr_a;
-  #endif
+#endif
 
   // Roulette sur les particules avec faible poids.
   rouletteLowWeightParticles(); // Delete particles with low statistical weight
-  #if LOG
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog << " particle(s) killed.";
-  #endif
+#if LOG
+  pinfo() << "P" << mesh()->parallelMng()->commRank()
+          << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
+          << " particle(s) killed.";
+#endif
 
   updateTallies();
 }
@@ -67,9 +71,7 @@ cycleInit()
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void SamplingMCModule::
-endModule()
-{
-}
+endModule() {}
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -80,10 +82,8 @@ endModule()
 void SamplingMCModule::
 clearCrossSectionCache()
 {
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    for(Integer i = 0; i < m_n_groups(); i++)
-    {
+  ENUMERATE_CELL (icell, ownCells()) {
+    for (Integer i = 0; i < m_n_groups(); i++) {
       m_total[icell][i] = 0.0;
     }
   }
@@ -102,36 +102,40 @@ sourceParticles()
   Real local_weight_particles = 0;
 
   // On regarde le nombre de particule que chaque cellule générera.
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+  ENUMERATE_CELL (icell, ownCells()) {
+    Real cell_weight_particles =
+    m_volume[icell] * m_source_rate[icell] * m_global_deltat();
     local_weight_particles += cell_weight_particles;
   }
 
   Real total_weight_particles = 0;
 
-  total_weight_particles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, local_weight_particles);
+  total_weight_particles = mesh()->parallelMng()->reduce(
+  Parallel::ReduceSum, local_weight_particles);
 
   Int64 num_particles = options()->getNParticles();
 
   Real source_fraction = 0.1;
-  Real source_particle_weight = total_weight_particles/(source_fraction * num_particles);
+  Real source_particle_weight =
+  total_weight_particles / (source_fraction * num_particles);
 
   // Store the source particle weight for later use.
   m_source_particle_weight = source_particle_weight;
 
   Int64 particle_count = 0;
-  //Int64UniqueArray num_particles_cells_decal(ownCells().size()+1);
-  //num_particles_cells_decal[0] = 0;
+  // Int64UniqueArray num_particles_cells_decal(ownCells().size()+1);
+  // num_particles_cells_decal[0] = 0;
 
   // On compte le nombre de particule total qui sera créé.
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    //if(icell.index() != icell.localId()) ARCANE_FATAL("Trouve une autre solution");
-    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
-    Real cell_num_particles_float = cell_weight_particles / source_particle_weight;
+  ENUMERATE_CELL (icell, ownCells()) {
+    // if(icell.index() != icell.localId()) ARCANE_FATAL("Trouve une autre
+    // solution");
+    Real cell_weight_particles =
+    m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+    Real cell_num_particles_float =
+    cell_weight_particles / source_particle_weight;
     particle_count += (Int64)cell_num_particles_float;
-    //num_particles_cells_decal[icell.localId()] = particle_count;
+    // num_particles_cells_decal[icell.localId()] = particle_count;
   }
 
   Int64UniqueArray uids(particle_count);
@@ -140,20 +144,21 @@ sourceParticles()
   std::map<Int64, Int64> rng;
   Integer particle_index_g = 0;
 
-
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.
-  ENUMERATE_CELL(icell, ownCells())
-  {
-    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
-    Real cell_num_particles_float = cell_weight_particles / source_particle_weight;
+  ENUMERATE_CELL (icell, ownCells()) {
+    Real cell_weight_particles =
+    m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+    Real cell_num_particles_float =
+    cell_weight_particles / source_particle_weight;
     Integer cell_num_particles = (Integer)cell_num_particles_float;
 
-    //for ( Integer particle_index = num_particles_cells_decal[icell.localId()];
+    // for ( Integer particle_index =
+    // num_particles_cells_decal[icell.localId()];
     //      particle_index < num_particles_cells_decal[icell.localId()+1];
     //      particle_index++ )
-    for ( Integer particle_index = 0; particle_index < cell_num_particles; particle_index++ )
-    {
+    for (Integer particle_index = 0; particle_index < cell_num_particles;
+         particle_index++) {
       Int64 random_number_seed;
       Int64 rns;
       Int64 id;
@@ -161,10 +166,11 @@ sourceParticles()
       random_number_seed = m_source_tally[icell]; // TODO : Atomic
       m_source_tally[icell]++; // TODO : Atomic
 
-      random_number_seed += (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
+      random_number_seed +=
+      (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
 
-      // La graine sera considérée comme un uint64, mais l'uniqueid doit être positif donc
-      // on change le signe en mettant le bit de poids fort à 0.
+      // La graine sera considérée comme un uint64, mais l'uniqueid doit être
+      // positif donc on change le signe en mettant le bit de poids fort à 0.
       rns = rngSpawn_Random_Number_Seed(&random_number_seed);
 
       id = random_number_seed;
@@ -177,7 +183,8 @@ sourceParticles()
       particle_index_g++;
     }
   }
-  m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells, particles_lid);
+  m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells,
+                                                      particles_lid);
   m_particle_family->endUpdate();
 
   ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
@@ -186,16 +193,15 @@ sourceParticles()
   Arcane::ParallelLoopOptions options;
   options.setGrainSize(1000);
 
-  arcaneParallelForeach(viewSrcP, options, [&](ParticleVectorView particles){
-    ENUMERATE_PARTICLE(ipartic, particles)
-    {
+  arcaneParallelForeach(viewSrcP, options, [&](ParticleVectorView particles) {
+    ENUMERATE_PARTICLE (ipartic, particles) {
       Particle p = (*ipartic);
       initParticle(p, rng[p.uniqueId().asInt64()]);
 
       generate3DCoordinate(p);
       sampleIsotropic(p);
-      m_particle_kin_ene[p] = (m_e_max() - m_e_min())*
-                              rngSample(&m_particle_rns[p]) + m_e_min();
+      m_particle_kin_ene[p] =
+      (m_e_max() - m_e_min()) * rngSample(&m_particle_rns[p]) + m_e_min();
 
       Real speed = getSpeedFromEnergy(p);
 
@@ -206,7 +212,7 @@ sourceParticles()
       m_particle_weight[p] = source_particle_weight;
 
       Real randomNumber = rngSample(&m_particle_rns[p]);
-      m_particle_num_mean_free_path[p] = -1.0*std::log(randomNumber);
+      m_particle_num_mean_free_path[p] = -1.0 * std::log(randomNumber);
 
       randomNumber = rngSample(&m_particle_rns[p]);
       m_particle_time_census[p] = m_global_deltat() * randomNumber;
@@ -231,38 +237,36 @@ populationControl()
   Int64 targetNumParticles = options()->getNParticles();
   Int64 globalNumParticles = 0;
   Integer localNumParticles = m_processingView.size();
-  
-  globalNumParticles = mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
-    
-  // Soit on augmente la population (>1), soit on l'a diminue (<1), soit on n'y touche pas (=1).
+
+  globalNumParticles =
+  mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
+
+  // Soit on augmente la population (>1), soit on l'a diminue (<1), soit on n'y
+  // touche pas (=1).
   Real splitRRFactor = (Real)targetNumParticles / (Real)globalNumParticles;
 
-  // March backwards through the vault so killed particles doesn't mess up the indexing
-  if(splitRRFactor == 1)
-  {
+  // March backwards through the vault so killed particles doesn't mess up the
+  // indexing
+  if (splitRRFactor == 1) {
     return;
   }
-  else if (splitRRFactor < 1)
-  {
+  else if (splitRRFactor < 1) {
     Int32UniqueArray supprP;
-    std::mutex g_i_mutex;
 
     Arcane::ParallelLoopOptions options;
     options.setGrainSize(1000);
-    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles){
-      ENUMERATE_PARTICLE(iparticle, particles)
-      {
+    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles) {
+      ENUMERATE_PARTICLE (iparticle, particles) {
         Real randomNumber = rngSample(&m_particle_rns[iparticle]);
-        if (randomNumber > splitRRFactor)
-        {
+        if (randomNumber > splitRRFactor) {
           // Kill
-          m_rr_a++; 
+          m_rr_a++;
           GlobalMutex::ScopedLock(m_mutex);
           supprP.add(iparticle.localId());
         }
-        else
-        {
-          // Ici, splitRRFactor < 1 donc on augmente la taille de la particule.
+        else {
+          // Ici, splitRRFactor < 1 donc on augmente la taille de la
+          // particule.
           m_particle_weight[iparticle] /= splitRRFactor;
         }
       }
@@ -271,8 +275,7 @@ populationControl()
     m_particle_family->toParticleFamily()->endUpdate();
   }
 
-  else if (splitRRFactor > 1)
-  {
+  else if (splitRRFactor > 1) {
     Int64UniqueArray addIdP;
     Int64UniqueArray addRns;
     Int32UniqueArray addCellIdP;
@@ -281,23 +284,25 @@ populationControl()
     Arcane::ParallelLoopOptions options;
     options.setGrainSize(1000);
 
-    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles){
-      ENUMERATE_PARTICLE(iparticle, particles)
-      {
+    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles) {
+      ENUMERATE_PARTICLE (iparticle, particles) {
         Particle particle = (*iparticle);
         Real randomNumber = rngSample(&m_particle_rns[iparticle]);
 
         // Split
         Integer splitFactor = (Integer)floor(splitRRFactor);
-        if (randomNumber > (splitRRFactor - splitFactor)) { splitFactor--; }
+        if (randomNumber > (splitRRFactor - splitFactor)) {
+          splitFactor--;
+        }
 
         m_particle_weight[iparticle] /= splitRRFactor;
 
         GlobalMutex::ScopedLock(m_mutex);
-        for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor; splitFactorIndex++)
-        {
+        for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor;
+             splitFactorIndex++) {
           m_split_a++;
-          Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
+          Int64 rns =
+          rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
           addRns.add(rns);
           rns &= ~(1UL << 63); // On passe en positif.
           addIdP.add(rns);
@@ -308,7 +313,8 @@ populationControl()
     });
 
     Int32UniqueArray particles_lid(addIdP.size());
-    m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP, particles_lid);
+    m_particle_family->toParticleFamily()->addParticles(addIdP, addCellIdP,
+                                                        particles_lid);
     m_particle_family->toParticleFamily()->endUpdate();
 
     cloneParticles(addSrcP, particles_lid, addRns);
@@ -319,7 +325,7 @@ populationControl()
 
 /**
  * @brief Méthode permettant d'initialiser les grandeurs de la particule p.
- * 
+ *
  * @param p La particule à initialiser.
  * @param rns La graine à donner à la particule.
  */
@@ -361,18 +367,19 @@ initParticle(Particle p, Int64 rns)
  * @brief Méthode permettant de cloner des particules.
  * Copie des propriétés de particules sources vers les particules destinations.
  * La taille des trois tableaux doit être identique.
- * 
+ *
  * @param idsSrc Tableau des ids des particules sources.
  * @param idsNew Tableau des ids des particules destinations.
  * @param rnsNew Tableau contenant les graines à donner aux particules.
  */
 void SamplingMCModule::
-cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew)
+cloneParticles(Int32UniqueArray idsSrc,
+               Int32UniqueArray idsNew,
+               Int64UniqueArray rnsNew)
 {
   ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
   ParticleVectorView viewNewP = m_particle_family->view(idsNew);
-  ENUMERATE_PARTICLE(iparticle, viewSrcP)
-  {
+  ENUMERATE_PARTICLE (iparticle, viewSrcP) {
     Particle pNew(viewNewP[iparticle.index()].internal());
     cloneParticle((*iparticle), pNew, rnsNew[iparticle.index()]);
   }
@@ -381,7 +388,7 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
 /**
  * @brief Méthode permettant de cloner une particule.
  * Copie des propriétés d'une particule source vers une particule destination.
- * 
+ *
  * @param pSrc La particule source.
  * @param pNew La particule destination.
  * @param rns La graine à donner à la particule destination.
@@ -422,8 +429,8 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
 }
 
 /**
- * @brief Méthode permettant de tuer (aléatoirement) les particules trop petites.
- * Roulette russe.
+ * @brief Méthode permettant de tuer (aléatoirement) les particules trop
+ * petites. Roulette russe.
  */
 void SamplingMCModule::
 rouletteLowWeightParticles()
@@ -432,32 +439,29 @@ rouletteLowWeightParticles()
 
   const Real lowWeightCutoff = options()->getLowWeightCutoff();
 
-  if (lowWeightCutoff > 0.0)
-  {
+  if (lowWeightCutoff > 0.0) {
     Int32UniqueArray supprP;
 
-    // March backwards through the vault so killed particles don't mess up the indexing
+    // March backwards through the vault so killed particles don't mess up the
+    // indexing
     const Real weightCutoff = lowWeightCutoff * m_source_particle_weight;
     Arcane::ParallelLoopOptions options;
     options.setGrainSize(1000);
-    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles){
-      ENUMERATE_PARTICLE(iparticle, particles)
-      {
-        if (m_particle_weight[iparticle] <= weightCutoff)
-        {
+    arcaneParallelForeach(
+    m_processingView, options, [&](ParticleVectorView particles) {
+      ENUMERATE_PARTICLE (iparticle, particles) {
+        if (m_particle_weight[iparticle] <= weightCutoff) {
           Real randomNumber = rngSample(&m_particle_rns[iparticle]);
-          if (randomNumber <= lowWeightCutoff)
-          {
+          if (randomNumber <= lowWeightCutoff) {
             // The particle history continues with an increased weight.
             m_particle_weight[iparticle] /= lowWeightCutoff;
           }
-          else
-          {
+          else {
             // Kill
             m_rr_a++;
             GlobalMutex::ScopedLock(m_mutex);
             supprP.add(iparticle.localId());
-          } 
+          }
         }
       }
     });
@@ -470,8 +474,9 @@ rouletteLowWeightParticles()
 }
 
 /**
- * @brief Méthode permettant de générer des coordonnées aléatoire pour une particule.
- * 
+ * @brief Méthode permettant de générer des coordonnées aléatoire pour une
+ * particule.
+ *
  * @param p La particule ayant besoin de ces nouvelles coordonnées.
  */
 void SamplingMCModule::
@@ -494,14 +499,13 @@ generate3DCoordinate(Particle p)
 
   // Pour pouvoir comparer les résultats avec ceux de QS original,
   // on doit explorer les facet de la même manière que QS original.
-  for(Integer i = 0; i < 6; i++)
-  {
+  for (Integer i = 0; i < 6; i++) {
     face = cell.face(QS_to_arcaneFace[i]);
 
-    for (Integer j = 0; j < 4; j++)
-    {
-      Integer first_pos_node = QS_to_arcaneNode[i*4 + j];
-      Integer second_pos_node = QS_to_arcaneNode[i*4 + ((j == 3) ? 0 : j+1)];
+    for (Integer j = 0; j < 4; j++) {
+      Integer first_pos_node = QS_to_arcaneNode[i * 4 + j];
+      Integer second_pos_node =
+      QS_to_arcaneNode[i * 4 + ((j == 3) ? 0 : j + 1)];
 
       first_node = face.node(first_pos_node);
       second_node = face.node(second_pos_node);
@@ -513,9 +517,11 @@ generate3DCoordinate(Particle p)
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
 
-      if(current_volume >= which_volume) break;
+      if (current_volume >= which_volume)
+        break;
     }
-    if(current_volume >= which_volume) break;
+    if (current_volume >= which_volume)
+      break;
   }
   /*
   ENUMERATE_FACE(iface, cell.faces())
@@ -545,23 +551,20 @@ generate3DCoordinate(Particle p)
   Real r3 = rngSample(random_number_seed);
 
   // Cut and fold cube into prism.
-  if (r1 + r2 > 1.0)
-  {
-      r1 = 1.0 - r1;
-      r2 = 1.0 - r2;
+  if (r1 + r2 > 1.0) {
+    r1 = 1.0 - r1;
+    r2 = 1.0 - r2;
   }
   // Cut and fold prism into tetrahedron.
-  if (r2 + r3 > 1.0)
-  {
-      Real tmp = r3;
-      r3 = 1.0 - r1 - r2;
-      r2 = 1.0 - tmp;
+  if (r2 + r3 > 1.0) {
+    Real tmp = r3;
+    r3 = 1.0 - r1 - r2;
+    r2 = 1.0 - tmp;
   }
-  else if (r1 + r2 + r3 > 1.0)
-  {
-      Real tmp = r3;
-      r3 = r1 + r2 + r3 - 1.0;
-      r1 = 1.0 - r2 - tmp;
+  else if (r1 + r2 + r3 > 1.0) {
+    Real tmp = r3;
+    r3 = r1 + r2 + r3 - 1.0;
+    r1 = 1.0 - r2 - tmp;
   }
 
   // numbers 1-4 are the barycentric coordinates of the random point.
@@ -571,14 +574,17 @@ generate3DCoordinate(Particle p)
   MC_Vector point1(m_coord_cm[second_node]);
   MC_Vector point2(m_coord_mid_cm[face]);
 
-  m_particle_coord[p][MD_DirX] = ( r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x );
-  m_particle_coord[p][MD_DirY] = ( r4 * center.y + r1 * point0.y + r2 * point1.y + r3 * point2.y );
-  m_particle_coord[p][MD_DirZ] = ( r4 * center.z + r1 * point0.z + r2 * point1.z + r3 * point2.z );
+  m_particle_coord[p][MD_DirX] =
+  (r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x);
+  m_particle_coord[p][MD_DirY] =
+  (r4 * center.y + r1 * point0.y + r2 * point1.y + r3 * point2.y);
+  m_particle_coord[p][MD_DirZ] =
+  (r4 * center.z + r1 * point0.z + r2 * point1.z + r3 * point2.z);
 }
 
 /**
  * @brief Méthode permettant de calculer le volume d'un tetrahédre (x6).
- * 
+ *
  * @param v0_ Le premier point du tétrahédre.
  * @param v1_ Le second point du tétrahédre.
  * @param v2_ Le troisième point du tétrahédre.
@@ -586,39 +592,50 @@ generate3DCoordinate(Particle p)
  * @return Real Le volume du tétrahédre (x6).
  */
 Real SamplingMCModule::
-computeTetVolume(const MC_Vector &v0_, const MC_Vector &v1_, const MC_Vector &v2_, const MC_Vector &v3)
+computeTetVolume(const MC_Vector& v0_,
+                 const MC_Vector& v1_,
+                 const MC_Vector& v2_,
+                 const MC_Vector& v3)
 {
   MC_Vector v0(v0_), v1(v1_), v2(v2_);
 
-  v0.x -= v3.x; v0.y -= v3.y; v0.z -= v3.z;
-  v1.x -= v3.x; v1.y -= v3.y; v1.z -= v3.z;
-  v2.x -= v3.x; v2.y -= v3.y; v2.z -= v3.z;
+  v0.x -= v3.x;
+  v0.y -= v3.y;
+  v0.z -= v3.z;
+  v1.x -= v3.x;
+  v1.y -= v3.y;
+  v1.z -= v3.z;
+  v2.x -= v3.x;
+  v2.y -= v3.y;
+  v2.z -= v3.z;
 
-  return
-    v0.z*(v1.x*v2.y - v1.y*v2.x) +
-    v0.y*(v1.z*v2.x - v1.x*v2.z) +
-    v0.x*(v1.y*v2.z - v1.z*v2.y);
+  return v0.z * (v1.x * v2.y - v1.y * v2.x) +
+  v0.y * (v1.z * v2.x - v1.x * v2.z) +
+  v0.x * (v1.y * v2.z - v1.z * v2.y);
 }
 
 /**
  * @brief Méthode permettant de donner une orientation aléatoire à la particule.
- * 
+ *
  * @param p La particule qui aura la nouvelle orientation.
  */
 void SamplingMCModule::
 sampleIsotropic(Particle p)
 {
-  m_particle_dir_cos[p][MD_DirG] = 1.0 - 2.0*rngSample(&m_particle_rns[p]);
-  Real sine_gamma  = sqrt((1.0 - (m_particle_dir_cos[p][MD_DirG]*m_particle_dir_cos[p][MD_DirG])));
-  Real phi         = PhysicalConstants::_pi*(2.0*rngSample(&m_particle_rns[p]) - 1.0);
+  m_particle_dir_cos[p][MD_DirG] = 1.0 - 2.0 * rngSample(&m_particle_rns[p]);
+  Real sine_gamma = sqrt((
+  1.0 - (m_particle_dir_cos[p][MD_DirG] * m_particle_dir_cos[p][MD_DirG])));
+  Real phi =
+  PhysicalConstants::_pi * (2.0 * rngSample(&m_particle_rns[p]) - 1.0);
 
-  m_particle_dir_cos[p][MD_DirA]  = sine_gamma * cos(phi);
-  m_particle_dir_cos[p][MD_DirB]  = sine_gamma * sin(phi);
+  m_particle_dir_cos[p][MD_DirA] = sine_gamma * cos(phi);
+  m_particle_dir_cos[p][MD_DirB] = sine_gamma * sin(phi);
 }
 
 /**
- * @brief Méthode permettant de récupérer la vitesse de la particule avec son énergie cinétique.
- * 
+ * @brief Méthode permettant de récupérer la vitesse de la particule avec son
+ * énergie cinétique.
+ *
  * @param p La particule concernée.
  * @return Real La vitesse de la particule.
  */
@@ -626,17 +643,18 @@ Real SamplingMCModule::
 getSpeedFromEnergy(Particle p)
 {
   Real energy = m_particle_kin_ene[p];
-  static const Real rest_mass_energy = PhysicalConstants::_neutronRestMassEnergy;
-  static const Real speed_of_light  = PhysicalConstants::_speedOfLight;
+  static const Real rest_mass_energy =
+  PhysicalConstants::_neutronRestMassEnergy;
+  static const Real speed_of_light = PhysicalConstants::_speedOfLight;
 
-
-  return speed_of_light * sqrt(energy * (energy + 2.0*(rest_mass_energy)) /
-                                ((energy + rest_mass_energy) * (energy + rest_mass_energy)));
+  return speed_of_light *
+  sqrt(energy * (energy + 2.0 * (rest_mass_energy)) /
+       ((energy + rest_mass_energy) * (energy + rest_mass_energy)));
 }
 
 /**
  * @brief Méthode permettant de copier les atomics dans les variables Arcane.
- * 
+ *
  */
 void SamplingMCModule::
 updateTallies()
@@ -645,7 +663,7 @@ updateTallies()
   m_source = m_source_a;
   m_rr = m_rr_a;
   m_split = m_split_a;
-  
+
   m_start_a = 0;
   m_source_a = 0;
   m_rr_a = 0;

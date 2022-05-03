@@ -2,15 +2,15 @@
 
 #include "QSModule.hh"
 #include <iostream>
+#include <arcane/Concurrency.h>
 #include "NVTX_Range.hh"
 #include "qs_assert.hh"
-#include "arcane/Concurrency.h"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
 /**
- * @brief Méthode permettant de lancer l'initialisation des grandeurs 
+ * @brief Méthode permettant de lancer l'initialisation des grandeurs
  * au maillage et des tallies.
  */
 void QSModule::
@@ -30,7 +30,7 @@ cycleFinalize()
 {
   cycleFinalizeTallies();
 
-  if(m_global_iteration() == options()->getNSteps())
+  if (m_global_iteration() == options()->getNSteps())
     subDomain()->timeLoopMng()->stopComputeLoop(true);
 }
 
@@ -38,16 +38,14 @@ cycleFinalize()
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void QSModule::
-endModule()
-{
-
-}
+endModule() {}
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
 /**
- * @brief Méthode permettant d'initialiser les grandeurs au maillage (entre autres choses).
+ * @brief Méthode permettant d'initialiser les grandeurs au maillage (entre
+ * autres choses).
  */
 void QSModule::
 initMesh()
@@ -87,23 +85,23 @@ initMesh()
   // Permet de retrouver la position de chaque noeud dans l'espace.
   UniqueArray<IntegerUniqueArray> offset;
   offset.reserve(14);
-  offset.push_back(IntegerUniqueArray{0, 0, 0, 0}); // 0
-  offset.push_back(IntegerUniqueArray{1, 0, 0, 0}); // 1
-  offset.push_back(IntegerUniqueArray{1, 1, 0, 0}); // 3
-  offset.push_back(IntegerUniqueArray{0, 1, 0, 0}); // 2
+  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 0 }); // 0
+  offset.push_back(IntegerUniqueArray{ 1, 0, 0, 0 }); // 1
+  offset.push_back(IntegerUniqueArray{ 1, 1, 0, 0 }); // 3
+  offset.push_back(IntegerUniqueArray{ 0, 1, 0, 0 }); // 2
 
-  offset.push_back(IntegerUniqueArray{0, 0, 1, 0}); // 4
-  offset.push_back(IntegerUniqueArray{1, 0, 1, 0}); // 5
-  offset.push_back(IntegerUniqueArray{1, 1, 1, 0}); // 7
-  offset.push_back(IntegerUniqueArray{0, 1, 1, 0}); // 6
+  offset.push_back(IntegerUniqueArray{ 0, 0, 1, 0 }); // 4
+  offset.push_back(IntegerUniqueArray{ 1, 0, 1, 0 }); // 5
+  offset.push_back(IntegerUniqueArray{ 1, 1, 1, 0 }); // 7
+  offset.push_back(IntegerUniqueArray{ 0, 1, 1, 0 }); // 6
 
-  offset.push_back(IntegerUniqueArray{0, 0, 0, 3}); // 13
-  offset.push_back(IntegerUniqueArray{0, 0, 0, 1}); // 9
-  offset.push_back(IntegerUniqueArray{0, 0, 0, 2}); // 11
-  offset.push_back(IntegerUniqueArray{0, 0, 1, 3}); // 12
-  offset.push_back(IntegerUniqueArray{1, 0, 0, 1}); // 8
-  offset.push_back(IntegerUniqueArray{0, 1, 0, 2}); // 10
-  
+  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 3 }); // 13
+  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 1 }); // 9
+  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 2 }); // 11
+  offset.push_back(IntegerUniqueArray{ 0, 0, 1, 3 }); // 12
+  offset.push_back(IntegerUniqueArray{ 1, 0, 0, 1 }); // 8
+  offset.push_back(IntegerUniqueArray{ 0, 1, 0, 2 }); // 10
+
   m_coord_cm.resize(3);
   m_coord_mid_cm.resize(3);
   m_coord_center.resize(4);
@@ -112,12 +110,11 @@ initMesh()
   Arcane::ParallelLoopOptions options;
 
   // Exécute la boucle par parties d'environ 50 mailles.
-  //options.setGrainSize(50);
-  //options.setMaxThread(3);
+  // options.setGrainSize(50);
+  // options.setMaxThread(3);
 
-  arcaneParallelForeach(ownCells(), options, [&](CellVectorView cells){
-    ENUMERATE_CELL(icell, cells)
-    {
+  arcaneParallelForeach(ownCells(), options, [&](CellVectorView cells) {
+    ENUMERATE_CELL (icell, cells) {
       Cell cell = *icell;
 
       // Position de la cellule dans le maillage entier.
@@ -131,8 +128,7 @@ initMesh()
       m_coord_center[icell][MD_DirY] = 0.0;
       m_coord_center[icell][MD_DirZ] = 0.0;
 
-      ENUMERATE_NODE(inode, cell.nodes())
-      {
+      ENUMERATE_NODE (inode, cell.nodes()) {
         Real m_coordX = offset[inode.index()][0] + x;
         Real m_coordY = offset[inode.index()][1] + y;
         Real m_coordZ = offset[inode.index()][2] + z;
@@ -155,8 +151,7 @@ initMesh()
       Real volume = 0;
       MC_Vector cellCenter(m_coord_center[icell]);
 
-      ENUMERATE_FACE(iface, cell.faces())
-      {
+      ENUMERATE_FACE (iface, cell.faces()) {
         Face face = *iface;
 
         m_index_arc[iface] = iface.index();
@@ -166,52 +161,47 @@ initMesh()
         Real m_coordZ = offset[compt][2] + z;
         Real m_coordB = offset[compt][3];
 
-        // Coordonnées du millieux de la face (point commun à toutes les facets de la face).
+        // Coordonnées du millieux de la face (point commun à toutes les facets
+        // de la face).
         m_coord_mid_cm[iface][MD_DirX] = m_coordX * dx;
         m_coord_mid_cm[iface][MD_DirY] = m_coordY * dy;
         m_coord_mid_cm[iface][MD_DirZ] = m_coordZ * dz;
 
-        if(m_coordB == 1)
-        {
+        if (m_coordB == 1) {
           m_coord_mid_cm[iface][MD_DirY] += dy / 2;
           m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
         }
-        else if(m_coordB == 2)
-        {
+        else if (m_coordB == 2) {
           m_coord_mid_cm[iface][MD_DirX] += dx / 2;
           m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
         }
-        else
-        {
+        else {
           m_coord_mid_cm[iface][MD_DirX] += dx / 2;
           m_coord_mid_cm[iface][MD_DirY] += dy / 2;
         }
 
-        //info() << "  Face #" << m_index_arc[iface];
+        // info() << "  Face #" << m_index_arc[iface];
 
         // Si la face est au bord du domaine entier.
-        if(face.isSubDomainBoundary())
-        {
-          // D'origine, dans le code QS, dans le cas octant : 
-          //   les faces 0, 1, 2 sont escape (donc compt = 8, 9, 10 => getBoundaryCondition(impair))
-          //   les faces 3, 4, 5 sont reflection (donc compt = 11, 12, 13 => getBoundaryCondition(pair))
-          m_boundary_cond[iface] = getBoundaryCondition((compt/11) + 1); 
+        if (face.isSubDomainBoundary()) {
+          // D'origine, dans le code QS, dans le cas octant :
+          //   les faces 0, 1, 2 sont escape (donc compt = 8, 9, 10 =>
+          //   getBoundaryCondition(impair)) les faces 3, 4, 5 sont reflection
+          //   (donc compt = 11, 12, 13 => getBoundaryCondition(pair))
+          m_boundary_cond[iface] = getBoundaryCondition((compt / 11) + 1);
         }
         // Si la face est au bord du sous-domaine.
-        else if(face.frontCell().owner() != face.backCell().owner())
-        {
+        else if (face.frontCell().owner() != face.backCell().owner()) {
           m_boundary_cond[iface] = ParticleEvent::subDChange;
         }
         // Face interne au sous-domaine.
-        else
-        {
+        else {
           m_boundary_cond[iface] = ParticleEvent::cellChange;
         }
-        
-        for (Integer i = 0; i < 4; i++)
-        {
-          Node first_node  = face.node(i);
-          Node second_node = face.node(((i == 3) ? 0 : i+1));
+
+        for (Integer i = 0; i < 4; i++) {
+          Node first_node = face.node(i);
+          Node second_node = face.node(((i == 3) ? 0 : i + 1));
 
           MC_Vector aa = MC_Vector(m_coord_cm[first_node]) - cellCenter;
           MC_Vector bb = MC_Vector(m_coord_cm[second_node]) - cellCenter;
@@ -239,18 +229,18 @@ void QSModule::
 initTallies()
 {
   info() << "Init tallies";
-  m_absorb = 0;      // Number of particles absorbed
-  m_census = 0;      // Number of particles that enter census
-  m_escape = 0;      // Number of particles that escape
-  m_collision = 0;   // Number of collosions
-  m_end = 0;         // Number of particles at end of cycle
-  m_fission = 0;     // Number of fission events
-  m_produce = 0;     // Number of particles created by collisions
-  m_scatter = 0;     // Number of scatters
-  m_start = 0;       // Number of particles at beginning of cycle
-  m_source = 0;      // Number of particles sourced in
-  m_rr = 0;          // Number of particles Russian Rouletted in population control
-  m_split = 0;       // Number of particles split in population control
+  m_absorb = 0; // Number of particles absorbed
+  m_census = 0; // Number of particles that enter census
+  m_escape = 0; // Number of particles that escape
+  m_collision = 0; // Number of collosions
+  m_end = 0; // Number of particles at end of cycle
+  m_fission = 0; // Number of fission events
+  m_produce = 0; // Number of particles created by collisions
+  m_scatter = 0; // Number of scatters
+  m_start = 0; // Number of particles at beginning of cycle
+  m_source = 0; // Number of particles sourced in
+  m_rr = 0; // Number of particles Russian Rouletted in population control
+  m_split = 0; // Number of particles split in population control
   m_num_segments = 0; // Number of segements
 
   m_scalar_flux_tally.resize(options()->getNGroups());
@@ -280,19 +270,45 @@ cycleFinalizeTallies()
 
   info() << "End iteration #" << m_global_iteration();
   info() << "  Informations:";
-  info() << "    Number of particles at beginning of cycle                    (m_start): " << m_start.value();
-  info() << "    Number of particles sourced in                              (m_source): " << m_source.value();
-  info() << "    Number of particles Russian Rouletted in population control     (m_rr): " << m_rr.value();
-  info() << "    Number of particles split in population control              (m_split): " << m_split.value();
-  info() << "    Number of particles absorbed                                (m_absorb): " << m_absorb.value();
-  info() << "    Number of scatters                                         (m_scatter): " << m_scatter.value();
-  info() << "    Number of fission events                                   (m_fission): " << m_fission.value();
-  info() << "    Number of particles created by collisions                  (m_produce): " << m_produce.value();
-  info() << "    Number of collisions                                     (m_collision): " << m_collision.value();
-  info() << "    Number of particles that escape                             (m_escape): " << m_escape.value();
-  info() << "    Number of particles that enter census                       (m_census): " << m_census.value();
-  info() << "    Number of segements                                   (m_num_segments): " << m_num_segments.value();
-  info() << "    Number of particles at end of cycle                            (m_end): " << m_end.value();
+  info() << "    Number of particles at beginning of cycle                    "
+            "(m_start): "
+         << m_start.value();
+  info() << "    Number of particles sourced in                              "
+            "(m_source): "
+         << m_source.value();
+  info() << "    Number of particles Russian Rouletted in population control   "
+            "  (m_rr): "
+         << m_rr.value();
+  info() << "    Number of particles split in population control              "
+            "(m_split): "
+         << m_split.value();
+  info() << "    Number of particles absorbed                                "
+            "(m_absorb): "
+         << m_absorb.value();
+  info() << "    Number of scatters                                         "
+            "(m_scatter): "
+         << m_scatter.value();
+  info() << "    Number of fission events                                   "
+            "(m_fission): "
+         << m_fission.value();
+  info() << "    Number of particles created by collisions                  "
+            "(m_produce): "
+         << m_produce.value();
+  info() << "    Number of collisions                                     "
+            "(m_collision): "
+         << m_collision.value();
+  info() << "    Number of particles that escape                             "
+            "(m_escape): "
+         << m_escape.value();
+  info() << "    Number of particles that enter census                       "
+            "(m_census): "
+         << m_census.value();
+  info() << "    Number of segements                                   "
+            "(m_num_segments): "
+         << m_num_segments.value();
+  info() << "    Number of particles at end of cycle                           "
+            " (m_end): "
+         << m_end.value();
 
   m_start = 0;
   m_source = 0;
@@ -312,15 +328,15 @@ cycleFinalizeTallies()
 
 /**
  * @brief Méthode permettant de récupérer la condition aux bords de maillage.
- * 
- * @param pos Si la condition est 'octant', on choisi soit escape si pos pair, soit reflection sinon.
+ *
+ * @param pos Si la condition est 'octant', on choisi soit escape si pos pair,
+ * soit reflection sinon.
  * @return ParticleEvent La condition aux bords de maillage.
  */
 ParticleEvent QSModule::
 getBoundaryCondition(Integer pos)
 {
-  switch (options()->getBoundaryCondition())
-  {
+  switch (options()->getBoundaryCondition()) {
   case eBoundaryCondition::REFLECT:
     return ParticleEvent::reflection;
 
@@ -328,9 +344,11 @@ getBoundaryCondition(Integer pos)
     return ParticleEvent::escape;
 
   case eBoundaryCondition::OCTANT:
-    if (pos % 2 == 0) return ParticleEvent::escape;
-    if (pos % 2 == 1) return ParticleEvent::reflection;
-  
+    if (pos % 2 == 0)
+      return ParticleEvent::escape;
+    if (pos % 2 == 1)
+      return ParticleEvent::reflection;
+
   default:
     qs_assert(false);
     return ParticleEvent::undefined;

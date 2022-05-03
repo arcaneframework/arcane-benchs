@@ -1,14 +1,14 @@
 // -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 
+#include <arcane/IParallelMng.h>
 #include <arcane/ITimeLoopMng.h>
 #include <arcane/cartesianmesh/CellDirectionMng.h>
 #include <arcane/cartesianmesh/ICartesianMesh.h>
-#include <arcane/IParallelMng.h>
 
 #include "structEnum.hh"
 
-#include "QS_axl.h"
 #include "MC_Vector.hh"
+#include "QS_axl.h"
 
 using namespace Arcane;
 
@@ -18,22 +18,25 @@ using namespace Arcane;
   les tallies et permet d'afficher les résultats finaux.
  */
 class QSModule : 
-public ArcaneQSObject {
+public ArcaneQSObject
+{
 
-public:
-  explicit QSModule(const ModuleBuildInfo &mbi) : ArcaneQSObject(mbi){}
+ public:
+  explicit QSModule(const ModuleBuildInfo& mbi)
+  : ArcaneQSObject(mbi)
+  {}
 
-public:
+ public:
   void initModule() override;
   void cycleFinalize() override;
   void endModule() override;
 
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
-protected:
+ protected:
   ICartesianMesh* m_cartesian_mesh;
 
-protected:
+ protected:
   void cycleFinalizeTallies();
   void initMesh();
   void initTallies();

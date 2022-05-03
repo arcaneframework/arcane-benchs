@@ -7,30 +7,30 @@
 #include <cstdint>
 #endif
 
-#include <math.h>
-#include <arcane/ITimeLoopMng.h>
 #include "qs_assert.hh"
+#include <arcane/ITimeLoopMng.h>
+#include <math.h>
 
 using namespace Arcane;
 
 //----------------------------------------------------------------------------------------------------------------------
-//  A random number generator that implements a 64 bit linear congruential generator (lcg).
+//  A random number generator that implements a 64 bit linear congruential
+//  generator (lcg).
 //
 //  This implementation is based on the rng class from Nick Gentile.
 //----------------------------------------------------------------------------------------------------------------------
 
 // Generate a new random number seed
 
-Int64 rngSpawn_Random_Number_Seed(Int64 *parent_seed);
-
+Int64 rngSpawn_Random_Number_Seed(Int64* parent_seed);
 
 //----------------------------------------------------------------------------------------------------------------------
 //  Sample returns the pseudo-random number produced by a call to a random
 //  number generator.
 //----------------------------------------------------------------------------------------------------------------------
 
-
-inline Real rngSample(Int64 *seed)
+inline Real
+rngSample(Int64* seed)
 {
   // Reset the state from the previous value.
   *seed = 2862933555777941757ULL * (uint64_t)(*seed) + 3037000493ULL;
@@ -39,9 +39,9 @@ inline Real rngSample(Int64 *seed)
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.
   volatile Real fin = 5.4210108624275222e-20 * (uint64_t)(*seed);
-  if(fin < 0) qs_assert(false);
+  if (fin < 0)
+    qs_assert(false);
   return fin;
 }
-
 
 #endif
