@@ -27,7 +27,7 @@ NuclearDataReaction(Enum reactionType, Real nuBar,
 
   // Find the normalization value for the polynomial.  This is the
   // value of the energy group that contains 1 MeV
-  Real normalization = 1.0;
+  Real normalization = 1.0; //0.0;
   for (Integer ii = 0; ii < nGroups; ++ii)
     if (energies[ii + 1] > 1.) // 1 MeV
     {

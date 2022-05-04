@@ -1,10 +1,10 @@
 #include "TrackingMCModule.hh"
-#include "MC_Facet_Geometry.hh"
-#include "MC_RNG_State.hh"
-#include "PhysicalConstants.hh"
 #include <arcane/Concurrency.h>
 #include <map>
 #include <set>
+#include "MC_Facet_Geometry.hh"
+#include "MC_RNG_State.hh"
+#include "PhysicalConstants.hh"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -175,76 +175,70 @@ void TrackingMCModule::
 tracking()
 {
   bool done = false;
-
+  
   // Toutes les particles de m_particle_family sont à suivre.
   ParticleVectorView processingView = m_particle_family->view();
   ParticleVectorView inView;
 
+  pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
+
   Int32UniqueArray extraClone;
-  Int32UniqueArray incomingClone;
 
-  Arcane::ParallelLoopOptions options_mt;
-  options_mt.setGrainSize(1000);
-
-#if LOG
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
-#endif
+  IParticleExchanger* pe = options()->particleExchanger();
+  //IAsyncParticleExchanger* ae = pe->asyncParticleExchanger();
+  if (mesh()->parallelMng()->commSize() > 1) {
+    pe->beginNewExchange(-123);
+  }
 
   Integer particle_count = 0; // Initialize count of num_particles processed
   Integer iter = 1;
 
   while (!done) {
-    arcaneParallelForeach(processingView, options_mt, [&](ParticleVectorView particles) {
+    arcaneParallelForeach(processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         Particle particle = (*iparticle);
         cycleTrackingGuts(particle);
 
-#if LOG
-        if (iparticle.index() % 50000 == 0) {
-          debug() << "--------";
-          pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << processingView.size();
-          debug() << "  m_local_ids_processed : " << m_census_a << " m_local_ids_extra : " << m_local_ids_extra.size();
-          debug() << "--------";
-        }
-#endif
+        //if (iparticle.index() % 50000 == 0) {
+          // pinfo(5) << "--------";
+          // pinfo(4) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << iparticle.index() << "/" << processingView.size();
+          // pinfo(5) << "  m_local_ids_processed : " << m_census_a << " m_local_ids_extra : " << m_local_ids_extra.size();
+          // pinfo(5) << "--------";
+        //}
       }
     });
 
     particle_count += processingView.size();
-#if LOG
-    if (processingView.size() != 0)
-      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << processingView.size() << "/" << processingView.size();
-#endif
+
+    // if (processingView.size() != 0) {
+      // pinfo(4) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of particles processed : " << processingView.size() << "/" << processingView.size();
+    // }
 
     if (mesh()->parallelMng()->commSize() > 1 && inView.size() > 0) {
-#if LOG
-      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Computing incoming particles";
-#endif
-      arcaneParallelForeach(inView, options_mt, [&](ParticleVectorView particles) {
+
+      // pinfo(5) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Computing incoming particles";
+
+      arcaneParallelForeach(inView, [&](ParticleVectorView particles) {
         ENUMERATE_PARTICLE (iparticle, particles) {
           Particle particle = (*iparticle);
           cycleTrackingGuts(particle);
 
-#if LOG
-          if (iparticle.index() % 50000 == 0) {
-            pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
-          }
-#endif
+          // if (iparticle.index() % 50000 == 0) {
+            // pinfo(4) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
+          // }
         }
       });
       particle_count += inView.size();
-#if LOG
-      pinfo() << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << inView.size() << "/" << inView.size();
-#endif
+
+      // pinfo(4) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << inView.size() << "/" << inView.size();
     }
 
-#if LOG
-    debug() << "========";
-    pinfo() << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter << " - Total number of particles processed : " << particle_count;
-    debug() << "  m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
-    debug() << "  m_local_ids_processed : " << m_census_a << " m_local_ids_exit : " << m_local_ids_exit.size();
-    debug() << "========";
-#endif
+    // pinfo(5) << "========";
+    pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter << " - Total number of particles processed : " << particle_count;
+    // pinfo(5) << "  m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
+    // pinfo(5) << "  m_local_ids_processed : " << m_census_a << " m_local_ids_exit : " << m_local_ids_exit.size();
+    // pinfo(5) << "========";
+
 
     // On retire les particules qui sont sortie du maillage.
     m_particle_family->toParticleFamily()->removeParticles(m_local_ids_exit);
@@ -255,33 +249,29 @@ tracking()
     collisionEventSuite();
 
     if (mesh()->parallelMng()->commSize() > 1) {
+      m_local_ids_in.clear();
+
       // On essaye de recevoir tant que quelqu'un bosse encore.
       do {
-
         // Echange particles.
-        IParticleExchanger* pe = options()->particleExchanger();
-        pe->beginNewExchange(m_local_ids_out.size());
         pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &m_local_ids_in, 0);
 
         done = ((mesh()->parallelMng()->reduce(
                 Parallel::ReduceMax,
                 m_local_ids_in.size() + m_local_ids_extra.size())) == 0);
 
-#if LOG
-        debug() << "/////////";
-        debug() << "Proc#" << mesh()->parallelMng()->commRank();
-        debug() << "Nb Particles out : " << m_local_ids_out.size();
-        debug() << "Nb Particles in : " << m_local_ids_in.size();
-        debug() << "/////////";
-#endif
+
+        // pinfo(6) << "/////////";
+        // pinfo(6) << "Proc#" << mesh()->parallelMng()->commRank();
+        // pinfo(6) << "Nb Particles out : " << m_local_ids_out.size();
+        // pinfo(6) << "Nb Particles in : " << m_local_ids_in.size();
+        // pinfo(6) << "/////////";
 
         m_rank_out.clear();
         m_local_ids_out.clear();
       } while (m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
 
-      incomingClone = m_local_ids_in.clone();
-      m_local_ids_in.clear();
-      inView = m_particle_family->view(incomingClone);
+      inView = m_particle_family->view(m_local_ids_in);
     }
 
     else if (m_local_ids_extra.size() == 0) {
@@ -294,6 +284,7 @@ tracking()
     processingView = m_particle_family->view(extraClone);
     iter++;
   }
+
   m_end_a = m_particle_family->view().size();
 }
 
@@ -383,6 +374,11 @@ isInGeometry(Integer pos, Cell cell)
 void TrackingMCModule::
 cycleTrackingGuts(Particle particle)
 {
+  if (m_particle_species[particle] == ParticleState::exitedParticle 
+   || m_particle_species[particle] == ParticleState::censusParticle) {
+    ARCANE_FATAL("Particule déjà traitée.");
+  }
+
   if (m_particle_time_census[particle] <= 0.0) {
     m_particle_time_census[particle] += m_global_deltat();
   }
@@ -427,7 +423,7 @@ cycleTrackingFunction(Particle particle)
       switch (collisionEvent(particle)) {
       case 0: // La particule est absorbée.
         keepTrackingThisParticle = false;
-        m_particle_species[particle] = -1;
+        m_particle_species[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_local_ids_exit.add(particle.localId());
@@ -457,7 +453,7 @@ cycleTrackingFunction(Particle particle)
       case ParticleEvent::escape:
         m_escape_a++;
         keepTrackingThisParticle = false;
-        m_particle_species[particle] = -1;
+        m_particle_species[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_local_ids_exit.add(particle.localId());
@@ -485,7 +481,7 @@ cycleTrackingFunction(Particle particle)
       // }
       m_census_a++;
       keepTrackingThisParticle = false;
-      m_particle_species[particle] = -1;
+      m_particle_species[particle] = ParticleState::censusParticle;
       break;
     }
 
@@ -572,9 +568,9 @@ computeNextEvent(Particle particle)
   Real particle_speed = velo.Length();
 
   // Force collision if a census event narrowly preempts a collision
-  Integer force_collision = 0;
+  bool force_collision = false;
   if (m_particle_num_mean_free_path[particle] < 0.0) {
-    force_collision = 1;
+    force_collision = true;
 
     if (m_particle_num_mean_free_path[particle] > -900.0) {
       printf(" computeNextEvent: m_particle_num_mean_free_path[particle] > -900.0 \n");
@@ -607,88 +603,74 @@ computeNextEvent(Particle particle)
 
   // Calculate the distances to collision, nearest facet, and census.
 
-  // Forced collisions do not need to move far.
-  if (force_collision) {
-    distance[ParticleEvent::collision] = PhysicalConstants::_smallDouble;
-  }
-  else {
-    distance[ParticleEvent::collision] = m_particle_num_mean_free_path[particle] * m_particle_mean_free_path[particle];
-  }
-
-  // process census
-  distance[ParticleEvent::census] = particle_speed * m_particle_time_census[particle];
-
-  //  DEBUG  Turn off threshold for now
-  //Real distance_threshold = 10.0 * PhysicalConstants::_hugeDouble;
-  // Get the current winning distance.
-  //Real current_best_distance = PhysicalConstants::_hugeDouble;
-
-  //bool new_segment =  (m_particle_num_seg[particle] == 0 ||
-  //                     m_particle_last_event[particle] == ParticleEvent::collision);
-
-  // Calculate the minimum distance to each facet of the cell.
-  NearestFacet nearest_facet = getNearestFacet(particle);
-
-  m_particle_normal_dot[particle] = nearest_facet.dot_product;
-
-  distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance_to_facet;
-
-  // Get out of here if the tracker failed to bound this particle's volume.
-  if (m_particle_last_event[particle] == ParticleEvent::faceEventUndefined) {
-    return;
-  }
-
   // Calculate the minimum distance to the selected events.
 
   // Force a collision (if required).
-  if (force_collision == 1) {
+  if (force_collision) {
     distance[ParticleEvent::faceEventUndefined] = PhysicalConstants::_hugeDouble;
     distance[ParticleEvent::census] = PhysicalConstants::_hugeDouble;
+    // Forced collisions do not need to move far.
     distance[ParticleEvent::collision] = PhysicalConstants::_tinyDouble;
-  }
 
-  // we choose our segment outcome here
-  ParticleEvent segment_outcome = (ParticleEvent)findMin(distance);
+    m_particle_seg_path_length[particle] = PhysicalConstants::_tinyDouble;
+    m_particle_last_event[particle] = ParticleEvent::collision;
 
-  if (distance[segment_outcome] < 0) {
-    qs_assert(false);
-  }
-
-  m_particle_seg_path_length[particle] = distance[segment_outcome];
-  m_particle_num_mean_free_path[particle] -= m_particle_seg_path_length[particle] / m_particle_mean_free_path[particle];
-  m_particle_last_event[particle] = segment_outcome;
-
-  // Set the segment path length to be the minimum of
-  //   (i)   the distance to collision in the cell, or
-  //   (ii)  the minimum distance to a facet of the cell, or
-  //   (iii) the distance to census at the end of the time step
-  if (segment_outcome == ParticleEvent::collision) {
+    // If collision was forced, set mc_particle.num_mean_free_paths = 0
+    // so that a new value is randomly selected on next pass.
     m_particle_num_mean_free_path[particle] = 0.0;
   }
 
-  else if (segment_outcome == ParticleEvent::faceEventUndefined) {
-    m_particle_face[particle] = nearest_facet.facet / 4;
-    m_particle_facet[particle] = nearest_facet.facet % 4;
-  }
+  else {
+    // Calculate the minimum distance to each facet of the cell.
+    NearestFacet nearest_facet = getNearestFacet(particle);
 
-  else if (segment_outcome == ParticleEvent::census) {
-    m_particle_time_census[particle] = std::min(m_particle_time_census[particle], 0.0);
-  }
+    m_particle_normal_dot[particle] = nearest_facet.dot_product;
 
-  // If collision was forced, set mc_particle.num_mean_free_paths = 0
-  // so that a new value is randomly selected on next pass.
-  if (force_collision == 1) {
-    m_particle_num_mean_free_path[particle] = 0.0;
-  }
+    distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance_to_facet;
 
-  // Do not perform any tallies if the segment path length is zero.
-  //   This only introduces roundoff errors.
-  if (m_particle_seg_path_length[particle] == 0.0) {
-    return;
+    // Get out of here if the tracker failed to bound this particle's volume.
+    if (m_particle_last_event[particle] == ParticleEvent::faceEventUndefined) {
+      return;
+    }
+    distance[ParticleEvent::collision] = m_particle_num_mean_free_path[particle] * m_particle_mean_free_path[particle];
+    // process census
+    distance[ParticleEvent::census] = particle_speed * m_particle_time_census[particle];
+
+    // we choose our segment outcome here
+    ParticleEvent segment_outcome = (ParticleEvent)findMin(distance);
+
+    m_particle_seg_path_length[particle] = distance[segment_outcome];
+    m_particle_last_event[particle] = segment_outcome;
+
+
+    // Set the segment path length to be the minimum of
+    //   (i)   the distance to collision in the cell, or
+    //   (ii)  the minimum distance to a facet of the cell, or
+    //   (iii) the distance to census at the end of the time step
+    if (segment_outcome == ParticleEvent::collision) {
+      m_particle_num_mean_free_path[particle] = 0.0;
+    }
+    else{
+      m_particle_num_mean_free_path[particle] -= m_particle_seg_path_length[particle] / m_particle_mean_free_path[particle];
+    }
+
+    if (segment_outcome == ParticleEvent::faceEventUndefined) {
+      m_particle_face[particle] = nearest_facet.facet / 4;
+      m_particle_facet[particle] = nearest_facet.facet % 4;
+    }
+
+    else if (segment_outcome == ParticleEvent::census) {
+      m_particle_time_census[particle] = std::min(m_particle_time_census[particle], 0.0);
+    }
+
+    // Do not perform any tallies if the segment path length is zero.
+    //   This only introduces roundoff errors.
+    if (m_particle_seg_path_length[particle] == 0.0) {
+      return;
+    }
   }
 
   // Move particle to end of segment, accounting for some physics processes along the segment.
-
   // Project the particle trajectory along the segment path length.
 
   m_particle_coord[particle][MD_DirX] += (m_particle_dir_cos[particle][MD_DirA] * m_particle_seg_path_length[particle]);
@@ -962,7 +944,7 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
   m_particle_last_event[pNew] = m_particle_last_event[pSrc];
   m_particle_num_coll[pNew] = m_particle_num_coll[pSrc];
   m_particle_num_seg[pNew] = m_particle_num_seg[pSrc];
-  m_particle_species[pNew] = m_particle_species[pSrc];
+  m_particle_species[pNew] = ParticleState::clonedParticle;
   m_particle_ene_grp[pNew] = m_particle_ene_grp[pSrc];
   m_particle_face[pNew] = m_particle_face[pSrc];
   m_particle_facet[pNew] = m_particle_facet[pSrc];
@@ -1006,10 +988,7 @@ updateTrajectory(Real energy, Real angle, Particle particle)
 void TrackingMCModule::
 computeCrossSection()
 {
-  Arcane::ParallelLoopOptions options;
-  //options.setGrainSize(50);
-
-  arcaneParallelForeach(ownCells(), options, [&](CellVectorView cells) {
+  arcaneParallelForeach(ownCells(), [&](CellVectorView cells) {
     ENUMERATE_CELL (icell, cells) {
       for (Integer i = 0; i < m_n_groups(); i++) {
         weightedMacroscopicCrossSection((*icell), i);
@@ -1338,9 +1317,10 @@ findNearestFacet(Particle particle,
     if (move_factor > 1.0e-2)
       move_factor = 1.0e-2;
 
-    Integer max_iterations = 10000;
+    Integer max_iterations = 10;
 
     if (iteration == max_iterations) {
+      ARCANE_FATAL("Problème de facet.");
       qs_assert(false); // If we start hitting this assertion we can
       // come up with a better mitigation plan. - dfr
       retry = 0;

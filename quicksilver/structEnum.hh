@@ -4,7 +4,6 @@
 using namespace Arcane;
 
 #define MAX_PRODUCTION_SIZE 4
-#define LOG false
 
 enum eBoundaryCondition{REFLECT, ESCAPE, OCTANT};
 enum eShape{UNDEFINED, BRICK, SPHERE};
@@ -26,6 +25,15 @@ enum ParticleEvent
   cellChange,
   subDChange,
   undefined
+};
+
+enum ParticleState
+{
+  oldParticle,    // Particle ayant déjà fait un tracking.
+  newParticle,    // Nouvelle particule.
+  clonedParticle, // Particule provenant d'un split.
+  exitedParticle, // Particule sortie du maillage.
+  censusParticle  // Particule ayant fini le tracking actuel.
 };
 
 struct NearestFacet

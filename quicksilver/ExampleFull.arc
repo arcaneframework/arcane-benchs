@@ -48,14 +48,16 @@
   </q-s>
 
   <sampling-m-c>
-    <nParticles>100000</nParticles>
+    <nParticles>1000000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
     <seed>1029384756</seed>
   </sampling-m-c>
 
   <tracking-m-c>
-
+    <particle-exchanger name="BasicParticleExchanger">
+      <max-nb-message-without-reduce>-1</max-nb-message-without-reduce>
+    </particle-exchanger>
     <geometry>
       <material>sourceMaterial</material>
       <shape>brick</shape>

@@ -1,9 +1,9 @@
 // -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 
 #include "SamplingMCModule.hh"
+#include <arcane/Concurrency.h>
 #include <map>
 #include <set>
-#include <arcane/Concurrency.h>
 #include "MC_RNG_State.hh"
 #include "NVTX_Range.hh"
 #include "PhysicalConstants.hh"
@@ -39,6 +39,16 @@ cycleInit()
   clearCrossSectionCache();
   m_processingView = m_particle_family->view();
 
+  arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
+    ENUMERATE_PARTICLE (ipartic, particles) {
+      if (m_particle_species[ipartic] != ParticleState::exitedParticle 
+       && m_particle_species[ipartic] != ParticleState::censusParticle) {
+        ARCANE_FATAL("Particule non traitée dans Sampling");
+      }
+      m_particle_species[ipartic] = ParticleState::oldParticle;
+    }
+  });
+
   m_start_a = m_processingView.size();
 
   // Création des particules.
@@ -47,22 +57,19 @@ cycleInit()
   // Réduction ou augmentation du nombre de particules.
   populationControl(); // controls particle population
 
-#if LOG
-  pinfo() << "P" << mesh()->parallelMng()->commRank()
+  pinfo(3) << "P" << mesh()->parallelMng()->commRank()
           << " - SourceParticles: " << m_source_a << " particle(s) created.";
-  pinfo() << "P" << mesh()->parallelMng()->commRank()
+  pinfo(3) << "P" << mesh()->parallelMng()->commRank()
           << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
           << m_split_a << " particle(s) created by splitting.";
   Int64 tmpLog = m_rr_a;
-#endif
 
   // Roulette sur les particules avec faible poids.
   rouletteLowWeightParticles(); // Delete particles with low statistical weight
-#if LOG
-  pinfo() << "P" << mesh()->parallelMng()->commRank()
+
+  pinfo(3) << "P" << mesh()->parallelMng()->commRank()
           << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
           << " particle(s) killed.";
-#endif
 
   updateTallies();
 }
@@ -190,10 +197,7 @@ sourceParticles()
   ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
 
   // Les particules sont créées, on les initialise donc.
-  Arcane::ParallelLoopOptions options;
-  options.setGrainSize(1000);
-
-  arcaneParallelForeach(viewSrcP, options, [&](ParticleVectorView particles) {
+  arcaneParallelForeach(viewSrcP, [&](ParticleVectorView particles) {
     ENUMERATE_PARTICLE (ipartic, particles) {
       Particle p = (*ipartic);
       initParticle(p, rng[p.uniqueId().asInt64()]);
@@ -253,9 +257,7 @@ populationControl()
   else if (splitRRFactor < 1) {
     Int32UniqueArray supprP;
 
-    Arcane::ParallelLoopOptions options;
-    options.setGrainSize(1000);
-    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles) {
+    arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         Real randomNumber = rngSample(&m_particle_rns[iparticle]);
         if (randomNumber > splitRRFactor) {
@@ -281,10 +283,7 @@ populationControl()
     Int32UniqueArray addCellIdP;
     Int32UniqueArray addSrcP;
 
-    Arcane::ParallelLoopOptions options;
-    options.setGrainSize(1000);
-
-    arcaneParallelForeach(m_processingView, options, [&](ParticleVectorView particles) {
+    arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         Particle particle = (*iparticle);
         Real randomNumber = rngSample(&m_particle_rns[iparticle]);
@@ -356,7 +355,7 @@ initParticle(Particle p, Int64 rns)
   m_particle_last_event[p] = ParticleEvent::census;
   m_particle_num_coll[p] = 0;
   m_particle_num_seg[p] = 0.0;
-  m_particle_species[p] = 0;
+  m_particle_species[p] = ParticleState::newParticle;
   m_particle_ene_grp[p] = 0;
   m_particle_face[p] = 0;
   m_particle_facet[p] = 0;
@@ -421,7 +420,7 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
   m_particle_last_event[pNew] = m_particle_last_event[pSrc];
   m_particle_num_coll[pNew] = m_particle_num_coll[pSrc];
   m_particle_num_seg[pNew] = m_particle_num_seg[pSrc];
-  m_particle_species[pNew] = m_particle_species[pSrc];
+  m_particle_species[pNew] = ParticleState::clonedParticle;
   m_particle_ene_grp[pNew] = m_particle_ene_grp[pSrc];
   m_particle_face[pNew] = m_particle_face[pSrc];
   m_particle_facet[pNew] = m_particle_facet[pSrc];
@@ -445,10 +444,8 @@ rouletteLowWeightParticles()
     // March backwards through the vault so killed particles don't mess up the
     // indexing
     const Real weightCutoff = lowWeightCutoff * m_source_particle_weight;
-    Arcane::ParallelLoopOptions options;
-    options.setGrainSize(1000);
-    arcaneParallelForeach(
-    m_processingView, options, [&](ParticleVectorView particles) {
+
+    arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         if (m_particle_weight[iparticle] <= weightCutoff) {
           Real randomNumber = rngSample(&m_particle_rns[iparticle]);
