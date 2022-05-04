@@ -105,7 +105,7 @@ initMesh()
   m_coord_cm.resize(3);
   m_coord_mid_cm.resize(3);
   m_coord_center.resize(4);
-  m_total.resize(options()->getNGroups());
+  m_total.resize(m_n_groups());
 
   Arcane::ParallelLoopOptions options;
 
@@ -243,7 +243,7 @@ initTallies()
   m_split = 0; // Number of particles split in population control
   m_num_segments = 0; // Number of segements
 
-  m_scalar_flux_tally.resize(options()->getNGroups());
+  m_scalar_flux_tally.resize(m_n_groups());
   m_scalar_flux_tally.fill(0.0);
 }
 
@@ -254,6 +254,16 @@ initTallies()
 void QSModule::
 cycleFinalizeTallies()
 {
+
+  // Somme des m_scalar_flux_tally.
+  Real sum_scalar_flux_tally = 0.0;
+  ENUMERATE_CELL(icell, ownCells()){
+    for(Integer i = 0; i < m_n_groups(); i++){
+      sum_scalar_flux_tally += m_scalar_flux_tally[icell][i];
+      m_scalar_flux_tally[icell][i] = 0.0;
+    }
+  }
+
   m_absorb.reduce(Parallel::ReduceSum);
   m_census.reduce(Parallel::ReduceSum);
   m_escape.reduce(Parallel::ReduceSum);
@@ -267,6 +277,7 @@ cycleFinalizeTallies()
   m_split.reduce(Parallel::ReduceSum);
   m_start.reduce(Parallel::ReduceSum);
   m_end.reduce(Parallel::ReduceSum);
+  sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
 
   info() << "End iteration #" << m_global_iteration();
   info() << "  Informations:";
@@ -309,6 +320,9 @@ cycleFinalizeTallies()
   info() << "    Number of particles at end of cycle                           "
             " (m_end): "
          << m_end.value();
+  info() << "    Particles contribution to the scalar flux     "
+            " (sum_scalar_flux_tally): "
+         << sum_scalar_flux_tally;
 
   m_start = 0;
   m_source = 0;

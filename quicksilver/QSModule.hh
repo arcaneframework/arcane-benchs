@@ -1,5 +1,6 @@
 // -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 
+#include <arcane/IMesh.h>
 #include <arcane/IParallelMng.h>
 #include <arcane/ITimeLoopMng.h>
 #include <arcane/cartesianmesh/CellDirectionMng.h>

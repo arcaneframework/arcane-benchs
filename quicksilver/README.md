@@ -46,6 +46,6 @@ QS_ARC=${QS_SOURCE_DIR}/arc_examples/scatteringOnly.arc
 QS_ARC=${QS_SOURCE_DIR}/arc_examples/CTS2.arc
 QS_ARC=${QS_SOURCE_DIR}/arc_examples/homogeneousProblem.arc
 QS_ARC=${QS_SOURCE_DIR}/arc_examples/no.collisions.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/NoFission.arc
+QS_ARC=${QS_SOURCE_DIR}/arc_examples/noFission.arc
 QS_ARC=${QS_SOURCE_DIR}/arc_examples/NonFlatXC.arc
 ```
