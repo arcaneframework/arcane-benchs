@@ -1,6 +1,5 @@
 #include "NuclearData.hh"
 #include "MC_RNG_State.hh"
-#include "qs_assert.hh"
 #include <cmath>
 
 using std::log10;
@@ -34,7 +33,7 @@ NuclearDataReaction(Enum reactionType, Real nuBar,
       normalization = _crossSection[ii];
       break;
     }
-  qs_assert(normalization > 0.);
+  ARCANE_ASSERT(normalization > 0., "normalization <= 0");
 
   // scale to specified reaction cross section
   Real scale = reactionCrossSection / normalization;
@@ -63,7 +62,7 @@ sampleCollision(Real incidentEnergy,
     break;
   case Fission: {
     Integer numParticleOut = (Integer)(_nuBar + rngSample(seed));
-    qs_assert(numParticleOut <= max_production_size);
+    ARCANE_ASSERT(numParticleOut <= max_production_size, "numParticleOut > max_production_size");
     nOut = numParticleOut;
     for (Integer outIndex = 0; outIndex < numParticleOut; outIndex++) {
       randomNumber = rngSample(seed) / 2.0 + 0.5;
@@ -73,8 +72,7 @@ sampleCollision(Real incidentEnergy,
     }
   } break;
   case Undefined:
-    printf("_reactionType invalid\n");
-    qs_assert(false);
+    ARCANE_WARNING("_reactionType invalid");
   }
 }
 
@@ -94,7 +92,7 @@ NuclearData::
 NuclearData(Integer numGroups, Real energyLow, Real energyHigh)
 : _energies(numGroups + 1)
 {
-  qs_assert(energyLow < energyHigh);
+  ARCANE_ASSERT(energyLow < energyHigh, "energyLow >= energyHigh");
   _energies[0] = energyLow;
   _energies[numGroups] = energyHigh;
   Real logLow = log(energyLow);
@@ -176,13 +174,13 @@ addIsotope(Integer nReactions,
 Real NuclearDataReaction::
 getCrossSection(Integer group)
 {
-  qs_assert(group < _crossSection.size());
+  ARCANE_ASSERT(group < _crossSection.size(), "group >= _crossSection.size()");
   return _crossSection[group];
 }
 
 Integer NuclearData::getNumberReactions(Integer isotopeIndex)
 {
-  qs_assert(isotopeIndex < _isotopes.size());
+  ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   return _isotopes[isotopeIndex]._species[0]._reactions.size();
 }
 
@@ -217,7 +215,7 @@ getEnergyGroup(Real energy)
 Real NuclearData::
 getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
-  qs_assert(isotopeIndex < _isotopes.size());
+  ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   Integer numReacts = _isotopes[isotopeIndex]._species[0]._reactions.size();
   Real totalCrossSection = 0.0;
   for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
@@ -235,8 +233,8 @@ Real NuclearData::
 getReactionCrossSection(Integer reactIndex,
                         Integer isotopeIndex, Integer group)
 {
-  qs_assert(isotopeIndex < _isotopes.size());
-  qs_assert(reactIndex < _isotopes[isotopeIndex]._species[0]._reactions.size());
+  ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
+  ARCANE_ASSERT(reactIndex < _isotopes[isotopeIndex]._species[0]._reactions.size(), "reactIndex >= _isotopes[isotopeIndex]._species[0]._reactions.size()");
   return _isotopes[isotopeIndex]
   ._species[0]
   ._reactions[reactIndex]

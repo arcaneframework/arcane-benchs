@@ -7,7 +7,6 @@
 #include <cstdint>
 #endif
 
-#include "qs_assert.hh"
 #include <arcane/ITimeLoopMng.h>
 #include <math.h>
 
@@ -39,8 +38,7 @@ rngSample(Int64* seed)
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.
   volatile Real fin = 5.4210108624275222e-20 * (uint64_t)(*seed);
-  if (fin < 0)
-    qs_assert(false);
+  ARCANE_ASSERT(fin >= 0, "rngSample negative");
   return fin;
 }
 

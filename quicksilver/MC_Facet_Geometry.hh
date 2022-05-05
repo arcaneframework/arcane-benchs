@@ -1,8 +1,6 @@
 #ifndef MCT_FACET_GEOMETRY_3D_INCLUDE
 #define MCT_FACET_GEOMETRY_3D_INCLUDE
 
-#include <cstddef> // NULL
-
 // A x + B y + C z + D = 0,  (A,B,C) is the plane normal and is normalized.
 class MC_General_Plane
 {

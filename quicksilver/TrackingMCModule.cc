@@ -23,6 +23,8 @@ initModule()
   IParticleExchanger* pe = options()->particleExchanger();
   pe->initialize(m_particle_family);
 
+  m_timer = new Timer(subDomain(), "TrackingMC", Timer::TimerReal);
+
   // Configuration des materiaux.
   initNuclearData();
 }
@@ -33,9 +35,13 @@ initModule()
 void TrackingMCModule::
 cycleTracking()
 {
-  computeCrossSection();
-  tracking();
-  updateTallies();
+  {
+    Timer::Sentry ts(m_timer);
+    computeCrossSection();
+    tracking();
+    updateTallies();
+  }
+  info() << "--- P" << mesh()->parallelMng()->commRank() << " - Tracking duration: " << m_timer->lastActivationTime() << "s ---";
 }
 
 /**
@@ -44,6 +50,7 @@ cycleTracking()
 void TrackingMCModule::
 endModule()
 {
+  delete(m_timer);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -234,7 +241,7 @@ tracking()
     }
 
     // pinfo(5) << "========";
-    pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter << " - Total number of particles processed : " << particle_count;
+    // pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - End SubIter #" << iter << " - Total number of particles processed : " << particle_count;
     // pinfo(5) << "  m_local_ids_exit : " << m_local_ids_exit.size() << " m_local_ids_extra_cellId : " << m_local_ids_extra_cellId.size() << " m_local_ids_extra : " << m_local_ids_extra.size();
     // pinfo(5) << "  m_local_ids_processed : " << m_census_a << " m_local_ids_exit : " << m_local_ids_exit.size();
     // pinfo(5) << "========";
@@ -345,7 +352,8 @@ isInGeometry(Integer pos, Cell cell)
         (m_coord_center[cell][MD_DirY] >= yMin && m_coord_center[cell][MD_DirY] <= yMax) &&
         (m_coord_center[cell][MD_DirZ] >= zMin && m_coord_center[cell][MD_DirZ] <= zMax))
       inside = true;
-  } break;
+    } 
+    break;
 
   case eShape::SPHERE: {
     Real xCenter = ((options()->geometry[pos].getXCenter() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getXCenter());
@@ -357,11 +365,11 @@ isInGeometry(Integer pos, Cell cell)
     MC_Vector rr(m_coord_center[cell]);
     if ((rr - center).Length() <= radius)
       inside = true;
-  }
+    }
+    break;
 
-  break;
   default:
-    qs_assert(false);
+    ARCANE_ASSERT(false, "Pb dans isInGeometry");
   }
   return inside;
 }
@@ -486,8 +494,8 @@ cycleTrackingFunction(Particle particle)
     }
 
     default:
-      qs_assert(false);
-      break; // should this be an error
+      ARCANE_ASSERT(false, "Evenement particle inconnu");
+      break;
     }
 
   } while (keepTrackingThisParticle);
@@ -732,7 +740,7 @@ collisionEvent(Particle particle)
       }
     }
   }
-  qs_assert(selectedIso != -1);
+  ARCANE_ASSERT(selectedIso != -1, "selectedIso == -1");
 
   //------------------------------------------------------------------------------------------------------------------
   //    Do the collision.
@@ -766,8 +774,7 @@ collisionEvent(Particle particle)
     m_produce_a += nOut;
     break;
   case NuclearDataReaction::Undefined:
-    printf("reactionType invalid\n");
-    qs_assert(false);
+    ARCANE_ASSERT(false, "reactionType invalid");
   }
 
   if (nOut == 0) {
@@ -1144,7 +1151,7 @@ getNearestFacet(Particle particle)
   }
 
   if (nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble) {
-    qs_assert(false);
+    ARCANE_ASSERT(false, "nearest_facet.distance_to_facet < PhysicalConstants::_hugeDouble");
   }
   return nearest_facet;
 }
@@ -1321,9 +1328,6 @@ findNearestFacet(Particle particle,
 
     if (iteration == max_iterations) {
       ARCANE_FATAL("Problème de facet.");
-      qs_assert(false); // If we start hitting this assertion we can
-      // come up with a better mitigation plan. - dfr
-      retry = 0;
     }
     else
       retry = 1;
@@ -1386,7 +1390,7 @@ template <typename T>
 Integer TrackingMCModule::
 findMin(UniqueArray<T> array)
 {
-  Real min = array[0];
+  T min = array[0];
   Integer min_index = 0;
 
   for (Integer element_index = 1; element_index < array.size(); ++element_index) {

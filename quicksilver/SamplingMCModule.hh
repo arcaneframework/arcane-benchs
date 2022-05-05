@@ -26,6 +26,8 @@ public ArcaneSamplingMCObject
  public:
   explicit SamplingMCModule(const ModuleBuildInfo& mbi)
   : ArcaneSamplingMCObject(mbi)
+  , m_particle_family(nullptr)
+  , m_timer(nullptr)
   {}
 
  public:
@@ -44,7 +46,10 @@ public ArcaneSamplingMCObject
   std::atomic<Int64> m_source_a{ 0 };
   std::atomic<Int64> m_rr_a{ 0 };
   std::atomic<Int64> m_split_a{ 0 };
+
   GlobalMutex m_mutex;
+
+  Timer* m_timer;
 
  protected:
   void updateTallies();

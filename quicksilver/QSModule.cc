@@ -4,7 +4,6 @@
 #include <iostream>
 #include <arcane/Concurrency.h>
 #include "NVTX_Range.hh"
-#include "qs_assert.hh"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -364,7 +363,7 @@ getBoundaryCondition(Integer pos)
       return ParticleEvent::reflection;
 
   default:
-    qs_assert(false);
+    ARCANE_ASSERT(false, "Boundary condition undefined.");
     return ParticleEvent::undefined;
   }
 }

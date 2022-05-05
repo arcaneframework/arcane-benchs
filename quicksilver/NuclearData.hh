@@ -2,7 +2,6 @@
 #define NUCLEAR_DATA_ARC_HH
 
 #include "arcane/ItemVector.h"
-#include "qs_assert.hh"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

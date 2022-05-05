@@ -28,6 +28,8 @@ initModule()
 
   m_particle_dir_cos.resize(3);
   m_particle_dir_cos.fill(0.0);
+
+  m_timer = new Timer(subDomain(), "SamplingMC", Timer::TimerReal);
 }
 
 /**
@@ -36,49 +38,58 @@ initModule()
 void SamplingMCModule::
 cycleInit()
 {
-  clearCrossSectionCache();
-  m_processingView = m_particle_family->view();
+  {
+    Timer::Sentry ts(m_timer);
 
-  arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
-    ENUMERATE_PARTICLE (ipartic, particles) {
-      if (m_particle_species[ipartic] != ParticleState::exitedParticle 
-       && m_particle_species[ipartic] != ParticleState::censusParticle) {
-        ARCANE_FATAL("Particule non traitée dans Sampling");
+    clearCrossSectionCache();
+    m_processingView = m_particle_family->view();
+
+    arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
+      ENUMERATE_PARTICLE (ipartic, particles) {
+        if (m_particle_species[ipartic] != ParticleState::exitedParticle 
+        && m_particle_species[ipartic] != ParticleState::censusParticle) {
+          ARCANE_FATAL("Particule non traitée dans Sampling");
+        }
+        m_particle_species[ipartic] = ParticleState::oldParticle;
       }
-      m_particle_species[ipartic] = ParticleState::oldParticle;
-    }
-  });
+    });
 
-  m_start_a = m_processingView.size();
+    m_start_a = m_processingView.size();
 
-  // Création des particules.
-  sourceParticles();
+    // Création des particules.
+    sourceParticles();
 
-  // Réduction ou augmentation du nombre de particules.
-  populationControl(); // controls particle population
+    // Réduction ou augmentation du nombre de particules.
+    populationControl(); // controls particle population
 
-  pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-          << " - SourceParticles: " << m_source_a << " particle(s) created.";
-  pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-          << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
-          << m_split_a << " particle(s) created by splitting.";
-  Int64 tmpLog = m_rr_a;
+    pinfo(3) << "P" << mesh()->parallelMng()->commRank()
+            << " - SourceParticles: " << m_source_a << " particle(s) created.";
+    pinfo(3) << "P" << mesh()->parallelMng()->commRank()
+            << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
+            << m_split_a << " particle(s) created by splitting.";
+    Int64 tmpLog = m_rr_a;
 
-  // Roulette sur les particules avec faible poids.
-  rouletteLowWeightParticles(); // Delete particles with low statistical weight
+    // Roulette sur les particules avec faible poids.
+    rouletteLowWeightParticles(); // Delete particles with low statistical weight
 
-  pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-          << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
-          << " particle(s) killed.";
+    pinfo(3) << "P" << mesh()->parallelMng()->commRank()
+            << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
+            << " particle(s) killed.";
 
-  updateTallies();
+    updateTallies();
+  }
+
+  info() << "--- P" << mesh()->parallelMng()->commRank() << " - Sampling duration: " << m_timer->lastActivationTime() << "s ---";
 }
 
 /**
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void SamplingMCModule::
-endModule() {}
+endModule() 
+{
+  delete(m_timer);
+}
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/

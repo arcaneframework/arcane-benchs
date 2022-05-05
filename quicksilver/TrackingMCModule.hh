@@ -14,6 +14,7 @@
 #include <arcane/materials/MeshMaterialModifier.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
+#include "arcane/Timer.h"
 #include "structEnum.hh"
 
 #include "TrackingMC_axl.h"
@@ -37,6 +38,7 @@ public ArcaneTrackingMCObject
   : ArcaneTrackingMCObject(mbi)
   , m_particle_family(nullptr)
   , m_material_mng(nullptr)
+  , m_timer(nullptr)
   {}
 
  public:
@@ -84,6 +86,8 @@ public ArcaneTrackingMCObject
   GlobalMutex m_mutex_extra;
   GlobalMutex m_mutex_out;
   GlobalMutex m_mutex_flux;
+
+  Timer* m_timer;
 
  protected:
   void tracking();
