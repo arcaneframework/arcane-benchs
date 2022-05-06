@@ -57,6 +57,7 @@ cycleInit()
     m_start_a = m_processingView.size();
 
     // Création des particules.
+    // TODO : Cas très rare où il manque une particule (par rapport aux résultats QS original).
     sourceParticles();
 
     // Réduction ou augmentation du nombre de particules.

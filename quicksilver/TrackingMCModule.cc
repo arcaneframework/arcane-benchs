@@ -824,7 +824,9 @@ facetCrossingEvent(Particle particle)
   Face face = particle.cell().face(m_particle_face[particle]);
   m_particle_last_event[particle] = m_boundary_cond[face];
 
+
   if (m_boundary_cond[face] == ParticleEvent::cellChange) {
+
     // The particle will enter into an adjacent cell.
     Cell cell = face.frontCell();
 
@@ -833,20 +835,13 @@ facetCrossingEvent(Particle particle)
     }
 
     m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
-  }
-  else if (m_boundary_cond[face] == ParticleEvent::subDChange) {
-    // The particle will enter into an adjacent cell on a spatial neighbor.
 
-    Cell cell = face.frontCell();
-
-    if (cell == particle.cell()) {
-      cell = face.backCell();
+    if (face.frontCell().owner() != face.backCell().owner()) {
+      // The particle will enter into an adjacent cell on a spatial neighbor.
+      m_particle_last_event[particle] = ParticleEvent::subDChange;
+      m_local_ids_out.add(particle.localId());
+      m_rank_out.add(cell.owner());
     }
-
-    m_particle_family->toParticleFamily()->setParticleCell(particle, cell);
-
-    m_local_ids_out.add(particle.localId());
-    m_rank_out.add(cell.owner());
   }
 }
 

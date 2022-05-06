@@ -189,11 +189,7 @@ initMesh()
           //   (donc compt = 11, 12, 13 => getBoundaryCondition(pair))
           m_boundary_cond[iface] = getBoundaryCondition((compt / 11) + 1);
         }
-        // Si la face est au bord du sous-domaine.
-        else if (face.frontCell().owner() != face.backCell().owner()) {
-          m_boundary_cond[iface] = ParticleEvent::subDChange;
-        }
-        // Face interne au sous-domaine.
+        // Face interne au sous-domaine ou au bord du sous-domaine.
         else {
           m_boundary_cond[iface] = ParticleEvent::cellChange;
         }
