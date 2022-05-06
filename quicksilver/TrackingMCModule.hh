@@ -19,7 +19,6 @@
 
 #include "TrackingMC_axl.h"
 
-#include "MC_Vector.hh"
 #include "NuclearData.hh"
 
 using namespace Arcane;
@@ -111,9 +110,9 @@ public ArcaneTrackingMCObject
   Real distanceToSegmentFacet(Real plane_tolerance,
                               Real facet_normal_dot_direction_cosine,
                               Real A, Real B, Real C, Real D,
-                              const MC_Vector& facet_coords0,
-                              const MC_Vector& facet_coords1,
-                              const MC_Vector& facet_coords2,
+                              const Real3& facet_coords0,
+                              const Real3& facet_coords1,
+                              const Real3& facet_coords2,
                               Particle particle,
                               bool allow_enter);
   NearestFacet findNearestFacet(Particle particle,

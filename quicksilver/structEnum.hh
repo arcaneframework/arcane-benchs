@@ -1,6 +1,8 @@
 #ifndef STRUCTENUM_HH
 #define STRUCTENUM_HH
 
+#include <arcane/utils/Real3.h>
+
 using namespace Arcane;
 
 #define MAX_PRODUCTION_SIZE 4
@@ -73,5 +75,23 @@ static Integer QS_to_arcaneNode[] = { 0, 1, 2, 3,
                                       0, 1, 2, 3,
                                       0, 3, 2, 1};
 
+static Real3 avToReal3(RealArrayView av)
+{
+  return Real3(av[MD_DirX], av[MD_DirY],av[MD_DirZ]);
+}
+
+static Real dot(Real3 r1, Real3 r2)
+{
+  r1 *= r2;
+  return r1[0] + r1[1] + r1[2];
+}
+
+static Real3 cross(Real3 r1, Real3 r2)
+{
+  return Real3(
+      r2.y * r1.z - r2.z * r1.y,
+      r2.z * r1.x - r2.x * r1.z,
+      r2.x * r1.y - r2.y * r1.x);
+}
 
 #endif

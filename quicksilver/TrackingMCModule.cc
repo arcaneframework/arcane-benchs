@@ -101,7 +101,7 @@ initNuclearData()
   for (Integer i = 0; i < num_materials; i++) {
     String mat_name = options()->material[i].getName();
     num_isotopes += options()->material[i].getNIsotopes();
-    MeshMaterialInfo* newMaterial = m_material_mng->registerMaterialInfo(mat_name);
+    m_material_mng->registerMaterialInfo(mat_name);
     MeshEnvironmentBuildInfo ebi1(mat_name);
     ebi1.addMaterial(mat_name);
     m_material_mng->createEnvironment(ebi1);
@@ -361,8 +361,8 @@ isInGeometry(Integer pos, Cell cell)
     Real zCenter = ((options()->geometry[pos].getZCenter() == -1.0) ? (m_lz() / 2) : options()->geometry[pos].getZCenter());
     Real radius = ((options()->geometry[pos].getRadius() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getRadius());
 
-    MC_Vector center(xCenter, yCenter, zCenter);
-    MC_Vector rr(m_coord_center[cell]);
+    Real3 center(xCenter, yCenter, zCenter);
+    Real3 rr = avToReal3(m_coord_center[cell]);
     if ((rr - center).normL2() <= radius)
       inside = true;
     }
@@ -567,12 +567,11 @@ void TrackingMCModule::
 computeNextEvent(Particle particle)
 {
   // initialize distances to large number
-  Integer number_of_events = 3;
   RealUniqueArray distance(3);
   distance[0] = distance[1] = distance[2] = 1e80;
 
   // Calculate the particle speed
-  MC_Vector velo(m_particle_velocity[particle]);
+  Real3 velo = avToReal3(m_particle_velocity[particle]);
   Real particle_speed = velo.normL2();
 
   // Force collision if a census event narrowly preempts a collision
@@ -864,13 +863,13 @@ reflectParticle(Particle particle)
   Node first_node = face.node(first_pos_node);
   Node second_node = face.node(second_pos_node);
 
-  MC_Vector point0(m_coord_cm[first_node]);
-  MC_Vector point1(m_coord_cm[second_node]);
-  MC_Vector point2(m_coord_mid_cm[face]);
+  Real3 point0 = avToReal3(m_coord_cm[first_node]);
+  Real3 point1 = avToReal3(m_coord_cm[second_node]);
+  Real3 point2 = avToReal3(m_coord_mid_cm[face]);
 
   MC_General_Plane plane(point0, point1, point2);
 
-  MC_Vector facet_normal(plane.A, plane.B, plane.C);
+  Real3 facet_normal(plane.A, plane.B, plane.C);
 
   Real dot = 2.0 * (m_particle_dir_cos[particle][MD_DirA] * facet_normal.x + m_particle_dir_cos[particle][MD_DirB] * facet_normal.y + m_particle_dir_cos[particle][MD_DirG] * facet_normal.z);
 
@@ -883,7 +882,7 @@ reflectParticle(Particle particle)
   }
 
   // Calculate the reflected, velocity components.
-  MC_Vector velo(m_particle_velocity[particle]);
+  Real3 velo = avToReal3(m_particle_velocity[particle]);
   Real particle_speed = velo.normL2();
   m_particle_velocity[particle][MD_DirX] = particle_speed * m_particle_dir_cos[particle][MD_DirA];
   m_particle_velocity[particle][MD_DirY] = particle_speed * m_particle_dir_cos[particle][MD_DirB];
@@ -1078,7 +1077,6 @@ NearestFacet TrackingMCModule::
 getNearestFacet(Particle particle)
 {
   Cell cell = particle.cell();
-  MC_Vector* facet_coords[3];
   Integer iteration = 0;
   Real move_factor = 0.5 * PhysicalConstants::_smallDouble;
   NearestFacet nearest_facet;
@@ -1105,9 +1103,9 @@ getNearestFacet(Particle particle)
         Node first_node = face.node(first_pos_node);
         Node second_node = face.node(second_pos_node);
 
-        MC_Vector point0(m_coord_cm[first_node]);
-        MC_Vector point1(m_coord_cm[second_node]);
-        MC_Vector point2(m_coord_mid_cm[iface]);
+        Real3 point0 = avToReal3(m_coord_cm[first_node]);
+        Real3 point1 = avToReal3(m_coord_cm[second_node]);
+        Real3 point2 = avToReal3(m_coord_mid_cm[iface]);
 
         distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
 
@@ -1171,9 +1169,9 @@ Real TrackingMCModule::
 distanceToSegmentFacet(Real plane_tolerance,
                        Real facet_normal_dot_direction_cosine,
                        Real A, Real B, Real C, Real D,
-                       const MC_Vector& facet_coords0,
-                       const MC_Vector& facet_coords1,
-                       const MC_Vector& facet_coords2,
+                       const Real3& facet_coords0,
+                       const Real3& facet_coords1,
+                       const Real3& facet_coords2,
                        Particle particle,
                        bool allow_enter)
 {
@@ -1195,7 +1193,7 @@ distanceToSegmentFacet(Real plane_tolerance,
   Real distance = numerator / facet_normal_dot_direction_cosine;
 
   // see if the intersection point of the ray and the plane is within the triangular facet
-  MC_Vector intersection_pt;
+  Real3 intersection_pt;
   intersection_pt.x = m_particle_coord[particle][MD_DirX] + distance * m_particle_dir_cos[particle][MD_DirA];
   intersection_pt.y = m_particle_coord[particle][MD_DirY] + distance * m_particle_dir_cos[particle][MD_DirB];
   intersection_pt.z = m_particle_coord[particle][MD_DirZ] + distance * m_particle_dir_cos[particle][MD_DirG];

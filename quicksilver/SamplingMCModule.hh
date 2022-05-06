@@ -12,8 +12,6 @@
 
 #include "SamplingMC_axl.h"
 
-#include "MC_Vector.hh"
-
 using namespace Arcane;
 
 /**
@@ -59,7 +57,7 @@ public ArcaneSamplingMCObject
   void populationControl();
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
   void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
-  Real computeTetVolume(const MC_Vector& v0_, const MC_Vector& v1_, const MC_Vector& v2_, const MC_Vector& v3);
+  Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);
   void rouletteLowWeightParticles();
   void initParticle(Particle p, Int64 rns);
   void generate3DCoordinate(Particle p);

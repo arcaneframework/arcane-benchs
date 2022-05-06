@@ -517,7 +517,7 @@ generate3DCoordinate(Particle p)
   Int64* random_number_seed = &m_particle_rns[p];
 
   // Determine the cell-center nodal point coordinates.
-  MC_Vector center(m_coord_center[cell]);
+  Real3 center = avToReal3(m_coord_center[cell]);
 
   Real random_number = rngSample(random_number_seed);
   Real which_volume = random_number * 6.0 * m_volume[cell];
@@ -541,9 +541,9 @@ generate3DCoordinate(Particle p)
       first_node = face.node(first_pos_node);
       second_node = face.node(second_pos_node);
 
-      MC_Vector point0(m_coord_cm[first_node]);
-      MC_Vector point1(m_coord_cm[second_node]);
-      MC_Vector point2(m_coord_mid_cm[face]);
+      Real3 point0 = avToReal3(m_coord_cm[first_node]);
+      Real3 point1 = avToReal3(m_coord_cm[second_node]);
+      Real3 point2 = avToReal3(m_coord_mid_cm[face]);
 
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
@@ -563,9 +563,9 @@ generate3DCoordinate(Particle p)
       first_node  = face.node(i);
       second_node = face.node(((i == 3) ? 0 : i+1));
 
-      MC_Vector point0(m_coord_cm[first_node]);
-      MC_Vector point1(m_coord_cm[second_node]);
-      MC_Vector point2(m_coord_mid_cm[face]);
+      Real3 point0 = avToReal3(m_coord_cm[first_node]);
+      Real3 point1 = avToReal3(m_coord_cm[second_node]);
+      Real3 point2 = avToReal3(m_coord_mid_cm[face]);
 
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
@@ -601,9 +601,9 @@ generate3DCoordinate(Particle p)
   // numbers 1-4 are the barycentric coordinates of the random point.
   Real r4 = 1.0 - r1 - r2 - r3;
 
-  MC_Vector point0(m_coord_cm[first_node]);
-  MC_Vector point1(m_coord_cm[second_node]);
-  MC_Vector point2(m_coord_mid_cm[face]);
+  Real3 point0 = avToReal3(m_coord_cm[first_node]);
+  Real3 point1 = avToReal3(m_coord_cm[second_node]);
+  Real3 point2 = avToReal3(m_coord_mid_cm[face]);
 
   m_particle_coord[p][MD_DirX] =
   (r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x);
@@ -623,12 +623,12 @@ generate3DCoordinate(Particle p)
  * @return Real Le volume du tétrahédre (x6).
  */
 Real SamplingMCModule::
-computeTetVolume(const MC_Vector& v0_,
-                 const MC_Vector& v1_,
-                 const MC_Vector& v2_,
-                 const MC_Vector& v3)
+computeTetVolume(const Real3& v0_,
+                 const Real3& v1_,
+                 const Real3& v2_,
+                 const Real3& v3)
 {
-  MC_Vector v0(v0_), v1(v1_), v2(v2_);
+  Real3 v0(v0_), v1(v1_), v2(v2_);
 
   v0.x -= v3.x;
   v0.y -= v3.y;

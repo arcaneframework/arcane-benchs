@@ -8,7 +8,6 @@
 
 #include "structEnum.hh"
 
-#include "MC_Vector.hh"
 #include "QS_axl.h"
 
 using namespace Arcane;

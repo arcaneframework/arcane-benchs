@@ -148,7 +148,7 @@ initMesh()
 
       Integer compt = 8;
       Real volume = 0;
-      MC_Vector cellCenter(m_coord_center[icell]);
+      Real3 cellCenter = avToReal3(m_coord_center[icell]);
 
       ENUMERATE_FACE (iface, cell.faces()) {
         Face face = *iface;
@@ -184,10 +184,9 @@ initMesh()
         // Si la face est au bord du domaine entier.
         if (face.isSubDomainBoundary()) {
           // D'origine, dans le code QS, dans le cas octant :
-          //   les faces 0, 1, 2 sont escape (donc compt = 8, 9, 10 =>
-          //   getBoundaryCondition(impair)) les faces 3, 4, 5 sont reflection
-          //   (donc compt = 11, 12, 13 => getBoundaryCondition(pair))
-          m_boundary_cond[iface] = getBoundaryCondition((compt / 11) + 1);
+          //   les faces 0, 1, 2 sont escape 
+          //   les faces 3, 4, 5 sont reflection
+          m_boundary_cond[iface] = getBoundaryCondition(iface.index());
         }
         // Face interne au sous-domaine ou au bord du sous-domaine.
         else {
@@ -198,11 +197,14 @@ initMesh()
           Node first_node = face.node(i);
           Node second_node = face.node(((i == 3) ? 0 : i + 1));
 
-          MC_Vector aa = MC_Vector(m_coord_cm[first_node]) - cellCenter;
-          MC_Vector bb = MC_Vector(m_coord_cm[second_node]) - cellCenter;
-          MC_Vector cc = MC_Vector(m_coord_mid_cm[iface]) - cellCenter;
+          Real3 aa = avToReal3(m_coord_cm[first_node]) - cellCenter;
+          Real3 bb = avToReal3(m_coord_cm[second_node]) - cellCenter;
+          Real3 cc = avToReal3(m_coord_mid_cm[iface]) - cellCenter;
 
-          volume += abs(aa.Dot(bb.Cross(cc)));
+          volume += std::abs(dot(aa, cross(bb, cc)));
+
+          // Pour nouvelle version Arcane.
+          //volume += std::abs(aa.dot(bb.cross(cc)));
         }
         compt++;
       }
@@ -353,9 +355,9 @@ getBoundaryCondition(Integer pos)
     return ParticleEvent::escape;
 
   case eBoundaryCondition::OCTANT:
-    if (pos % 2 == 0)
+    if (pos < 3)
       return ParticleEvent::escape;
-    if (pos % 2 == 1)
+    else
       return ParticleEvent::reflection;
 
   default:
