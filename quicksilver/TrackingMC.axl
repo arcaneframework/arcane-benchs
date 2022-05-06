@@ -356,8 +356,8 @@
         need-sync="true" />
 
     <variable
-        field-name="particle_species"
-        name="ParticleSpecies"
+        field-name="particle_status"
+        name="ParticleStatus"
         family-name="ArcaneParticles"
         data-type="integer"
         item-kind="particle"

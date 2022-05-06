@@ -382,8 +382,8 @@ isInGeometry(Integer pos, Cell cell)
 void TrackingMCModule::
 cycleTrackingGuts(Particle particle)
 {
-  if (m_particle_species[particle] == ParticleState::exitedParticle 
-   || m_particle_species[particle] == ParticleState::censusParticle) {
+  if (m_particle_status[particle] == ParticleState::exitedParticle 
+   || m_particle_status[particle] == ParticleState::censusParticle) {
     ARCANE_FATAL("Particule déjà traitée.");
   }
 
@@ -431,7 +431,7 @@ cycleTrackingFunction(Particle particle)
       switch (collisionEvent(particle)) {
       case 0: // La particule est absorbée.
         keepTrackingThisParticle = false;
-        m_particle_species[particle] = ParticleState::exitedParticle;
+        m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_local_ids_exit.add(particle.localId());
@@ -461,7 +461,7 @@ cycleTrackingFunction(Particle particle)
       case ParticleEvent::escape:
         m_escape_a++;
         keepTrackingThisParticle = false;
-        m_particle_species[particle] = ParticleState::exitedParticle;
+        m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_local_ids_exit.add(particle.localId());
@@ -489,7 +489,7 @@ cycleTrackingFunction(Particle particle)
       // }
       m_census_a++;
       keepTrackingThisParticle = false;
-      m_particle_species[particle] = ParticleState::censusParticle;
+      m_particle_status[particle] = ParticleState::censusParticle;
       break;
     }
 
@@ -946,7 +946,7 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
   m_particle_last_event[pNew] = m_particle_last_event[pSrc];
   m_particle_num_coll[pNew] = m_particle_num_coll[pSrc];
   m_particle_num_seg[pNew] = m_particle_num_seg[pSrc];
-  m_particle_species[pNew] = ParticleState::clonedParticle;
+  m_particle_status[pNew] = ParticleState::clonedParticle;
   m_particle_ene_grp[pNew] = m_particle_ene_grp[pSrc];
   m_particle_face[pNew] = m_particle_face[pSrc];
   m_particle_facet[pNew] = m_particle_facet[pSrc];

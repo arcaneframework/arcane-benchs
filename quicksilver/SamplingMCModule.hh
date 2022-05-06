@@ -54,6 +54,7 @@ public ArcaneSamplingMCObject
  protected:
   void updateTallies();
   void clearCrossSectionCache();
+  void setStatus();
   void sourceParticles();
   void populationControl();
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);

@@ -2,6 +2,8 @@
 
 #include "SamplingMCModule.hh"
 #include <arcane/Concurrency.h>
+// #include <arcane/ILoadBalanceMng.h>
+// #include <arcane/IMeshPartitionerBase.h>
 #include <map>
 #include <set>
 #include "MC_RNG_State.hh"
@@ -42,18 +44,9 @@ cycleInit()
     Timer::Sentry ts(m_timer);
 
     clearCrossSectionCache();
+
     m_processingView = m_particle_family->view();
-
-    arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
-      ENUMERATE_PARTICLE (ipartic, particles) {
-        if (m_particle_species[ipartic] != ParticleState::exitedParticle 
-        && m_particle_species[ipartic] != ParticleState::censusParticle) {
-          ARCANE_FATAL("Particule non traitée dans Sampling");
-        }
-        m_particle_species[ipartic] = ParticleState::oldParticle;
-      }
-    });
-
+    setStatus();
     m_start_a = m_processingView.size();
 
     // Création des particules.
@@ -78,6 +71,13 @@ cycleInit()
             << " particle(s) killed.";
 
     updateTallies();
+
+    // ENUMERATE_PARTICLE (ipartic, m_processingView) {
+    //   m_num_particles[(*ipartic).cell()]++;
+    // }
+    // ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
+    // lb->addCriterion(m_num_particles);
+    // subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
   }
 
   info() << "--- P" << mesh()->parallelMng()->commRank() << " - Sampling duration: " << m_timer->lastActivationTime() << "s ---";
@@ -96,17 +96,39 @@ endModule()
 /*---------------------------------------------------------------------------*/
 
 /**
- * @brief Méthode permettant de remettre à zéro m_total.
+ * @brief Méthode permettant de remettre à zéro m_total et m_num_particles.
  */
 void SamplingMCModule::
 clearCrossSectionCache()
 {
   ENUMERATE_CELL (icell, ownCells()) {
+    m_num_particles[icell] = 0;
+
     for (Integer i = 0; i < m_n_groups(); i++) {
       m_total[icell][i] = 0.0;
     }
   }
 }
+
+/**
+ * @brief Méthode permettant de définir le status des particules encore vivante.
+ * Les particules encore en vie obtiennent le status "oldParticle".
+ * On vérifie aussi qu'il n'y a pas de particules 'en cours de traitement' ou 'non traitées'.
+ */
+void SamplingMCModule::
+setStatus()
+{
+  arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
+    ENUMERATE_PARTICLE (ipartic, particles) {
+      if (m_particle_status[ipartic] != ParticleState::exitedParticle 
+      && m_particle_status[ipartic] != ParticleState::censusParticle) {
+        ARCANE_FATAL("Particule non traitée dans Sampling");
+      }
+      m_particle_status[ipartic] = ParticleState::oldParticle;
+    }
+  });
+}
+
 
 /**
  * @brief Méthode permettant de créer des particules.
@@ -367,7 +389,7 @@ initParticle(Particle p, Int64 rns)
   m_particle_last_event[p] = ParticleEvent::census;
   m_particle_num_coll[p] = 0;
   m_particle_num_seg[p] = 0.0;
-  m_particle_species[p] = ParticleState::newParticle;
+  m_particle_status[p] = ParticleState::newParticle;
   m_particle_ene_grp[p] = 0;
   m_particle_face[p] = 0;
   m_particle_facet[p] = 0;
@@ -432,7 +454,7 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
   m_particle_last_event[pNew] = m_particle_last_event[pSrc];
   m_particle_num_coll[pNew] = m_particle_num_coll[pSrc];
   m_particle_num_seg[pNew] = m_particle_num_seg[pSrc];
-  m_particle_species[pNew] = ParticleState::clonedParticle;
+  m_particle_status[pNew] = ParticleState::clonedParticle;
   m_particle_ene_grp[pNew] = m_particle_ene_grp[pSrc];
   m_particle_face[pNew] = m_particle_face[pSrc];
   m_particle_facet[pNew] = m_particle_facet[pSrc];

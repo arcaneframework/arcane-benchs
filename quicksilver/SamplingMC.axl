@@ -274,8 +274,8 @@
         need-sync="true" />
 
     <variable
-        field-name="particle_species"
-        name="ParticleSpecies"
+        field-name="particle_status"
+        name="ParticleStatus"
         family-name="ArcaneParticles"
         data-type="integer"
         item-kind="particle"
@@ -346,6 +346,15 @@
         need-sync="true"
         material="true"/>
 
+    <variable 
+        field-name="num_particles"
+        name="NumParticles"
+        data-type="int32"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
   </variables>
 
   <entry-points>
@@ -355,6 +364,11 @@
   </entry-points>
 
   <options>
+    <service-instance 
+      name    = "partitioner"
+      type    = "Arcane::IMeshPartitioner"
+      default = "DefaultPartitioner"
+      />
 
 
     <simple name="nParticles" type="int64" default="1000000">
