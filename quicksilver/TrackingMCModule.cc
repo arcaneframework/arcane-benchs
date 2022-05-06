@@ -363,7 +363,7 @@ isInGeometry(Integer pos, Cell cell)
 
     MC_Vector center(xCenter, yCenter, zCenter);
     MC_Vector rr(m_coord_center[cell]);
-    if ((rr - center).Length() <= radius)
+    if ((rr - center).normL2() <= radius)
       inside = true;
     }
     break;
@@ -573,7 +573,7 @@ computeNextEvent(Particle particle)
 
   // Calculate the particle speed
   MC_Vector velo(m_particle_velocity[particle]);
-  Real particle_speed = velo.Length();
+  Real particle_speed = velo.normL2();
 
   // Force collision if a census event narrowly preempts a collision
   bool force_collision = false;
@@ -884,7 +884,7 @@ reflectParticle(Particle particle)
 
   // Calculate the reflected, velocity components.
   MC_Vector velo(m_particle_velocity[particle]);
-  Real particle_speed = velo.Length();
+  Real particle_speed = velo.normL2();
   m_particle_velocity[particle][MD_DirX] = particle_speed * m_particle_dir_cos[particle][MD_DirA];
   m_particle_velocity[particle][MD_DirY] = particle_speed * m_particle_dir_cos[particle][MD_DirB];
   m_particle_velocity[particle][MD_DirZ] = particle_speed * m_particle_dir_cos[particle][MD_DirG];

@@ -223,7 +223,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_dir_cos"
         name="ParticleDirCos"
@@ -233,7 +232,6 @@
         dim="1"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_kin_ene"
@@ -245,7 +243,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_weight"
         name="ParticleWeight"
@@ -255,7 +252,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_time_census"
@@ -267,7 +263,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_total_cross_section"
         name="ParticleTotalCrossSection"
@@ -277,7 +272,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_age"
@@ -289,7 +283,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_num_mean_free_path"
         name="ParticleNumMeanFreePath"
@@ -299,7 +292,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_mean_free_path"
@@ -311,7 +303,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_seg_path_length"
         name="ParticleSegPathLength"
@@ -321,7 +312,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_rns"
@@ -333,7 +323,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_last_event"
         name="ParticleLastEvent"
@@ -343,7 +332,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_num_coll"
@@ -365,7 +353,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_ene_grp"
         name="ParticleEneGrp"
@@ -375,7 +362,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_facet"
@@ -387,7 +373,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_face"
         name="ParticleFace"
@@ -398,7 +383,6 @@
         dump="true"
         need-sync="true" />
 
-
     <variable
         field-name="particle_normal_dot"
         name="ParticleNormalDot"
@@ -408,7 +392,6 @@
         dim="0"
         dump="true"
         need-sync="true" />
-
 
     <variable
         field-name="particle_num_seg"
