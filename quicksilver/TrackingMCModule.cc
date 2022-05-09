@@ -87,7 +87,7 @@ initNuclearData()
     polynomials.add(Polynomial(aa, bb, cc, dd, ee));
   }
 
-  Int32UniqueArray localIdMat[num_geometries];
+  UniqueArray<Int32UniqueArray> localIdMat(num_geometries);
   ENUMERATE_CELL (icell, ownCells()) {
     // On prend le dernier materiau de la liste (si des geométries ont des zones communes) comme dans QS original.
     for (Integer i = num_geometries - 1; i >= 0; i--) {
@@ -629,11 +629,9 @@ computeNextEvent(Particle particle)
 
   else {
     // Calculate the minimum distance to each facet of the cell.
-    NearestFacet nearest_facet = getNearestFacet(particle);
+    DistanceToFacet nearest_facet = getNearestFacet(particle);
 
-    m_particle_normal_dot[particle] = nearest_facet.dot_product;
-
-    distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance_to_facet;
+    distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance;
 
     // Get out of here if the tracker failed to bound this particle's volume.
     if (m_particle_last_event[particle] == ParticleEvent::faceEventUndefined) {
@@ -1071,15 +1069,15 @@ macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Inte
  * @brief Méthode permettant de trouver la facet la plus proche de la particule p.
  * 
  * @param particle La particule à étudier.
- * @return NearestFacet Les caractéristiques de la facet la plus proche.
+ * @return DistanceToFacet Les caractéristiques de la facet la plus proche.
  */
-NearestFacet TrackingMCModule::
+DistanceToFacet TrackingMCModule::
 getNearestFacet(Particle particle)
 {
   Cell cell = particle.cell();
   Integer iteration = 0;
   Real move_factor = 0.5 * PhysicalConstants::_smallDouble;
-  NearestFacet nearest_facet;
+  DistanceToFacet nearest_facet;
   Integer retry = 1;
 
   while (retry) // will break out when distance is found
@@ -1139,11 +1137,11 @@ getNearestFacet(Particle particle)
     retry);
   }
 
-  if (nearest_facet.distance_to_facet < 0) {
-    nearest_facet.distance_to_facet = 0;
+  if (nearest_facet.distance < 0) {
+    nearest_facet.distance = 0;
   }
 
-  if (nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble) {
+  if (nearest_facet.distance >= PhysicalConstants::_hugeDouble) {
     ARCANE_ASSERT(false, "nearest_facet.distance_to_facet < PhysicalConstants::_hugeDouble");
   }
   return nearest_facet;
@@ -1217,6 +1215,7 @@ distanceToSegmentFacet(Real plane_tolerance,
 
   // A^2 + B^2 + C^2 = 1, so max(|A|,|B|,|C|) >= 1/sqrt(3) = 0.577
   // (all coefficients can't be small)
+#define AB_CROSS_AC(ax, ay, bx, by, cx, cy) ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax))
   Real cross0 = 0, cross1 = 0, cross2 = 0;
   if (C < -0.5 || C > 0.5) {
     IF_POINT_BELOW_CONTINUE(x);
@@ -1224,7 +1223,6 @@ distanceToSegmentFacet(Real plane_tolerance,
     IF_POINT_BELOW_CONTINUE(y);
     IF_POINT_ABOVE_CONTINUE(y);
 
-#define AB_CROSS_AC(ax, ay, bx, by, cx, cy) ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax))
 
     cross1 = AB_CROSS_AC(facet_coords0.x, facet_coords0.y,
                          facet_coords1.x, facet_coords1.y,
@@ -1284,24 +1282,24 @@ distanceToSegmentFacet(Real plane_tolerance,
  * Si on ne trouve pas, la méthode déplace la particule et rééssaye.
  * 
  */
-NearestFacet TrackingMCModule::
+DistanceToFacet TrackingMCModule::
 findNearestFacet(Particle particle,
                  Integer& iteration, // input/output
                  Real& move_factor, // input/output
                  DistanceToFacet* distance_to_facet,
                  Integer& retry /* output */)
 {
-  NearestFacet nearest_facet = nearestFacet(distance_to_facet);
+  DistanceToFacet nearest_facet = nearestFacet(distance_to_facet);
 
   const Integer max_allowed_segments = 10000000;
 
   retry = 0;
 
-  if ((nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble && move_factor > 0) ||
-      (m_particle_num_seg[particle] > max_allowed_segments && nearest_facet.distance_to_facet <= 0.0)) {
+  if ((nearest_facet.distance == PhysicalConstants::_hugeDouble && move_factor > 0) ||
+      (m_particle_num_seg[particle] > max_allowed_segments && nearest_facet.distance <= 0.0)) {
     error() << "Attention, peut-être problème de facet.";
-    error() << (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble) << " && " << (move_factor > 0)
-            << " || " << (m_particle_num_seg[particle] > max_allowed_segments) << " && " << (nearest_facet.distance_to_facet <= 0.0);
+    error() << (nearest_facet.distance == PhysicalConstants::_hugeDouble) << " && " << (move_factor > 0)
+            << " || " << (m_particle_num_seg[particle] > max_allowed_segments) << " && " << (nearest_facet.distance <= 0.0);
 
     // Could not find a solution, so move the particle towards the center of the cell
     // and try again.
@@ -1334,37 +1332,38 @@ findNearestFacet(Particle particle,
 /**
  * @brief Méthode permettant de trouver la facet la plus proche de la particule.
  */
-NearestFacet TrackingMCModule::
+DistanceToFacet TrackingMCModule::
 nearestFacet(DistanceToFacet* distance_to_facet)
 {
-  NearestFacet nearest_facet;
+  DistanceToFacet nearest_facet;
+  nearest_facet.distance = 1e80;
 
   // largest negative distance (smallest magnitude, but negative)
-  NearestFacet nearest_negative_facet;
-  nearest_negative_facet.distance_to_facet = -PhysicalConstants::_hugeDouble;
+  DistanceToFacet nearest_negative_facet;
+  nearest_negative_facet.distance = -PhysicalConstants::_hugeDouble;
 
   // Determine the facet that is closest to the specified coordinates.
   for (Integer facet_index = 0; facet_index < 24; facet_index++) {
     if (distance_to_facet[facet_index].distance > 0.0) {
-      if (distance_to_facet[facet_index].distance <= nearest_facet.distance_to_facet) {
-        nearest_facet.distance_to_facet = distance_to_facet[facet_index].distance;
+      if (distance_to_facet[facet_index].distance <= nearest_facet.distance) {
+        nearest_facet.distance = distance_to_facet[facet_index].distance;
         nearest_facet.facet = facet_index;
       }
     }
     else // zero or negative distance
     {
-      if (distance_to_facet[facet_index].distance > nearest_negative_facet.distance_to_facet) {
+      if (distance_to_facet[facet_index].distance > nearest_negative_facet.distance) {
         // smallest in magnitude, but negative
-        nearest_negative_facet.distance_to_facet = distance_to_facet[facet_index].distance;
+        nearest_negative_facet.distance = distance_to_facet[facet_index].distance;
         nearest_negative_facet.facet = facet_index;
       }
     }
   }
 
-  if (nearest_facet.distance_to_facet == PhysicalConstants::_hugeDouble) {
-    if (nearest_negative_facet.distance_to_facet != -PhysicalConstants::_hugeDouble) {
+  if (nearest_facet.distance == PhysicalConstants::_hugeDouble) {
+    if (nearest_negative_facet.distance != -PhysicalConstants::_hugeDouble) {
       // no positive solution, so allow a negative solution, that had really small magnitude.
-      nearest_facet.distance_to_facet = nearest_negative_facet.distance_to_facet;
+      nearest_facet.distance = nearest_negative_facet.distance;
       nearest_facet.facet = nearest_negative_facet.facet;
     }
   }

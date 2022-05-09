@@ -106,7 +106,7 @@ public ArcaneTrackingMCObject
   void computeCrossSection();
   void weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
   Real macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup);
-  NearestFacet getNearestFacet(Particle particle);
+  DistanceToFacet getNearestFacet(Particle particle);
   Real distanceToSegmentFacet(Real plane_tolerance,
                               Real facet_normal_dot_direction_cosine,
                               Real A, Real B, Real C, Real D,
@@ -115,12 +115,12 @@ public ArcaneTrackingMCObject
                               const Real3& facet_coords2,
                               Particle particle,
                               bool allow_enter);
-  NearestFacet findNearestFacet(Particle particle,
+  DistanceToFacet findNearestFacet(Particle particle,
                                 Integer& iteration,
                                 Real& move_factor,
                                 DistanceToFacet* distance_to_facet,
                                 Integer& retry);
-  NearestFacet nearestFacet(DistanceToFacet* distance_to_facet);
+  DistanceToFacet nearestFacet(DistanceToFacet* distance_to_facet);
   template <typename T>
   Integer findMin(UniqueArray<T> array);
   void rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi);

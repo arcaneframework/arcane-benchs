@@ -201,7 +201,7 @@ initMesh()
           Real3 bb = avToReal3(m_coord_cm[second_node]) - cellCenter;
           Real3 cc = avToReal3(m_coord_mid_cm[iface]) - cellCenter;
 
-          volume += std::abs(math::dot(aa, math::cross(bb, cc)));
+          volume += math::abs(math::dot(aa, math::cross(bb, cc)));
         }
         compt++;
       }

@@ -3,6 +3,8 @@
 
 #include <arcane/utils/Real3.h>
 
+using namespace Arcane;
+
 // A x + B y + C z + D = 0,  (A,B,C) is the plane normal and is normalized.
 class MC_General_Plane
 {
