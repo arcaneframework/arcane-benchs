@@ -2,8 +2,6 @@
 
 #include "QSModule.hh"
 #include <iostream>
-#include <arcane/Concurrency.h>
-#include "NVTX_Range.hh"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -66,151 +64,87 @@ initMesh()
     m_nz = cdm.globalNbCell();
   }
 
+  VariableNodeReal3& node_coord_cm = nodesCoordinates();
+
   m_global_deltat = options()->getDt();
 
   m_e_min = options()->getEMin();
   m_e_max = options()->getEMax();
   m_n_groups = options()->getNGroups();
 
-  m_lx = options()->getLx();
+  m_lx = options()->getLx(); // TODO : Récupérer directement les <length> du cartesian mesh.
   m_ly = options()->getLy();
   m_lz = options()->getLz();
 
-  Real dx = m_lx() / m_nx;
-  Real dy = m_ly() / m_ny;
-  Real dz = m_lz() / m_nz;
+  // Voir si la parallélisation ici sert à quelque chose
+  // sachant qu'il faut gérer la répartition des faces par threads.
+  ENUMERATE_CELL (icell, ownCells()) {
+    Cell cell = *icell;
 
-  // Extrait de GlobalFccGrid.cc.
-  // Permet de retrouver la position de chaque noeud dans l'espace.
-  UniqueArray<IntegerUniqueArray> offset;
-  offset.reserve(14);
-  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 0 }); // 0
-  offset.push_back(IntegerUniqueArray{ 1, 0, 0, 0 }); // 1
-  offset.push_back(IntegerUniqueArray{ 1, 1, 0, 0 }); // 3
-  offset.push_back(IntegerUniqueArray{ 0, 1, 0, 0 }); // 2
 
-  offset.push_back(IntegerUniqueArray{ 0, 0, 1, 0 }); // 4
-  offset.push_back(IntegerUniqueArray{ 1, 0, 1, 0 }); // 5
-  offset.push_back(IntegerUniqueArray{ 1, 1, 1, 0 }); // 7
-  offset.push_back(IntegerUniqueArray{ 0, 1, 1, 0 }); // 6
+    m_coord_center[icell][MD_DirX] = 0.0;
+    m_coord_center[icell][MD_DirY] = 0.0;
+    m_coord_center[icell][MD_DirZ] = 0.0;
 
-  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 3 }); // 13
-  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 1 }); // 9
-  offset.push_back(IntegerUniqueArray{ 0, 0, 0, 2 }); // 11
-  offset.push_back(IntegerUniqueArray{ 0, 0, 1, 3 }); // 12
-  offset.push_back(IntegerUniqueArray{ 1, 0, 0, 1 }); // 8
-  offset.push_back(IntegerUniqueArray{ 0, 1, 0, 2 }); // 10
+    ENUMERATE_FACE (iface, cell.faces()) {
+      Face face = *iface;
 
-  m_coord_cm.resize(3);
-  m_coord_mid_cm.resize(3);
-  m_coord_center.resize(4);
-  m_total.resize(m_n_groups());
+      m_coord_mid_cm[iface][MD_DirX] = 0.0;
+      m_coord_mid_cm[iface][MD_DirY] = 0.0;
+      m_coord_mid_cm[iface][MD_DirZ] = 0.0;
 
-  Arcane::ParallelLoopOptions options;
-
-  // Exécute la boucle par parties d'environ 50 mailles.
-  // options.setGrainSize(50);
-  // options.setMaxThread(3);
-
-  arcaneParallelForeach(ownCells(), options, [&](CellVectorView cells) {
-    ENUMERATE_CELL (icell, cells) {
-      Cell cell = *icell;
-
-      // Position de la cellule dans le maillage entier.
-      Integer index = cell.uniqueId().asInt32();
-      Integer x = index % m_nx;
-      index /= m_nx;
-      Integer y = index % m_ny;
-      Integer z = index / m_ny;
-
-      m_coord_center[icell][MD_DirX] = 0.0;
-      m_coord_center[icell][MD_DirY] = 0.0;
-      m_coord_center[icell][MD_DirZ] = 0.0;
-
-      ENUMERATE_NODE (inode, cell.nodes()) {
-        Real m_coordX = offset[inode.index()][0] + x;
-        Real m_coordY = offset[inode.index()][1] + y;
-        Real m_coordZ = offset[inode.index()][2] + z;
-
-        // Coordonnées du noeud en cm.
-        m_coord_cm[inode][MD_DirX] = m_coordX * dx;
-        m_coord_cm[inode][MD_DirY] = m_coordY * dy;
-        m_coord_cm[inode][MD_DirZ] = m_coordZ * dz;
-
-        m_coord_center[icell][MD_DirX] += m_coord_cm[inode][MD_DirX];
-        m_coord_center[icell][MD_DirY] += m_coord_cm[inode][MD_DirY];
-        m_coord_center[icell][MD_DirZ] += m_coord_cm[inode][MD_DirZ];
+      ENUMERATE_NODE (inode, face.nodes()) {
+        m_coord_mid_cm[iface][MD_DirX] += node_coord_cm[inode][MD_DirX];
+        m_coord_mid_cm[iface][MD_DirY] += node_coord_cm[inode][MD_DirY];
+        m_coord_mid_cm[iface][MD_DirZ] += node_coord_cm[inode][MD_DirZ];
       }
 
-      m_coord_center[icell][MD_DirX] /= cell.nbNode();
-      m_coord_center[icell][MD_DirY] /= cell.nbNode();
-      m_coord_center[icell][MD_DirZ] /= cell.nbNode();
-
-      Integer compt = 8;
-      Real volume = 0;
-      Real3 cellCenter = avToReal3(m_coord_center[icell]);
-
-      ENUMERATE_FACE (iface, cell.faces()) {
-        Face face = *iface;
-
-        m_index_arc[iface] = iface.index();
-
-        Real m_coordX = offset[compt][0] + x;
-        Real m_coordY = offset[compt][1] + y;
-        Real m_coordZ = offset[compt][2] + z;
-        Real m_coordB = offset[compt][3];
-
-        // Coordonnées du millieux de la face (point commun à toutes les facets
-        // de la face).
-        m_coord_mid_cm[iface][MD_DirX] = m_coordX * dx;
-        m_coord_mid_cm[iface][MD_DirY] = m_coordY * dy;
-        m_coord_mid_cm[iface][MD_DirZ] = m_coordZ * dz;
-
-        if (m_coordB == 1) {
-          m_coord_mid_cm[iface][MD_DirY] += dy / 2;
-          m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
-        }
-        else if (m_coordB == 2) {
-          m_coord_mid_cm[iface][MD_DirX] += dx / 2;
-          m_coord_mid_cm[iface][MD_DirZ] += dz / 2;
-        }
-        else {
-          m_coord_mid_cm[iface][MD_DirX] += dx / 2;
-          m_coord_mid_cm[iface][MD_DirY] += dy / 2;
-        }
-
-        // info() << "  Face #" << m_index_arc[iface];
-
-        // Si la face est au bord du domaine entier.
-        if (face.isSubDomainBoundary()) {
-          // D'origine, dans le code QS, dans le cas octant :
-          //   les faces 0, 1, 2 sont escape 
-          //   les faces 3, 4, 5 sont reflection
-          m_boundary_cond[iface] = getBoundaryCondition(iface.index());
-        }
-        // Face interne au sous-domaine ou au bord du sous-domaine.
-        else {
-          m_boundary_cond[iface] = ParticleEvent::cellChange;
-        }
-
-        for (Integer i = 0; i < 4; i++) {
-          Node first_node = face.node(i);
-          Node second_node = face.node(((i == 3) ? 0 : i + 1));
-
-          Real3 aa = avToReal3(m_coord_cm[first_node]) - cellCenter;
-          Real3 bb = avToReal3(m_coord_cm[second_node]) - cellCenter;
-          Real3 cc = avToReal3(m_coord_mid_cm[iface]) - cellCenter;
-
-          volume += math::abs(math::dot(aa, math::cross(bb, cc)));
-        }
-        compt++;
-      }
-      volume /= 6.0;
-
-      m_volume[cell] = volume;
+      m_coord_mid_cm[iface][MD_DirX] /= 4;
+      m_coord_mid_cm[iface][MD_DirY] /= 4;
+      m_coord_mid_cm[iface][MD_DirZ] /= 4;
+      
+      m_coord_center[icell][MD_DirX] += m_coord_mid_cm[iface][MD_DirX];
+      m_coord_center[icell][MD_DirY] += m_coord_mid_cm[iface][MD_DirY];
+      m_coord_center[icell][MD_DirZ] += m_coord_mid_cm[iface][MD_DirZ];
     }
-  });
 
+    m_coord_center[icell][MD_DirX] /= 6;
+    m_coord_center[icell][MD_DirY] /= 6;
+    m_coord_center[icell][MD_DirZ] /= 6;
+
+    Real volume = 0;
+    ENUMERATE_FACE (iface, cell.faces()) {
+      Face face = *iface;
+
+      // Si la face est au bord du domaine entier.
+      if (face.isSubDomainBoundary()) {
+        // D'origine, dans le code QS, dans le cas octant :
+        //   les faces 0, 1, 2 sont escape 
+        //   les faces 3, 4, 5 sont reflection
+        m_boundary_cond[iface] = getBoundaryCondition(iface.index());
+      }
+      // Face interne au sous-domaine ou au bord du sous-domaine.
+      else {
+        m_boundary_cond[iface] = ParticleEvent::cellChange;
+      }
+
+      for (Integer i = 0; i < 4; i++) {
+        Node first_node = face.node(i);
+        Node second_node = face.node(((i == 3) ? 0 : i + 1));
+
+        Real3 aa = node_coord_cm[first_node] - m_coord_center[icell];
+        Real3 bb = node_coord_cm[second_node] - m_coord_center[icell];
+        Real3 cc = m_coord_mid_cm[iface] - m_coord_center[icell];
+
+        volume += math::abs(math::dot(aa, math::cross(bb, cc)));
+      }
+    }
+    volume /= 6.0;
+
+    m_volume[icell] = volume;
+  }
+
+  m_total.resize(m_n_groups());
   m_total.fill(0.0);
   m_cell_number_density.fill(1.0);
   m_source_tally.fill(0);

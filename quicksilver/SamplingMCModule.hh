@@ -60,7 +60,7 @@ public ArcaneSamplingMCObject
   Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);
   void rouletteLowWeightParticles();
   void initParticle(Particle p, Int64 rns);
-  void generate3DCoordinate(Particle p);
+  void generate3DCoordinate(Particle p, VariableNodeReal3& node_coord_cm);
   void sampleIsotropic(Particle p);
   Real getSpeedFromEnergy(Particle p);
 };

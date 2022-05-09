@@ -59,29 +59,20 @@
         need-sync="true" />
 
     <variable
-        field-name="coord_cm"
-        name="CoordCm"
-        data-type="real"
-        item-kind="node"
-        dim="1"
-        dump="true"
-        need-sync="true" />
-
-    <variable
         field-name="coord_mid_cm"
         name="CoordMidCm"
-        data-type="real"
+        data-type="real3"
         item-kind="face"
-        dim="1"
+        dim="0"
         dump="true"
         need-sync="true" />
 
       <variable
         field-name="coord_center"
         name="CoordCenter"
-        data-type="real"
+        data-type="real3"
         item-kind="cell"
-        dim="1"
+        dim="0"
         dump="true"
         need-sync="true" />
 
@@ -125,9 +116,9 @@
         field-name="particle_coord"
         name="ParticleCoord"
         family-name="ArcaneParticles"
-        data-type="real"
+        data-type="real3"
         item-kind="particle"
-        dim="1"
+        dim="0"
         dump="true"
         need-sync="true" />
 
@@ -135,9 +126,9 @@
         field-name="particle_velocity"
         name="ParticleVelocity"
         family-name="ArcaneParticles"
-        data-type="real"
+        data-type="real3"
         item-kind="particle"
-        dim="1"
+        dim="0"
         dump="true"
         need-sync="true" />
 
@@ -145,9 +136,9 @@
         field-name="particle_dir_cos"
         name="ParticleDirCos"
         family-name="ArcaneParticles"
-        data-type="real"
+        data-type="real3"
         item-kind="particle"
-        dim="1"
+        dim="0"
         dump="true"
         need-sync="true" />
 

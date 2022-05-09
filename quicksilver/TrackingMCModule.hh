@@ -93,20 +93,20 @@ public ArcaneTrackingMCObject
   void updateTallies();
   void initNuclearData();
   bool isInGeometry(Integer pos, Cell cell);
-  void cycleTrackingGuts(Particle particle);
-  void cycleTrackingFunction(Particle particle);
+  void cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord_cm);
+  void cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord_cm);
   void collisionEventSuite();
-  void computeNextEvent(Particle particle);
+  void computeNextEvent(Particle particle, VariableNodeReal3& node_coord_cm);
   Integer collisionEvent(Particle particle);
   void facetCrossingEvent(Particle particle);
-  void reflectParticle(Particle particle);
+  void reflectParticle(Particle particle, VariableNodeReal3& node_coord_cm);
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
   void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
   void updateTrajectory(Real energy, Real angle, Particle particle);
   void computeCrossSection();
   void weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
   Real macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup);
-  DistanceToFacet getNearestFacet(Particle particle);
+  DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord_cm);
   Real distanceToSegmentFacet(Real plane_tolerance,
                               Real facet_normal_dot_direction_cosine,
                               Real A, Real B, Real C, Real D,

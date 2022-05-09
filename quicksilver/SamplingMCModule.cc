@@ -7,7 +7,6 @@
 #include <map>
 #include <set>
 #include "MC_RNG_State.hh"
-#include "NVTX_Range.hh"
 #include "PhysicalConstants.hh"
 
 /*---------------------------------------------------------------------------*/
@@ -21,15 +20,6 @@ initModule()
 {
   m_particle_family = mesh()->findItemFamily("ArcaneParticles");
   m_particle_family->setHasUniqueIdMap(false);
-
-  m_particle_coord.resize(3);
-  m_particle_coord.fill(0.0);
-
-  m_particle_velocity.resize(3);
-  m_particle_velocity.fill(0.0);
-
-  m_particle_dir_cos.resize(3);
-  m_particle_dir_cos.fill(0.0);
 
   m_timer = new Timer(subDomain(), "SamplingMC", Timer::TimerReal);
 }
@@ -138,8 +128,6 @@ setStatus()
 void SamplingMCModule::
 sourceParticles()
 {
-  NVTX_Range range("MC_Source_Now");
-
   Real local_weight_particles = 0;
 
   // On regarde le nombre de particule que chaque cellule générera.
@@ -171,10 +159,8 @@ sourceParticles()
   ENUMERATE_CELL (icell, ownCells()) {
     // if(icell.index() != icell.localId()) ARCANE_FATAL("Trouve une autre
     // solution");
-    Real cell_weight_particles =
-    m_volume[icell] * m_source_rate[icell] * m_global_deltat();
-    Real cell_num_particles_float =
-    cell_weight_particles / source_particle_weight;
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+    Real cell_num_particles_float = cell_weight_particles / source_particle_weight;
     particle_count += (Int64)cell_num_particles_float;
     // num_particles_cells_decal[icell.localId()] = particle_count;
   }
@@ -230,13 +216,15 @@ sourceParticles()
 
   ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
 
+  VariableNodeReal3& node_coord_cm = nodesCoordinates();
+
   // Les particules sont créées, on les initialise donc.
   arcaneParallelForeach(viewSrcP, [&](ParticleVectorView particles) {
     ENUMERATE_PARTICLE (ipartic, particles) {
       Particle p = (*ipartic);
       initParticle(p, rng[p.uniqueId().asInt64()]);
 
-      generate3DCoordinate(p);
+      generate3DCoordinate(p, node_coord_cm);
       sampleIsotropic(p);
       m_particle_kin_ene[p] =
       (m_e_max() - m_e_min()) * rngSample(&m_particle_rns[p]) + m_e_min();
@@ -259,6 +247,8 @@ sourceParticles()
     }
   });
 
+  if(m_source_a != viewSrcP.size()) ARCANE_FATAL("Problème de taille Sampling");
+
   m_processingView = m_particle_family->view();
 }
 
@@ -270,8 +260,6 @@ sourceParticles()
 void SamplingMCModule::
 populationControl()
 {
-  NVTX_Range range("populationControl");
-
   Int64 targetNumParticles = options()->getNParticles();
   Int64 globalNumParticles = 0;
   Integer localNumParticles = m_processingView.size();
@@ -468,8 +456,6 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
 void SamplingMCModule::
 rouletteLowWeightParticles()
 {
-  NVTX_Range range("rouletteLowWeightParticles");
-
   const Real lowWeightCutoff = options()->getLowWeightCutoff();
 
   if (lowWeightCutoff > 0.0) {
@@ -511,13 +497,14 @@ rouletteLowWeightParticles()
  * @param p La particule ayant besoin de ces nouvelles coordonnées.
  */
 void SamplingMCModule::
-generate3DCoordinate(Particle p)
+generate3DCoordinate(Particle p, VariableNodeReal3& node_coord_cm)
 {
   Cell cell = p.cell();
   Int64* random_number_seed = &m_particle_rns[p];
 
   // Determine the cell-center nodal point coordinates.
-  Real3 center = avToReal3(m_coord_center[cell]);
+  Real3 center(m_coord_center[cell]);
+
 
   Real random_number = rngSample(random_number_seed);
   Real which_volume = random_number * 6.0 * m_volume[cell];
@@ -528,10 +515,24 @@ generate3DCoordinate(Particle p)
   Node second_node;
   Face face;
 
+  #ifdef QS_LEGACY_COMPATIBILITY
   // Pour pouvoir comparer les résultats avec ceux de QS original,
   // on doit explorer les facet de la même manière que QS original.
+  /// La face QS n°0 correspond à la face Arcane n°4, &c.
+  ///                        Face QS : 0, 1, 2, 3, 4, 5
+  static Integer QS_to_arcaneFace[] = {4, 1, 5, 2, 3, 0};
+
+  /// Le node QS n°0 de la face Arcane n°5 correspond au node Arcane n°1, &c.
+  static Integer QS_to_arcaneNode[] = { 0, 1, 2, 3,  // QS : F0{0, 1, 2, 3} = Arcane : F4{0, 1, 2, 3}
+                                        0, 3, 2, 1,  // QS : F1{0, 1, 2, 3} = Arcane : F1{0, 3, 2, 1}
+                                        1, 0, 3, 2,  // QS : F2{0, 1, 2, 3} = Arcane : F5{1, 0, 3, 2}
+                                        0, 1, 2, 3,  // QS : F3{0, 1, 2, 3} = Arcane : F2{0, 1, 2, 3}
+                                        0, 1, 2, 3,  // QS : F4{0, 1, 2, 3} = Arcane : F3{0, 1, 2, 3}
+                                        0, 3, 2, 1}; // QS : F5{0, 1, 2, 3} = Arcane : F0{0, 3, 2, 1}
+
   for (Integer i = 0; i < 6; i++) {
     face = cell.face(QS_to_arcaneFace[i]);
+    Real3 point2(m_coord_mid_cm[face]);
 
     for (Integer j = 0; j < 4; j++) {
       Integer first_pos_node = QS_to_arcaneNode[i * 4 + j];
@@ -541,9 +542,8 @@ generate3DCoordinate(Particle p)
       first_node = face.node(first_pos_node);
       second_node = face.node(second_pos_node);
 
-      Real3 point0 = avToReal3(m_coord_cm[first_node]);
-      Real3 point1 = avToReal3(m_coord_cm[second_node]);
-      Real3 point2 = avToReal3(m_coord_mid_cm[face]);
+      Real3 point0(node_coord_cm[first_node]);
+      Real3 point1(node_coord_cm[second_node]);
 
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
@@ -554,18 +554,18 @@ generate3DCoordinate(Particle p)
     if (current_volume >= which_volume)
       break;
   }
-  /*
+  #else
   ENUMERATE_FACE(iface, cell.faces())
   {
     face = (*iface);
+    Real3 point2(m_coord_mid_cm[face]);
     for (Integer i = 0; i < 4; i++)
     {
       first_node  = face.node(i);
       second_node = face.node(((i == 3) ? 0 : i+1));
 
-      Real3 point0 = avToReal3(m_coord_cm[first_node]);
-      Real3 point1 = avToReal3(m_coord_cm[second_node]);
-      Real3 point2 = avToReal3(m_coord_mid_cm[face]);
+      Real3 point0(node_coord_cm[first_node]);
+      Real3 point1(node_coord_cm[second_node]);
 
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
@@ -574,7 +574,7 @@ generate3DCoordinate(Particle p)
     }
     if(current_volume >= which_volume) break;
   }
-  */
+ #endif
 
   // Sample from the tet.
   Real r1 = rngSample(random_number_seed);
@@ -601,9 +601,9 @@ generate3DCoordinate(Particle p)
   // numbers 1-4 are the barycentric coordinates of the random point.
   Real r4 = 1.0 - r1 - r2 - r3;
 
-  Real3 point0 = avToReal3(m_coord_cm[first_node]);
-  Real3 point1 = avToReal3(m_coord_cm[second_node]);
-  Real3 point2 = avToReal3(m_coord_mid_cm[face]);
+  Real3 point0(node_coord_cm[first_node]);
+  Real3 point1(node_coord_cm[second_node]);
+  Real3 point2(m_coord_mid_cm[face]);
 
   m_particle_coord[p][MD_DirX] =
   (r4 * center.x + r1 * point0.x + r2 * point1.x + r3 * point2.x);

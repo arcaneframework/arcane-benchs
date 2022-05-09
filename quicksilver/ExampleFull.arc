@@ -17,17 +17,17 @@
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>10.0</length>
+          <length>100.0</length>
           <n>4</n>
         </x>
 
         <y>
-          <length>10.0</length>
+          <length>100.0</length>
           <n>4</n>
         </y>
 
         <z>
-          <length>10.0</length>
+          <length>100.0</length>
           <n>4</n>
         </z>
 

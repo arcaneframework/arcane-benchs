@@ -6,6 +6,7 @@
 using namespace Arcane;
 
 #define MAX_PRODUCTION_SIZE 4
+#define QS_LEGACY_COMPATIBILITY
 
 enum eBoundaryCondition{REFLECT, ESCAPE, OCTANT};
 enum eShape{UNDEFINED, BRICK, SPHERE};
@@ -50,19 +51,5 @@ struct DistanceToFacet
 };
 
 static bool scan_order[]  = {true, true, false, false, false, true};
-
-static Integer QS_to_arcaneFace[] = {4, 1, 5, 2, 3, 0};
-
-static Integer QS_to_arcaneNode[] = { 0, 1, 2, 3,
-                                      0, 3, 2, 1,
-                                      1, 0, 3, 2,
-                                      0, 1, 2, 3,
-                                      0, 1, 2, 3,
-                                      0, 3, 2, 1};
-
-static Real3 avToReal3(RealArrayView av)
-{
-  return Real3(av[MD_DirX], av[MD_DirY],av[MD_DirZ]);
-}
 
 #endif

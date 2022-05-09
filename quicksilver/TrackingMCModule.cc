@@ -187,6 +187,9 @@ tracking()
   ParticleVectorView processingView = m_particle_family->view();
   ParticleVectorView inView;
 
+  // Coordonnées des nodes (en cm).
+  VariableNodeReal3& node_coord_cm = nodesCoordinates();
+
   pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
 
   Int32UniqueArray extraClone;
@@ -204,7 +207,7 @@ tracking()
     arcaneParallelForeach(processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         Particle particle = (*iparticle);
-        cycleTrackingGuts(particle);
+        cycleTrackingGuts(particle, node_coord_cm);
 
         //if (iparticle.index() % 50000 == 0) {
           // pinfo(5) << "--------";
@@ -228,7 +231,7 @@ tracking()
       arcaneParallelForeach(inView, [&](ParticleVectorView particles) {
         ENUMERATE_PARTICLE (iparticle, particles) {
           Particle particle = (*iparticle);
-          cycleTrackingGuts(particle);
+          cycleTrackingGuts(particle, node_coord_cm);
 
           // if (iparticle.index() % 50000 == 0) {
             // pinfo(4) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
@@ -362,7 +365,7 @@ isInGeometry(Integer pos, Cell cell)
     Real radius = ((options()->geometry[pos].getRadius() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getRadius());
 
     Real3 center(xCenter, yCenter, zCenter);
-    Real3 rr = avToReal3(m_coord_center[cell]);
+    Real3 rr(m_coord_center[cell]);
     if ((rr - center).normL2() <= radius)
       inside = true;
     }
@@ -380,7 +383,7 @@ isInGeometry(Integer pos, Cell cell)
  * @param particle La particule à suivre.
  */
 void TrackingMCModule::
-cycleTrackingGuts(Particle particle)
+cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord_cm)
 {
   if (m_particle_status[particle] == ParticleState::exitedParticle 
    || m_particle_status[particle] == ParticleState::censusParticle) {
@@ -398,7 +401,7 @@ cycleTrackingGuts(Particle particle)
   m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
 
   // loop over this particle until we cannot do anything more with it on this processor
-  cycleTrackingFunction(particle);
+  cycleTrackingFunction(particle, node_coord_cm);
 }
 
 /**
@@ -410,7 +413,7 @@ cycleTrackingGuts(Particle particle)
  * @param particle La particule à suivre.
  */
 void TrackingMCModule::
-cycleTrackingFunction(Particle particle)
+cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord_cm)
 {
   bool keepTrackingThisParticle = false;
   do {
@@ -420,7 +423,7 @@ cycleTrackingFunction(Particle particle)
     //   (1) Cross a facet of the current cell,
     //   (2) Reach the end of the time step and enter census,
     //
-    computeNextEvent(particle);
+    computeNextEvent(particle, node_coord_cm);
     m_num_segments_a++;
 
     m_particle_num_seg[particle] += 1.; /* Track the number of segments this particle has
@@ -469,7 +472,7 @@ cycleTrackingFunction(Particle particle)
         break;
 
       case ParticleEvent::reflection:
-        reflectParticle(particle);
+        reflectParticle(particle, node_coord_cm);
         keepTrackingThisParticle = true;
         break;
 
@@ -564,15 +567,14 @@ collisionEventSuite()
  * @param particle La particule à étudier.
  */
 void TrackingMCModule::
-computeNextEvent(Particle particle)
+computeNextEvent(Particle particle, VariableNodeReal3& node_coord_cm)
 {
   // initialize distances to large number
   RealUniqueArray distance(3);
   distance[0] = distance[1] = distance[2] = 1e80;
 
   // Calculate the particle speed
-  Real3 velo = avToReal3(m_particle_velocity[particle]);
-  Real particle_speed = velo.normL2();
+  Real particle_speed = m_particle_velocity[particle].normL2();
 
   // Force collision if a census event narrowly preempts a collision
   bool force_collision = false;
@@ -629,7 +631,7 @@ computeNextEvent(Particle particle)
 
   else {
     // Calculate the minimum distance to each facet of the cell.
-    DistanceToFacet nearest_facet = getNearestFacet(particle);
+    DistanceToFacet nearest_facet = getNearestFacet(particle, node_coord_cm);
 
     distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance;
 
@@ -848,22 +850,22 @@ facetCrossingEvent(Particle particle)
  * @param particle La particule à étudier.
  */
 void TrackingMCModule::
-reflectParticle(Particle particle)
+reflectParticle(Particle particle, VariableNodeReal3& node_coord_cm)
 {
   Integer facet = m_particle_facet[particle];
 
   Cell cell = particle.cell();
   Face face = cell.face(m_particle_face[particle]);
 
-  Integer first_pos_node = (scan_order[m_index_arc[face]] ? ((facet == 3) ? 0 : facet + 1) : facet);
-  Integer second_pos_node = (scan_order[m_index_arc[face]] ? facet : ((facet == 3) ? 0 : facet + 1));
+  Integer first_pos_node = (scan_order[m_particle_face[particle]] ? ((facet == 3) ? 0 : facet + 1) : facet);
+  Integer second_pos_node = (scan_order[m_particle_face[particle]] ? facet : ((facet == 3) ? 0 : facet + 1));
 
   Node first_node = face.node(first_pos_node);
   Node second_node = face.node(second_pos_node);
 
-  Real3 point0 = avToReal3(m_coord_cm[first_node]);
-  Real3 point1 = avToReal3(m_coord_cm[second_node]);
-  Real3 point2 = avToReal3(m_coord_mid_cm[face]);
+  Real3 point0(node_coord_cm[first_node]);
+  Real3 point1(node_coord_cm[second_node]);
+  Real3 point2(m_coord_mid_cm[face]);
 
   MC_General_Plane plane(point0, point1, point2);
 
@@ -880,8 +882,7 @@ reflectParticle(Particle particle)
   }
 
   // Calculate the reflected, velocity components.
-  Real3 velo = avToReal3(m_particle_velocity[particle]);
-  Real particle_speed = velo.normL2();
+  Real particle_speed = m_particle_velocity[particle].normL2();
   m_particle_velocity[particle][MD_DirX] = particle_speed * m_particle_dir_cos[particle][MD_DirA];
   m_particle_velocity[particle][MD_DirY] = particle_speed * m_particle_dir_cos[particle][MD_DirB];
   m_particle_velocity[particle][MD_DirZ] = particle_speed * m_particle_dir_cos[particle][MD_DirG];
@@ -1018,7 +1019,7 @@ weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
     sum += macroscopicCrossSection(-1, cell, isoIndex, energyGroup);
   }
 
-  m_total[cell][energyGroup] = sum; // Atomic
+  m_total[cell][energyGroup] = sum;
 
   //return sum;
 }
@@ -1072,13 +1073,14 @@ macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Inte
  * @return DistanceToFacet Les caractéristiques de la facet la plus proche.
  */
 DistanceToFacet TrackingMCModule::
-getNearestFacet(Particle particle)
+getNearestFacet(Particle particle, VariableNodeReal3& node_coord_cm)
 {
   Cell cell = particle.cell();
   Integer iteration = 0;
   Real move_factor = 0.5 * PhysicalConstants::_smallDouble;
   DistanceToFacet nearest_facet;
   Integer retry = 1;
+
 
   while (retry) // will break out when distance is found
   {
@@ -1101,9 +1103,9 @@ getNearestFacet(Particle particle)
         Node first_node = face.node(first_pos_node);
         Node second_node = face.node(second_pos_node);
 
-        Real3 point0 = avToReal3(m_coord_cm[first_node]);
-        Real3 point1 = avToReal3(m_coord_cm[second_node]);
-        Real3 point2 = avToReal3(m_coord_mid_cm[iface]);
+        Real3 point0(node_coord_cm[first_node]);
+        Real3 point1(node_coord_cm[second_node]);
+        Real3 point2(m_coord_mid_cm[iface]);
 
         distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
 
