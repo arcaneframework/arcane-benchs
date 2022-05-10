@@ -1,3 +1,4 @@
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #ifndef NUCLEAR_DATA_ARC_HH
 #define NUCLEAR_DATA_ARC_HH
 

@@ -1,3 +1,4 @@
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #include "NuclearData.hh"
 #include "MC_RNG_State.hh"
 #include <cmath>

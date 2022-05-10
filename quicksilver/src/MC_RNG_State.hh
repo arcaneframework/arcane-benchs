@@ -1,3 +1,4 @@
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #ifndef MC_RNG_STATE_INCLUDE
 #define MC_RNG_STATE_INCLUDE
 

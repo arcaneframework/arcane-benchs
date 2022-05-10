@@ -1,3 +1,4 @@
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #ifndef PHYSICAL_CONSTANTS_HH
 #define PHYSICAL_CONSTANTS_HH
 

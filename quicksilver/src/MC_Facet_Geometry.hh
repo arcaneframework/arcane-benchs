@@ -1,3 +1,4 @@
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #ifndef MCT_FACET_GEOMETRY_3D_INCLUDE
 #define MCT_FACET_GEOMETRY_3D_INCLUDE
 

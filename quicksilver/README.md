@@ -49,3 +49,5 @@ QS_ARC=${QS_SOURCE_DIR}/data/no.collisions.arc
 QS_ARC=${QS_SOURCE_DIR}/data/noFission.arc
 QS_ARC=${QS_SOURCE_DIR}/data/NonFlatXC.arc
 ```
+
+Original Quicksilver is available here: https://github.com/LLNL/Quicksilver
