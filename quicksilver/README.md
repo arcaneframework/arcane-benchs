@@ -14,8 +14,8 @@ QS_BUILD_TYPE=Release # or Debug
 QS_SOURCE_DIR=arcane-benchs/quicksilver # your src path
 QS_BUILD_DIR=build_qama # build dir
 
-QS_EXE=${QS_BUILD_DIR}/Quicksilver
-QS_ARC=${QS_SOURCE_DIR}/ExampleFull.arc
+QS_EXE=${QS_BUILD_DIR}/src/Quicksilver
+QS_ARC=${QS_SOURCE_DIR}/data/ExampleFull.arc
 cd ${QS_BUILD_DIR}
 
 cmake -S ${QS_SOURCE_DIR} -B ${QS_BUILD_DIR} -DCMAKE_PREFIX_PATH=${ARCANE_INSTALL_PATH} -DCMAKE_BUILD_TYPE=${QS_BUILD_TYPE}
@@ -37,15 +37,15 @@ mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 Arc input files examples:
 
 ```sh
-QS_ARC=${QS_SOURCE_DIR}/ExampleDefault.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/Coral2_P1.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/Coral2_P2.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/allAbsorb.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/allEscape.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/scatteringOnly.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/CTS2.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/homogeneousProblem.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/no.collisions.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/noFission.arc
-QS_ARC=${QS_SOURCE_DIR}/arc_examples/NonFlatXC.arc
+QS_ARC=${QS_SOURCE_DIR}/data/ExampleDefault.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2_P1.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2_P2.arc
+QS_ARC=${QS_SOURCE_DIR}/data/allAbsorb.arc
+QS_ARC=${QS_SOURCE_DIR}/data/allEscape.arc
+QS_ARC=${QS_SOURCE_DIR}/data/scatteringOnly.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2.arc
+QS_ARC=${QS_SOURCE_DIR}/data/homogeneousProblem.arc
+QS_ARC=${QS_SOURCE_DIR}/data/no.collisions.arc
+QS_ARC=${QS_SOURCE_DIR}/data/noFission.arc
+QS_ARC=${QS_SOURCE_DIR}/data/NonFlatXC.arc
 ```
