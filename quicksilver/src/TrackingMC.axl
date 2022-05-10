@@ -1,0 +1,588 @@
+﻿<?xml version="1.0" ?>
+<module name="TrackingMC" version="1.0">
+  <description>Descripteur du module TrackingMC</description>
+
+  <variables>
+
+  <variable
+        field-name="e_min"
+        name="EMin"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="e_max"
+        name="EMax"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="n_groups"
+        name="NGroups"
+        data-type="integer"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="lx"
+        name="Lx"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="ly"
+        name="Ly"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="lz"
+        name="Lz"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="face_center_coord"
+        name="FaceCenterCoord"
+        data-type="real3"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="boundary_cond"
+        name="BoundaryCond"
+        data-type="integer"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="cell_number_density"
+        name="CellNumberDensity"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="absorb"
+        name="Absorb"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="census"
+        name="Census"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="escape"
+        name="Escape"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="collision"
+        name="Collision"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="fission"
+        name="Fission"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="produce"
+        name="Produce"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="scatter"
+        name="Scatter"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="num_segments"
+        name="NumSegments"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="end"
+        name="End"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="total"
+        name="Total"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="cell_center_coord"
+        name="CellCenterCoord"
+        data-type="real3"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_coord"
+        name="ParticleCoord"
+        family-name="ArcaneParticles"
+        data-type="real3"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_velocity"
+        name="ParticleVelocity"
+        family-name="ArcaneParticles"
+        data-type="real3"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_dir_cos"
+        name="ParticleDirCos"
+        family-name="ArcaneParticles"
+        data-type="real3"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_kin_ene"
+        name="ParticleKinEne"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_weight"
+        name="ParticleWeight"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_time_census"
+        name="ParticleTimeCensus"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_total_cross_section"
+        name="ParticleTotalCrossSection"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_age"
+        name="ParticleAge"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_num_mean_free_path"
+        name="ParticleNumMeanFreePath"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_mean_free_path"
+        name="ParticleMeanFreePath"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_seg_path_length"
+        name="ParticleSegPathLength"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_rns"
+        name="ParticleRNS"
+        family-name="ArcaneParticles"
+        data-type="int64"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_last_event"
+        name="ParticleLastEvent"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_num_coll"
+        name="ParticleNumColl"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_status"
+        name="ParticleStatus"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_ene_grp"
+        name="ParticleEneGrp"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_facet"
+        name="ParticleFacet"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_face"
+        name="ParticleFace"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_num_seg"
+        name="ParticleNumSeg"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable 
+        field-name="mass"
+        name="Mass"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        need-sync="true"
+        material="true"/>
+
+    <variable 
+        field-name="iso_gid"
+        name="IsoGid"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        need-sync="true"
+        material="true"/>
+
+    <variable 
+        field-name="atom_fraction"
+        name="AtomFraction"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        need-sync="true"
+        material="true"/>
+
+    <variable 
+        field-name="source_rate"
+        name="SourceRate"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        need-sync="true"
+        material="true"/>
+
+    <variable
+        field-name="scalar_flux_tally"
+        name="ScalarFluxTally"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+  </variables>
+
+  <entry-points>
+    <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
+    <entry-point method-name="cycleTracking" name="CycleTracking" where="compute-loop" property="none" />
+    <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
+  </entry-points>
+
+  <options>
+    <service-instance name="particle-exchanger" type="Arcane::IParticleExchanger" default="BasicParticleExchanger">
+      <name lang="fr">echangeur-particule</name>
+      <description>Service utilisé pour échanger les particules.</description>
+	  </service-instance>
+
+    <!-- Infos sur les Geometry -->
+    <complex name="geometry" type="Geometry" minOccurs="1" maxOccurs="unbounded">
+      <description>Geometrie</description>
+
+      <simple name="material" type="string" default="defaultMaterial">
+        <description>Name of material</description>
+      </simple>
+
+      <enumeration name="shape" type="eShape" default="brick">
+        <description>Shape</description>
+        <enumvalue name="undefined" genvalue="UNDEFINED"  />
+        <enumvalue name="brick" genvalue="BRICK" />
+        <enumvalue name="sphere" genvalue="SPHERE"  />
+      </enumeration>
+
+
+      <!-- Si brick -->
+      <simple name="xMax" type="real" default="-1.0">
+        <description>xMax</description>
+      </simple>
+
+      <simple name="xMin" type="real" default="-1.0">
+        <description>xMin</description>
+      </simple>
+
+      <simple name="yMax" type="real" default="-1.0">
+        <description>yMax</description>
+      </simple>
+
+      <simple name="yMin" type="real" default="-1.0">
+        <description>yMin</description>
+      </simple>
+
+      <simple name="zMax" type="real" default="-1.0">
+        <description>zMax</description>
+      </simple>
+
+      <simple name="zMin" type="real" default="-1.0">
+        <description>zMin</description>
+      </simple>
+
+
+      <!-- Si sphere -->
+      <simple name="radius" type="real" default="-1.0">
+        <description>radius</description>
+      </simple>
+
+      <simple name="xCenter" type="real" default="-1.0">
+        <description>xCenter</description>
+      </simple>
+
+      <simple name="yCenter" type="real" default="-1.0">
+        <description>yCenter</description>
+      </simple>
+
+      <simple name="zCenter" type="real" default="-1.0">
+        <description>zCenter</description>
+      </simple>
+
+    </complex>
+
+    <!-- Infos sur les materiaux -->
+    <complex name="material" type="Material" minOccurs="1" maxOccurs="unbounded">
+      <description>Material</description>
+
+      <simple name="name" type="string" default="defaultMaterial">
+        <description>Material name</description>
+      </simple>
+
+      <simple name="mass" type="real" default="1000.0">
+        <description>Mass</description>
+      </simple>
+
+      <simple name="totalCrossSection" type="real" default="1.0">
+        <description>totalCrossSection</description>
+      </simple>
+
+      <simple name="nIsotopes" type="integer" default="10">
+        <description>nIsotopes</description>
+      </simple>
+
+      <simple name="nReactions" type="integer" default="9">
+        <description>nReactions</description>
+      </simple>
+
+      <simple name="sourceRate" type="real" default="0.0">
+        <description>sourceRate</description>
+      </simple>
+
+      <simple name="scatteringCrossSection" type="string" default="defaultCS">
+        <description>scatteringCrossSection</description>
+      </simple>
+
+      <simple name="absorptionCrossSection" type="string" default="defaultCS">
+        <description>absorptionCrossSection</description>
+      </simple>
+
+      <simple name="fissionCrossSection" type="string" default="defaultCS">
+        <description>fissionCrossSection</description>
+      </simple>
+
+      <simple name="scatteringCrossSectionRatio" type="real" default="1.0">
+        <description>scatteringCrossSectionRatio</description>
+      </simple>
+      
+      <simple name="absorptionCrossSectionRatio" type="real" default="1.0">
+        <description>absorptionCrossSectionRatio</description>
+      </simple>
+
+      <simple name="fissionCrossSectionRatio" type="real" default="1.0">
+        <description>fissionCrossSectionRatio</description>
+      </simple>
+
+    </complex>
+
+
+    <!-- Infos sur les CrossSection -->
+    <complex name="cross_section" type="CrossSection" minOccurs="1" maxOccurs="unbounded">
+      <description>CrossSection</description>
+
+      <simple name="name" type="string" default="defaultCS">
+        <description>Nom de la CrossSection</description>
+      </simple>
+
+      <simple name="A" type="real" default="0.0">
+        <description>aa</description>
+      </simple>
+
+      <simple name="B" type="real" default="0.0">
+        <description>bb</description>
+      </simple>
+
+      <simple name="C" type="real" default="0.0">
+        <description>cc</description>
+      </simple>
+
+      <simple name="D" type="real" default="0.0">
+        <description>dd</description>
+      </simple>
+
+      <simple name="E" type="real" default="1.0">
+        <description>ee</description>
+      </simple>
+
+      <simple name="nuBar" type="real" default="2.4">
+        <description>nuBar</description>
+      </simple>
+
+    </complex>
+  </options>
+
+</module>

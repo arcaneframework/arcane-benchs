@@ -1,0 +1,365 @@
+﻿<?xml version="1.0" ?>
+<module name="SamplingMC" version="1.0">
+  <description>Descripteur du module SamplingMC</description>
+
+  <variables>
+
+    <variable
+        field-name="e_min"
+        name="EMin"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="e_max"
+        name="EMax"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="n_groups"
+        name="NGroups"
+        data-type="integer"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+  
+    <variable
+        field-name="volume"
+        name="Volume"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+      <variable
+        field-name="total"
+        name="Total"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+      <variable
+        field-name="source_tally"
+        name="SourceTally"
+        data-type="int32"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="face_center_coord"
+        name="FaceCenterCoord"
+        data-type="real3"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+      <variable
+        field-name="cell_center_coord"
+        name="CellCenterCoord"
+        data-type="real3"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="start"
+        name="Start"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="source"
+        name="Source"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="rr"
+        name="Rr"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="split"
+        name="Split"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_coord"
+        name="ParticleCoord"
+        family-name="ArcaneParticles"
+        data-type="real3"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_velocity"
+        name="ParticleVelocity"
+        family-name="ArcaneParticles"
+        data-type="real3"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_dir_cos"
+        name="ParticleDirCos"
+        family-name="ArcaneParticles"
+        data-type="real3"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_kin_ene"
+        name="ParticleKinEne"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_weight"
+        name="ParticleWeight"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_time_census"
+        name="ParticleTimeCensus"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_total_cross_section"
+        name="ParticleTotalCrossSection"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_age"
+        name="ParticleAge"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_num_mean_free_path"
+        name="ParticleNumMeanFreePath"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_mean_free_path"
+        name="ParticleMeanFreePath"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_seg_path_length"
+        name="ParticleSegPathLength"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_rns"
+        name="ParticleRNS"
+        family-name="ArcaneParticles"
+        data-type="int64"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_last_event"
+        name="ParticleLastEvent"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_num_coll"
+        name="ParticleNumColl"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_status"
+        name="ParticleStatus"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_ene_grp"
+        name="ParticleEneGrp"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_facet"
+        name="ParticleFacet"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_face"
+        name="ParticleFace"
+        family-name="ArcaneParticles"
+        data-type="integer"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="particle_num_seg"
+        name="ParticleNumSeg"
+        family-name="ArcaneParticles"
+        data-type="real"
+        item-kind="particle"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable 
+        field-name="source_rate"
+        name="SourceRate"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        need-sync="true"
+        material="true"/>
+
+    <variable 
+        field-name="num_particles"
+        name="NumParticles"
+        data-type="int32"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+  </variables>
+
+  <entry-points>
+    <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
+    <entry-point method-name="cycleInit" name="CycleInit" where="compute-loop" property="none" />
+    <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
+  </entry-points>
+
+  <options>
+    <!-- <service-instance 
+      name    = "partitioner"
+      type    = "Arcane::IMeshPartitioner"
+      default = "DefaultPartitioner"
+      /> -->
+
+
+    <simple name="nParticles" type="int64" default="1000000">
+      <description>
+        Number of particles
+      </description>
+    </simple>
+
+    <simple name="lowWeightCutoff" type="real" default="0.001">
+      <description>
+        Low weight roulette cutoff
+      </description>
+    </simple>
+
+    <simple name="seed" type="int64" default="1029384756">
+      <description>
+        Random number seed
+      </description>
+    </simple>
+
+    <simple name="fMax" type="real" default="0.1">
+      <description>
+        Max random mesh node displacement
+      </description>
+    </simple>
+
+  </options>
+
+</module>

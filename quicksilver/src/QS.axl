@@ -1,0 +1,322 @@
+﻿<?xml version="1.0" ?>
+<module name="QS" version="1.0">
+  <description>Descripteur du module QS</description>
+
+  <variables>
+
+    <!-- Options partagées -->
+    <variable
+        field-name="e_min"
+        name="EMin"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="e_max"
+        name="EMax"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="n_groups"
+        name="NGroups"
+        data-type="integer"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="lx"
+        name="Lx"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="ly"
+        name="Ly"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="lz"
+        name="Lz"
+        data-type="real"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+  
+    <variable
+        field-name="volume"
+        name="Volume"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <!-- Grandeurs -->
+    <variable
+        field-name="cell_center_coord"
+        name="CellCenterCoord"
+        data-type="real3"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="face_center_coord"
+        name="FaceCenterCoord"
+        data-type="real3"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="boundary_cond"
+        name="BoundaryCond"
+        data-type="integer"
+        item-kind="face"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="cell_number_density"
+        name="CellNumberDensity"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+
+    <!-- Tallies -->
+    <variable
+        field-name="source_tally"
+        name="SourceTally"
+        data-type="int32"
+        item-kind="cell"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="start"
+        name="Start"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="absorb"
+        name="Absorb"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="census"
+        name="Census"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="escape"
+        name="Escape"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="collision"
+        name="Collision"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="fission"
+        name="Fission"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="produce"
+        name="Produce"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="scatter"
+        name="Scatter"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="source"
+        name="Source"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="rr"
+        name="Rr"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="split"
+        name="Split"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="num_segments"
+        name="NumSegments"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="end"
+        name="End"
+        data-type="int64"
+        item-kind="none"
+        dim="0"
+        dump="true"
+        need-sync="true" />
+
+    <variable
+        field-name="scalar_flux_tally"
+        name="ScalarFluxTally"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+
+    <variable
+        field-name="total"
+        name="Total"
+        data-type="real"
+        item-kind="cell"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
+  </variables>
+
+  <entry-points>
+    <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
+    <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
+    <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
+  </entry-points>
+
+  <options>
+
+    <simple name="dt" type="real" default="1e-8">
+      <description>
+        Time step (seconds)
+      </description>
+    </simple>
+
+    <simple name="eMin" type="real" default="1e-9">
+      <description>
+        Min energy of cross section
+      </description>
+    </simple>
+
+    <simple name="eMax" type="real" default="20">
+      <description>
+        Max energy of cross section
+      </description>
+    </simple>
+
+    <simple name="nGroups" type="integer" default="230">
+      <description>
+        Number of groups for cross sections
+      </description>
+    </simple>
+
+    <simple name="nSteps" type="integer" default="10">
+      <description>
+        Number of time steps
+      </description>
+    </simple>
+
+    <simple name="lx" type="real" default="100.0">
+      <description>
+        x-size of simulation (cm)
+      </description>
+    </simple>
+
+    <simple name="ly" type="real" default="100.0">
+      <description>
+        y-size of simulation (cm)
+      </description>
+    </simple>
+
+    <simple name="lz" type="real" default="100.0">
+      <description>
+        z-size of simulation (cm)
+      </description>
+    </simple>
+
+    <enumeration name="boundaryCondition" type="eBoundaryCondition" default="reflect">
+      <description>Boundary Condition</description>
+      <enumvalue name="reflect" genvalue="REFLECT"  />
+      <enumvalue name="escape" genvalue="ESCAPE" />
+      <enumvalue name="octant" genvalue="OCTANT"  />
+    </enumeration>
+
+  </options>
+
+</module>
