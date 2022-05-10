@@ -79,7 +79,6 @@ public ArcaneTrackingMCObject
   std::atomic<Int64> m_fission_a{ 0 };
   std::atomic<Int64> m_absorb_a{ 0 };
   std::atomic<Int64> m_produce_a{ 0 };
-  std::atomic<Int64> m_end_a{ 0 };
 
   GlobalMutex m_mutex_exit;
   GlobalMutex m_mutex_extra;
@@ -93,20 +92,20 @@ public ArcaneTrackingMCObject
   void updateTallies();
   void initNuclearData();
   bool isInGeometry(Integer pos, Cell cell);
-  void cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord_cm);
-  void cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord_cm);
+  void cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord);
+  void cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord);
   void collisionEventSuite();
-  void computeNextEvent(Particle particle, VariableNodeReal3& node_coord_cm);
+  void computeNextEvent(Particle particle, VariableNodeReal3& node_coord);
   Integer collisionEvent(Particle particle);
   void facetCrossingEvent(Particle particle);
-  void reflectParticle(Particle particle, VariableNodeReal3& node_coord_cm);
+  void reflectParticle(Particle particle, VariableNodeReal3& node_coord);
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
   void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
   void updateTrajectory(Real energy, Real angle, Particle particle);
   void computeCrossSection();
   void weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
   Real macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup);
-  DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord_cm);
+  DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord);
   Real distanceToSegmentFacet(Real plane_tolerance,
                               Real facet_normal_dot_direction_cosine,
                               Real A, Real B, Real C, Real D,

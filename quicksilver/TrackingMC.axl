@@ -59,8 +59,8 @@
         need-sync="true" />
 
     <variable
-        field-name="coord_mid_cm"
-        name="CoordMidCm"
+        field-name="face_center_coord"
+        name="FaceCenterCoord"
         data-type="real3"
         item-kind="face"
         dim="0"
@@ -177,8 +177,8 @@
         need-sync="true" />
 
     <variable
-        field-name="coord_center"
-        name="CoordCenter"
+        field-name="cell_center_coord"
+        name="CellCenterCoord"
         data-type="real3"
         item-kind="cell"
         dim="0"
@@ -360,16 +360,6 @@
         name="ParticleFace"
         family-name="ArcaneParticles"
         data-type="integer"
-        item-kind="particle"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="particle_normal_dot"
-        name="ParticleNormalDot"
-        family-name="ArcaneParticles"
-        data-type="real"
         item-kind="particle"
         dim="0"
         dump="true"

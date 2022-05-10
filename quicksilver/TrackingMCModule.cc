@@ -188,7 +188,7 @@ tracking()
   ParticleVectorView inView;
 
   // Coordonnées des nodes (en cm).
-  VariableNodeReal3& node_coord_cm = nodesCoordinates();
+  VariableNodeReal3& node_coord = nodesCoordinates();
 
   pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
 
@@ -207,7 +207,7 @@ tracking()
     arcaneParallelForeach(processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         Particle particle = (*iparticle);
-        cycleTrackingGuts(particle, node_coord_cm);
+        cycleTrackingGuts(particle, node_coord);
 
         //if (iparticle.index() % 50000 == 0) {
           // pinfo(5) << "--------";
@@ -231,7 +231,7 @@ tracking()
       arcaneParallelForeach(inView, [&](ParticleVectorView particles) {
         ENUMERATE_PARTICLE (iparticle, particles) {
           Particle particle = (*iparticle);
-          cycleTrackingGuts(particle, node_coord_cm);
+          cycleTrackingGuts(particle, node_coord);
 
           // if (iparticle.index() % 50000 == 0) {
             // pinfo(4) << "P" << mesh()->parallelMng()->commRank() << " - SubIter #" << iter << " - Number of incoming particles processed : " << iparticle.index() << "/" << inView.size();
@@ -295,7 +295,7 @@ tracking()
     iter++;
   }
 
-  m_end_a = m_particle_family->view().size();
+  m_end = m_particle_family->view().size();
 }
 
 /**
@@ -312,7 +312,6 @@ updateTallies()
   m_produce = m_produce_a;
   m_scatter = m_scatter_a;
   m_num_segments = m_num_segments_a;
-  m_end = m_end_a;
 
   m_absorb_a = 0;
   m_census_a = 0;
@@ -322,7 +321,6 @@ updateTallies()
   m_produce_a = 0;
   m_scatter_a = 0;
   m_num_segments_a = 0;
-  m_end_a = 0;
 }
 
 /**
@@ -351,9 +349,9 @@ isInGeometry(Integer pos, Cell cell)
     Real zMin = ((options()->geometry[pos].getZMin() == -1.0) ? 0.0 : options()->geometry[pos].getZMin());
     Real zMax = ((options()->geometry[pos].getZMax() == -1.0) ? m_lz() : options()->geometry[pos].getZMax());
 
-    if ((m_coord_center[cell][MD_DirX] >= xMin && m_coord_center[cell][MD_DirX] <= xMax) &&
-        (m_coord_center[cell][MD_DirY] >= yMin && m_coord_center[cell][MD_DirY] <= yMax) &&
-        (m_coord_center[cell][MD_DirZ] >= zMin && m_coord_center[cell][MD_DirZ] <= zMax))
+    if ((m_cell_center_coord[cell][MD_DirX] >= xMin && m_cell_center_coord[cell][MD_DirX] <= xMax) &&
+        (m_cell_center_coord[cell][MD_DirY] >= yMin && m_cell_center_coord[cell][MD_DirY] <= yMax) &&
+        (m_cell_center_coord[cell][MD_DirZ] >= zMin && m_cell_center_coord[cell][MD_DirZ] <= zMax))
       inside = true;
     } 
     break;
@@ -365,7 +363,7 @@ isInGeometry(Integer pos, Cell cell)
     Real radius = ((options()->geometry[pos].getRadius() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getRadius());
 
     Real3 center(xCenter, yCenter, zCenter);
-    Real3 rr(m_coord_center[cell]);
+    Real3 rr(m_cell_center_coord[cell]);
     if ((rr - center).normL2() <= radius)
       inside = true;
     }
@@ -383,7 +381,7 @@ isInGeometry(Integer pos, Cell cell)
  * @param particle La particule à suivre.
  */
 void TrackingMCModule::
-cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord_cm)
+cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 {
   if (m_particle_status[particle] == ParticleState::exitedParticle 
    || m_particle_status[particle] == ParticleState::censusParticle) {
@@ -401,7 +399,7 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord_cm)
   m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
 
   // loop over this particle until we cannot do anything more with it on this processor
-  cycleTrackingFunction(particle, node_coord_cm);
+  cycleTrackingFunction(particle, node_coord);
 }
 
 /**
@@ -413,7 +411,7 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord_cm)
  * @param particle La particule à suivre.
  */
 void TrackingMCModule::
-cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord_cm)
+cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
 {
   bool keepTrackingThisParticle = false;
   do {
@@ -423,7 +421,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord_cm)
     //   (1) Cross a facet of the current cell,
     //   (2) Reach the end of the time step and enter census,
     //
-    computeNextEvent(particle, node_coord_cm);
+    computeNextEvent(particle, node_coord);
     m_num_segments_a++;
 
     m_particle_num_seg[particle] += 1.; /* Track the number of segments this particle has
@@ -472,7 +470,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord_cm)
         break;
 
       case ParticleEvent::reflection:
-        reflectParticle(particle, node_coord_cm);
+        reflectParticle(particle, node_coord);
         keepTrackingThisParticle = true;
         break;
 
@@ -567,7 +565,7 @@ collisionEventSuite()
  * @param particle La particule à étudier.
  */
 void TrackingMCModule::
-computeNextEvent(Particle particle, VariableNodeReal3& node_coord_cm)
+computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
 {
   // initialize distances to large number
   RealUniqueArray distance(3);
@@ -631,7 +629,7 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord_cm)
 
   else {
     // Calculate the minimum distance to each facet of the cell.
-    DistanceToFacet nearest_facet = getNearestFacet(particle, node_coord_cm);
+    DistanceToFacet nearest_facet = getNearestFacet(particle, node_coord);
 
     distance[ParticleEvent::faceEventUndefined] = nearest_facet.distance;
 
@@ -850,7 +848,7 @@ facetCrossingEvent(Particle particle)
  * @param particle La particule à étudier.
  */
 void TrackingMCModule::
-reflectParticle(Particle particle, VariableNodeReal3& node_coord_cm)
+reflectParticle(Particle particle, VariableNodeReal3& node_coord)
 {
   Integer facet = m_particle_facet[particle];
 
@@ -863,9 +861,9 @@ reflectParticle(Particle particle, VariableNodeReal3& node_coord_cm)
   Node first_node = face.node(first_pos_node);
   Node second_node = face.node(second_pos_node);
 
-  Real3 point0(node_coord_cm[first_node]);
-  Real3 point1(node_coord_cm[second_node]);
-  Real3 point2(m_coord_mid_cm[face]);
+  Real3 point0(node_coord[first_node]);
+  Real3 point1(node_coord[second_node]);
+  Real3 point2(m_face_center_coord[face]);
 
   MC_General_Plane plane(point0, point1, point2);
 
@@ -948,7 +946,6 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
   m_particle_ene_grp[pNew] = m_particle_ene_grp[pSrc];
   m_particle_face[pNew] = m_particle_face[pSrc];
   m_particle_facet[pNew] = m_particle_facet[pSrc];
-  m_particle_normal_dot[pNew] = m_particle_normal_dot[pSrc];
 }
 
 /**
@@ -1073,7 +1070,7 @@ macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Inte
  * @return DistanceToFacet Les caractéristiques de la facet la plus proche.
  */
 DistanceToFacet TrackingMCModule::
-getNearestFacet(Particle particle, VariableNodeReal3& node_coord_cm)
+getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
 {
   Cell cell = particle.cell();
   Integer iteration = 0;
@@ -1103,9 +1100,9 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord_cm)
         Node first_node = face.node(first_pos_node);
         Node second_node = face.node(second_pos_node);
 
-        Real3 point0(node_coord_cm[first_node]);
-        Real3 point1(node_coord_cm[second_node]);
-        Real3 point2(m_coord_mid_cm[iface]);
+        Real3 point0(node_coord[first_node]);
+        Real3 point1(node_coord[second_node]);
+        Real3 point2(m_face_center_coord[iface]);
 
         distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
 
@@ -1307,9 +1304,9 @@ findNearestFacet(Particle particle,
     // and try again.
     Cell cell = particle.cell();
 
-    m_particle_coord[particle][MD_DirX] += move_factor * (m_coord_center[cell][MD_DirX] - m_particle_coord[particle][MD_DirX]);
-    m_particle_coord[particle][MD_DirY] += move_factor * (m_coord_center[cell][MD_DirY] - m_particle_coord[particle][MD_DirY]);
-    m_particle_coord[particle][MD_DirZ] += move_factor * (m_coord_center[cell][MD_DirZ] - m_particle_coord[particle][MD_DirZ]);
+    m_particle_coord[particle][MD_DirX] += move_factor * (m_cell_center_coord[cell][MD_DirX] - m_particle_coord[particle][MD_DirX]);
+    m_particle_coord[particle][MD_DirY] += move_factor * (m_cell_center_coord[cell][MD_DirY] - m_particle_coord[particle][MD_DirY]);
+    m_particle_coord[particle][MD_DirZ] += move_factor * (m_cell_center_coord[cell][MD_DirZ] - m_particle_coord[particle][MD_DirZ]);
 
     iteration++;
     move_factor *= 2.0;

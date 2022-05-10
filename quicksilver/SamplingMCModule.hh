@@ -40,7 +40,6 @@ public ArcaneSamplingMCObject
   ParticleVectorView m_processingView;
   Real m_source_particle_weight;
 
-  std::atomic<Int64> m_start_a{ 0 };
   std::atomic<Int64> m_source_a{ 0 };
   std::atomic<Int64> m_rr_a{ 0 };
   std::atomic<Int64> m_split_a{ 0 };
@@ -60,7 +59,7 @@ public ArcaneSamplingMCObject
   Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);
   void rouletteLowWeightParticles();
   void initParticle(Particle p, Int64 rns);
-  void generate3DCoordinate(Particle p, VariableNodeReal3& node_coord_cm);
+  void generate3DCoordinate(Particle p, VariableNodeReal3& node_coord);
   void sampleIsotropic(Particle p);
   Real getSpeedFromEnergy(Particle p);
 };

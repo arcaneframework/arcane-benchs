@@ -64,7 +64,7 @@ initMesh()
     m_nz = cdm.globalNbCell();
   }
 
-  VariableNodeReal3& node_coord_cm = nodesCoordinates();
+  VariableNodeReal3& node_coord = nodesCoordinates();
 
   m_global_deltat = options()->getDt();
 
@@ -82,35 +82,35 @@ initMesh()
     Cell cell = *icell;
 
 
-    m_coord_center[icell][MD_DirX] = 0.0;
-    m_coord_center[icell][MD_DirY] = 0.0;
-    m_coord_center[icell][MD_DirZ] = 0.0;
+    m_cell_center_coord[icell][MD_DirX] = 0.0;
+    m_cell_center_coord[icell][MD_DirY] = 0.0;
+    m_cell_center_coord[icell][MD_DirZ] = 0.0;
 
     ENUMERATE_FACE (iface, cell.faces()) {
       Face face = *iface;
 
-      m_coord_mid_cm[iface][MD_DirX] = 0.0;
-      m_coord_mid_cm[iface][MD_DirY] = 0.0;
-      m_coord_mid_cm[iface][MD_DirZ] = 0.0;
+      m_face_center_coord[iface][MD_DirX] = 0.0;
+      m_face_center_coord[iface][MD_DirY] = 0.0;
+      m_face_center_coord[iface][MD_DirZ] = 0.0;
 
       ENUMERATE_NODE (inode, face.nodes()) {
-        m_coord_mid_cm[iface][MD_DirX] += node_coord_cm[inode][MD_DirX];
-        m_coord_mid_cm[iface][MD_DirY] += node_coord_cm[inode][MD_DirY];
-        m_coord_mid_cm[iface][MD_DirZ] += node_coord_cm[inode][MD_DirZ];
+        m_face_center_coord[iface][MD_DirX] += node_coord[inode][MD_DirX];
+        m_face_center_coord[iface][MD_DirY] += node_coord[inode][MD_DirY];
+        m_face_center_coord[iface][MD_DirZ] += node_coord[inode][MD_DirZ];
       }
 
-      m_coord_mid_cm[iface][MD_DirX] /= 4;
-      m_coord_mid_cm[iface][MD_DirY] /= 4;
-      m_coord_mid_cm[iface][MD_DirZ] /= 4;
+      m_face_center_coord[iface][MD_DirX] /= 4;
+      m_face_center_coord[iface][MD_DirY] /= 4;
+      m_face_center_coord[iface][MD_DirZ] /= 4;
       
-      m_coord_center[icell][MD_DirX] += m_coord_mid_cm[iface][MD_DirX];
-      m_coord_center[icell][MD_DirY] += m_coord_mid_cm[iface][MD_DirY];
-      m_coord_center[icell][MD_DirZ] += m_coord_mid_cm[iface][MD_DirZ];
+      m_cell_center_coord[icell][MD_DirX] += m_face_center_coord[iface][MD_DirX];
+      m_cell_center_coord[icell][MD_DirY] += m_face_center_coord[iface][MD_DirY];
+      m_cell_center_coord[icell][MD_DirZ] += m_face_center_coord[iface][MD_DirZ];
     }
 
-    m_coord_center[icell][MD_DirX] /= 6;
-    m_coord_center[icell][MD_DirY] /= 6;
-    m_coord_center[icell][MD_DirZ] /= 6;
+    m_cell_center_coord[icell][MD_DirX] /= 6;
+    m_cell_center_coord[icell][MD_DirY] /= 6;
+    m_cell_center_coord[icell][MD_DirZ] /= 6;
 
     Real volume = 0;
     ENUMERATE_FACE (iface, cell.faces()) {
@@ -132,9 +132,9 @@ initMesh()
         Node first_node = face.node(i);
         Node second_node = face.node(((i == 3) ? 0 : i + 1));
 
-        Real3 aa = node_coord_cm[first_node] - m_coord_center[icell];
-        Real3 bb = node_coord_cm[second_node] - m_coord_center[icell];
-        Real3 cc = m_coord_mid_cm[iface] - m_coord_center[icell];
+        Real3 aa = node_coord[first_node] - m_cell_center_coord[icell];
+        Real3 bb = node_coord[second_node] - m_cell_center_coord[icell];
+        Real3 cc = m_face_center_coord[iface] - m_cell_center_coord[icell];
 
         volume += math::abs(math::dot(aa, math::cross(bb, cc)));
       }
