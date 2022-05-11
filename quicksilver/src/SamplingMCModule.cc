@@ -271,7 +271,7 @@ populationControl()
 {
   Int64 targetNumParticles = options()->getNParticles();
   Int64 globalNumParticles = 0;
-  Integer localNumParticles = m_processingView.size();
+  Int64 localNumParticles = m_processingView.size();
 
   globalNumParticles =
   mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);

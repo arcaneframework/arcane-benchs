@@ -37,17 +37,23 @@ mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 Arc input files examples:
 
 ```sh
+QS_ARC=${QS_SOURCE_DIR}/data/ExampleFull.arc
 QS_ARC=${QS_SOURCE_DIR}/data/ExampleDefault.arc
-QS_ARC=${QS_SOURCE_DIR}/data/Coral2_P1.arc
-QS_ARC=${QS_SOURCE_DIR}/data/Coral2_P2.arc
-QS_ARC=${QS_SOURCE_DIR}/data/allAbsorb.arc
-QS_ARC=${QS_SOURCE_DIR}/data/allEscape.arc
-QS_ARC=${QS_SOURCE_DIR}/data/scatteringOnly.arc
-QS_ARC=${QS_SOURCE_DIR}/data/CTS2.arc
-QS_ARC=${QS_SOURCE_DIR}/data/homogeneousProblem.arc
-QS_ARC=${QS_SOURCE_DIR}/data/no.collisions.arc
-QS_ARC=${QS_SOURCE_DIR}/data/noFission.arc
-QS_ARC=${QS_SOURCE_DIR}/data/NonFlatXC.arc
+QS_ARC=${QS_SOURCE_DIR}/data/TestSmall.arc
+QS_ARC=${QS_SOURCE_DIR}/data/TestMedium.arc
+QS_ARC=${QS_SOURCE_DIR}/data/TestLarge.arc
+QS_ARC=${QS_SOURCE_DIR}/data/TestHuge.arc
+
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/Coral2_P1.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/Coral2_P2.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/allAbsorb.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/allEscape.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/scatteringOnly.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/CTS2.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/homogeneousProblem.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/no.collisions.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/noFission.arc
+QS_ARC=${QS_SOURCE_DIR}/data/qs_original/NonFlatXC.arc
 ```
 
 Original Quicksilver is available here: https://github.com/LLNL/Quicksilver
