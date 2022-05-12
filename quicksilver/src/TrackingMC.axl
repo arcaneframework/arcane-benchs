@@ -420,6 +420,15 @@
         dump="true"
         need-sync="true" />
 
+    <variable
+        field-name="normalFace"
+        name="NormalFace"
+        data-type="real3"
+        item-kind="none"
+        dim="1"
+        dump="true"
+        need-sync="true" />
+
   </variables>
 
   <entry-points>
