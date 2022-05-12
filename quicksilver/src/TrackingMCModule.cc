@@ -54,7 +54,9 @@ cycleTracking()
     tracking();
     updateTallies();
   }
-  info() << "--- P" << mesh()->parallelMng()->commRank() << " - Tracking duration: " << m_timer->lastActivationTime() << "s ---";
+  
+  Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
+  info() << "--- Tracking duration: " << time << " s ---";
 }
 
 /**

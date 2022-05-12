@@ -51,7 +51,6 @@ cycleInit()
     m_start = m_processingView.size();
 
     // Création des particules.
-    // TODO : Cas très rare où il manque une particule (par rapport aux résultats QS original).
     sourceParticles();
 
     // Réduction ou augmentation du nombre de particules.
@@ -81,7 +80,8 @@ cycleInit()
     // subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
   }
 
-  info() << "--- P" << mesh()->parallelMng()->commRank() << " - Sampling duration: " << m_timer->lastActivationTime() << "s ---";
+  Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
+  info() << "--- Sampling duration: " << time << " s ---";
 }
 
 /**
@@ -275,6 +275,8 @@ populationControl()
 
   globalNumParticles =
   mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
+
+  if(globalNumParticles == 0) ARCANE_FATAL("Nombre de particule global == 0");
 
   // Soit on augmente la population (>1), soit on l'a diminue (<1), soit on n'y
   // touche pas (=1).
