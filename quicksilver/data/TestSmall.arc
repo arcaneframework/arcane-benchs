@@ -10,25 +10,25 @@
       <generator name="Cartesian3D" >
         <face-numbering-version>1</face-numbering-version>
 
-        <nb-part-x>4</nb-part-x> 
+        <nb-part-x>8</nb-part-x> 
         <nb-part-y>4</nb-part-y>
         <nb-part-z>4</nb-part-z>
 
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>400.0</length>
-          <n>40</n>
+          <length>640.0</length>
+          <n>64</n>
         </x>
 
         <y>
-          <length>400.0</length>
-          <n>40</n>
+          <length>640.0</length>
+          <n>64</n>
         </y>
 
         <z>
-          <length>400.0</length>
-          <n>40</n>
+          <length>640.0</length>
+          <n>64</n>
         </z>
 
       </generator>
@@ -36,19 +36,24 @@
   </meshes>
 
   <q-s>
-    <dt>2e-09</dt>
+    <dt>8e-07</dt>
     <boundaryCondition>reflect</boundaryCondition>
     <nSteps>10</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <lx>400.0</lx>
-    <ly>400.0</ly>
-    <lz>400.0</lz>
+    <lx>640.0</lx>
+    <ly>640.0</ly>
+    <lz>640.0</lz>
   </q-s>
 
   <sampling-m-c>
-    <nParticles>6400000</nParticles>
+    <!-- Weak Scaling -->
+    <!-- <nParticles>128000000</nParticles> -->
+
+    <!-- Strong Scaling -->
+    <nParticles>128000000</nParticles>
+    
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
     <seed>1029384756</seed>
@@ -63,11 +68,11 @@
     <geometry>
       <material>sourceMaterial</material>
       <shape>brick</shape>
-      <xMax>400</xMax>
+      <xMax>10000</xMax>
       <xMin>0</xMin>
-      <yMax>400</yMax>
+      <yMax>10000</yMax>
       <yMin>0</yMin>
-      <zMax>400</zMax>
+      <zMax>10000</zMax>
       <zMin>0</zMin>
     </geometry>
 
@@ -76,7 +81,7 @@
       <mass>12.011</mass>
       <nIsotopes>20</nIsotopes>
       <nReactions>9</nReactions>
-      <sourceRate>1e+10</sourceRate>
+      <sourceRate>2e+10</sourceRate>
       <totalCrossSection>1.5</totalCrossSection>
       <absorptionCrossSection>flat</absorptionCrossSection>
       <fissionCrossSection>flat</fissionCrossSection>

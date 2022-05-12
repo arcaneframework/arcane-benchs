@@ -17,18 +17,18 @@
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>800.0</length>
-          <n>80</n>
+          <length>640.0</length>
+          <n>64</n>
         </x>
 
         <y>
-          <length>800.0</length>
-          <n>80</n>
+          <length>640.0</length>
+          <n>64</n>
         </y>
 
         <z>
-          <length>400.0</length>
-          <n>40</n>
+          <length>640.0</length>
+          <n>64</n>
         </z>
 
       </generator>
@@ -36,36 +36,43 @@
   </meshes>
 
   <q-s>
-    <dt>2e-09</dt>
+    <dt>8e-07</dt>
     <boundaryCondition>reflect</boundaryCondition>
     <nSteps>10</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <lx>800.0</lx>
-    <ly>800.0</ly>
-    <lz>400.0</lz>
+    <lx>640.0</lx>
+    <ly>640.0</ly>
+    <lz>640.0</lz>
   </q-s>
 
   <sampling-m-c>
-    <nParticles>25600000</nParticles>
+    <!-- Weak Scaling -->
+    <!-- <nParticles>256000000</nParticles> -->
+
+    <!-- Strong Scaling -->
+    <nParticles>128000000</nParticles>
+    
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
     <seed>1029384756</seed>
   </sampling-m-c>
 
   <tracking-m-c>
+
     <particle-exchanger name="BasicParticleExchanger">
       <max-nb-message-without-reduce>-1</max-nb-message-without-reduce>
     </particle-exchanger>
+
     <geometry>
       <material>sourceMaterial</material>
       <shape>brick</shape>
-      <xMax>800</xMax>
+      <xMax>10000</xMax>
       <xMin>0</xMin>
-      <yMax>800</yMax>
+      <yMax>10000</yMax>
       <yMin>0</yMin>
-      <zMax>400</zMax>
+      <zMax>10000</zMax>
       <zMin>0</zMin>
     </geometry>
 
@@ -74,7 +81,7 @@
       <mass>12.011</mass>
       <nIsotopes>20</nIsotopes>
       <nReactions>9</nReactions>
-      <sourceRate>1e+10</sourceRate>
+      <sourceRate>2e+10</sourceRate>
       <totalCrossSection>1.5</totalCrossSection>
       <absorptionCrossSection>flat</absorptionCrossSection>
       <fissionCrossSection>flat</fissionCrossSection>
