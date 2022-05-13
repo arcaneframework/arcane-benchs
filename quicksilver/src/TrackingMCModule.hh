@@ -35,6 +35,17 @@
 using namespace Arcane;
 using namespace Arcane::Materials;
 
+struct DistanceToFacet
+{
+    Real distance;
+    Integer facet;
+    
+    DistanceToFacet()
+    : distance(0.0),
+      facet(0)
+    {}
+};
+
 /**
  * @brief Module TrackingMC.
  * Module permettant de suivre les particules contenues dans la famille
@@ -80,8 +91,6 @@ public ArcaneTrackingMCObject
   Int32UniqueArray m_local_ids_out;
   Int32UniqueArray m_rank_out;
 
-  Int32UniqueArray m_local_ids_in;
-
   std::atomic<Int64> m_num_segments_a{ 0 };
   std::atomic<Int64> m_escape_a{ 0 };
   std::atomic<Int64> m_census_a{ 0 };
@@ -102,7 +111,7 @@ public ArcaneTrackingMCObject
   void tracking();
   void updateTallies();
   void initNuclearData();
-  bool isInGeometry(Integer pos, Cell cell);
+  bool isInGeometry(const Integer& pos, Cell cell);
   void cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord);
   void cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord);
   void collisionEventSuite();
@@ -111,29 +120,34 @@ public ArcaneTrackingMCObject
   void facetCrossingEvent(Particle particle);
   void reflectParticle(Particle particle, VariableNodeReal3& node_coord);
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
-  void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
-  void updateTrajectory(Real energy, Real angle, Particle particle);
+  void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
+  void updateTrajectory(const Real& energy, const Real& angle, Particle particle);
   void computeCrossSection();
-  void weightedMacroscopicCrossSection(Cell cell, Integer energyGroup);
-  Real macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup);
+  void weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
+  Real macroscopicCrossSection(const Integer& reactionIndex, 
+                        const Real& cell_number_density, 
+                        const Real& atom_fraction, 
+                        const Integer& isotopeGid, 
+                        const Integer& isoIndex, 
+                        const Integer& energyGroup);
   DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord);
-  Real distanceToSegmentFacet(Real plane_tolerance,
-                              Real facet_normal_dot_direction_cosine,
-                              Real A, Real B, Real C, Real D,
+  Real distanceToSegmentFacet(const Real& plane_tolerance,
+                              const Real& facet_normal_dot_direction_cosine,
+                              const Real& A, const Real& B, const Real& C, const Real& D,
                               const Real3& facet_coords0,
                               const Real3& facet_coords1,
                               const Real3& facet_coords2,
                               Particle particle,
                               bool allow_enter);
-  DistanceToFacet findNearestFacet(Particle particle,
-                                Integer& iteration,
-                                Real& move_factor,
-                                DistanceToFacet* distance_to_facet,
-                                Integer& retry);
+  DistanceToFacet findNearestFacet( Particle particle,
+                                    Integer& iteration,
+                                    Real& move_factor,
+                                    DistanceToFacet* distance_to_facet,
+                                    Integer& retry);
   DistanceToFacet nearestFacet(DistanceToFacet* distance_to_facet);
   template <typename T>
   Integer findMin(UniqueArray<T> array);
-  void rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi);
+  void rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi);
 };
 
 /*---------------------------------------------------------------------------*/

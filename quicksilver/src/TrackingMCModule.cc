@@ -201,12 +201,14 @@ tracking()
   ParticleVectorView processingView = m_particle_family->view();
   ParticleVectorView inView;
 
+  Int32UniqueArray local_ids_in;
+  Int32UniqueArray extraClone;
+
   // Coordonnées des nodes (en cm).
   VariableNodeReal3& node_coord = nodesCoordinates();
 
   pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
 
-  Int32UniqueArray extraClone;
 
   IParticleExchanger* pe = options()->particleExchanger();
   //IAsyncParticleExchanger* ae = pe->asyncParticleExchanger();
@@ -273,29 +275,29 @@ tracking()
     collisionEventSuite();
 
     if (mesh()->parallelMng()->commSize() > 1) {
-      m_local_ids_in.clear();
+      local_ids_in.clear();
 
       // On essaye de recevoir tant que quelqu'un bosse encore.
       do {
         // Echange particles.
-        pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &m_local_ids_in, 0);
+        pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &local_ids_in, 0);
 
         done = ((mesh()->parallelMng()->reduce(
                 Parallel::ReduceMax,
-                m_local_ids_in.size() + m_local_ids_extra.size())) == 0);
+                local_ids_in.size() + m_local_ids_extra.size())) == 0);
 
 
         // pinfo(6) << "/////////";
         // pinfo(6) << "Proc#" << mesh()->parallelMng()->commRank();
         // pinfo(6) << "Nb Particles out : " << m_local_ids_out.size();
-        // pinfo(6) << "Nb Particles in : " << m_local_ids_in.size();
+        // pinfo(6) << "Nb Particles in : " << local_ids_in.size();
         // pinfo(6) << "/////////";
 
         m_rank_out.clear();
         m_local_ids_out.clear();
-      } while (m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
+      } while (local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
 
-      inView = m_particle_family->view(m_local_ids_in);
+      inView = m_particle_family->view(local_ids_in);
     }
 
     else if (m_local_ids_extra.size() == 0) {
@@ -349,7 +351,7 @@ updateTallies()
  * @return false Si la cellule n'a pas son centre dans le matériau.
  */
 bool TrackingMCModule::
-isInGeometry(Integer pos, Cell cell)
+isInGeometry(const Integer& pos, Cell cell)
 {
   bool inside = false;
   switch (options()->geometry[pos].getShape()) {
@@ -537,18 +539,32 @@ collisionEventSuite()
   ParticleVectorView viewP = m_particle_family->view(particles_lid);
 
   // On effectue la suite de la collision.
-  for (Integer i = 0; i < particles_lid.size(); i++) {
-    Particle particle = Particle(viewP[i].internal());
-    updateTrajectory(m_local_ids_extra_energyOut[i], m_local_ids_extra_angleOut[i], particle);
-  }
+  arcaneParallelFor(0, viewP.size(), [&](Integer begin, Integer size) {
+    for (Integer i = begin; i < (begin+size); i++) {
+      Particle particle(viewP[i].internal());
+      updateTrajectory(m_local_ids_extra_energyOut[i], m_local_ids_extra_angleOut[i], particle);
+    }
+  });
+  // ENUMERATE_PARTICLE(ipartic, viewP) {
+  //   Integer index = ipartic.index();
+  //   updateTrajectory(m_local_ids_extra_energyOut[index], m_local_ids_extra_angleOut[index], (*ipartic));
+  // }
 
   viewP = m_particle_family->view(m_local_ids_extra);
 
-  for (Integer i = 0; i < m_local_ids_extra.size(); i++) {
-    Particle particle = Particle(viewP[i].internal());
-    updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
-    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
-  }
+  arcaneParallelFor(0, viewP.size(), [&](Integer begin, Integer size) {
+    for (Integer i = begin; i < (begin+size); i++) {
+      Particle particle(viewP[i].internal());
+      updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
+      m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
+    }
+  });
+
+  // ENUMERATE_PARTICLE(ipartic, viewP) {
+  //   Integer index = ipartic.index();
+  //   updateTrajectory(m_local_ids_extra_energyOut_pSrc[index], m_local_ids_extra_angleOut_pSrc[index], (*ipartic));
+  //   m_particle_ene_grp[ipartic] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[ipartic]);
+  // }
 
   //m_local_ids_extra.copy(particles_lid);
 
@@ -736,16 +752,18 @@ collisionEvent(Particle particle)
   Integer selectedUniqueNumber = -1;
   Integer selectedReact = -1;
   Integer numIsos = m_iso_gid[cell].size();
+  Real cell_number_density = m_cell_number_density[cell];
 
   for (Integer isoIndex = 0; isoIndex < numIsos && currentCrossSection >= 0; isoIndex++) {
-    Integer uniqueNumber = m_iso_gid[cell][isoIndex];
-    Integer numReacts = m_nuclearData->getNumberReactions(uniqueNumber);
+    Real atom_fraction = m_atom_fraction[cell][isoIndex];
+    Integer isotopeGid = m_iso_gid[cell][isoIndex];
+    Integer numReacts = m_nuclearData->getNumberReactions(isotopeGid);
     for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
-      currentCrossSection -= macroscopicCrossSection(reactIndex, cell,
+      currentCrossSection -= macroscopicCrossSection(reactIndex, cell_number_density, atom_fraction, isotopeGid,
                                                      isoIndex, m_particle_ene_grp[particle]);
       if (currentCrossSection < 0) {
         selectedIso = isoIndex;
-        selectedUniqueNumber = uniqueNumber;
+        selectedUniqueNumber = isotopeGid;
         selectedReact = reactIndex;
         break;
       }
@@ -769,16 +787,21 @@ collisionEvent(Particle particle)
   //    Tally the collision
   //--------------------------------------------------------------------------------------------------------------
 
-  // Set the reaction for this particle.
   m_collision_a++;
+
+  // Dans QS original, une particule peut se fissionner en 1 partie (une particule => une particule).
+  // {nOut = 1 / reactionType = Fission} possible.
+  #ifdef QS_LEGACY_COMPATIBILITY
+
+  // Set the reaction for this particle.
   NuclearDataReaction::Enum reactionType = m_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact]._reactionType;
 
   switch (reactionType) {
-  case NuclearDataReaction::Scatter:
-    m_scatter_a++;
-    break;
   case NuclearDataReaction::Absorption:
     m_absorb_a++;
+    break;
+  case NuclearDataReaction::Scatter:
+    m_scatter_a++;
     break;
   case NuclearDataReaction::Fission:
     m_fission_a++;
@@ -788,16 +811,32 @@ collisionEvent(Particle particle)
     ARCANE_ASSERT(false, "reactionType invalid");
   }
 
+  #endif
+
   if (nOut == 0) {
+    #ifndef QS_LEGACY_COMPATIBILITY
+    m_absorb_a++;
+    #endif
+
     return 0;
   }
 
   else if (nOut == 1) {
+    #ifndef QS_LEGACY_COMPATIBILITY
+    m_scatter_a++;
+    #endif
     updateTrajectory(energyOut[0], angleOut[0], particle);
     m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
+  // On enregistre les infos pour la future phase création des particules.
   else {
+    #ifndef QS_LEGACY_COMPATIBILITY
+    m_fission_a++;
+    m_produce_a += nOut;
+    #endif
+
+
     GlobalMutex::ScopedLock(m_mutex_extra);
     for (Integer secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++) {
       Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[particle]);
@@ -813,6 +852,7 @@ collisionEvent(Particle particle)
     m_local_ids_extra.add(particle.localId());
     m_local_ids_extra_energyOut_pSrc.add(energyOut[0]);
     m_local_ids_extra_angleOut_pSrc.add(angleOut[0]);
+
   }
 
   return nOut;
@@ -900,10 +940,19 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
 {
   ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
   ParticleVectorView viewNewP = m_particle_family->view(idsNew);
-  ENUMERATE_PARTICLE (iparticle, viewSrcP) {
-    Particle pNew(viewNewP[iparticle.index()].internal());
-    cloneParticle((*iparticle), pNew, rnsNew[iparticle.index()]);
-  }
+
+  // ENUMERATE_PARTICLE (ipartic, viewSrcP) {
+  //   Particle pNew(viewNewP[ipartic.index()].internal());
+  //   cloneParticle((*ipartic), pNew, rnsNew[ipartic.index()]);
+  // }
+
+  arcaneParallelFor(0, idsSrc.size(), [&](Integer begin,Integer size){
+    for (Integer i = begin; i < (begin+size); i++) {
+      Particle pSrc(viewSrcP[i].internal());
+      Particle pNew(viewNewP[i].internal());
+      cloneParticle(pSrc, pNew, rnsNew[i]);
+    }
+  });
 }
 
 /**
@@ -915,7 +964,7 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
  * @param rns La graine à donner à la particule destination.
  */
 void TrackingMCModule::
-cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
+cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
   m_particle_rns[pNew] = rns;
 
@@ -956,7 +1005,7 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
  * @param particle La particule à traiter.
  */
 void TrackingMCModule::
-updateTrajectory(Real energy, Real angle, Particle particle)
+updateTrajectory(const Real& energy, const Real& angle, Particle particle)
 {
   m_particle_kin_ene[particle] = energy;
   Real cosTheta = angle;
@@ -1002,23 +1051,19 @@ computeCrossSection()
  * @return Real La distance entre la particule et la prochaine collision.
  */
 void TrackingMCModule::
-weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
+weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
 {
-  // GlobalMutex::ScopedLock(m_mutex_total);
-  // Real precomputedCrossSection = m_total[cell][energyGroup];
-
-  // if (precomputedCrossSection > 0.0)
-  //   return precomputedCrossSection;
-
+  Real cell_number_density = m_cell_number_density[cell];
+  
   Integer nIsotopes = m_iso_gid[cell].size();
   Real sum = 0.0;
   for (Integer isoIndex = 0; isoIndex < nIsotopes; isoIndex++) {
-    sum += macroscopicCrossSection(-1, cell, isoIndex, energyGroup);
+    Real atom_fraction = m_atom_fraction[cell][isoIndex];
+    Integer isotopeGid = m_iso_gid[cell][isoIndex];
+    sum += macroscopicCrossSection(-1, cell_number_density, atom_fraction, isotopeGid, isoIndex, energyGroup);
   }
 
   m_total[cell][energyGroup] = sum;
-
-  //return sum;
 }
 
 /**
@@ -1032,23 +1077,23 @@ weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
  * @return Real 
  */
 Real TrackingMCModule::
-macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup)
+macroscopicCrossSection(const Integer& reactionIndex, 
+                        const Real& cell_number_density, 
+                        const Real& atom_fraction, 
+                        const Integer& isotopeGid, 
+                        const Integer& isoIndex, 
+                        const Integer& energyGroup)
 {
-  // Initialize various data items.
-
-  Real atom_fraction = m_atom_fraction[cell][isoIndex];
-
-  Real microscopicCrossSection = 0.0;
   // The cell number density is the fraction of the atoms in cell
   // volume of this isotope.  We set this (elsewhere) to 1/nIsotopes.
   // This is a statement that we treat materials as if all of their
   // isotopes are present in equal amounts
-  Real cell_number_density = m_cell_number_density[cell];
 
-  Integer isotopeGid = m_iso_gid[cell][isoIndex];
   if (atom_fraction == 0.0 || cell_number_density == 0.0) {
     return 1e-20;
   }
+
+  Real microscopicCrossSection = 0.0;
 
   if (reactionIndex < 0) {
     // Return total cross section
@@ -1167,9 +1212,9 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
  * @return Real 
  */
 Real TrackingMCModule::
-distanceToSegmentFacet(Real plane_tolerance,
-                       Real facet_normal_dot_direction_cosine,
-                       Real A, Real B, Real C, Real D,
+distanceToSegmentFacet(const Real& plane_tolerance,
+                       const Real& facet_normal_dot_direction_cosine,
+                       const Real& A, const Real& B, const Real& C, const Real& D,
                        const Real3& facet_coords0,
                        const Real3& facet_coords1,
                        const Real3& facet_coords2,
@@ -1408,7 +1453,7 @@ findMin(UniqueArray<T> array)
  * @param cos_Phi 
  */
 void TrackingMCModule::
-rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi)
+rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi)
 {
   // Calculate additional variables in the rotation matrix.
   Real cos_theta = m_particle_dir_cos[particle][MD_DirG];

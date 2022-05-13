@@ -50,15 +50,4 @@ enum ParticleState
   censusParticle  // Particule ayant fini le tracking actuel.
 };
 
-struct DistanceToFacet
-{
-    Real distance;
-    Integer facet;
-    
-    DistanceToFacet()
-    : distance(0.0),
-      facet(0)
-    {}
-};
-
 #endif
