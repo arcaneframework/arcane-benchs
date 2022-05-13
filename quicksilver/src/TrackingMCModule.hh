@@ -91,8 +91,6 @@ public ArcaneTrackingMCObject
   Int32UniqueArray m_local_ids_out;
   Int32UniqueArray m_rank_out;
 
-  Int32UniqueArray m_local_ids_in;
-
   std::atomic<Int64> m_num_segments_a{ 0 };
   std::atomic<Int64> m_escape_a{ 0 };
   std::atomic<Int64> m_census_a{ 0 };

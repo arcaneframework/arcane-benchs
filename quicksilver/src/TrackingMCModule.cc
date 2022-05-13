@@ -201,12 +201,14 @@ tracking()
   ParticleVectorView processingView = m_particle_family->view();
   ParticleVectorView inView;
 
+  Int32UniqueArray local_ids_in;
+  Int32UniqueArray extraClone;
+
   // Coordonnées des nodes (en cm).
   VariableNodeReal3& node_coord = nodesCoordinates();
 
   pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processingView.size() << " particles.";
 
-  Int32UniqueArray extraClone;
 
   IParticleExchanger* pe = options()->particleExchanger();
   //IAsyncParticleExchanger* ae = pe->asyncParticleExchanger();
@@ -273,29 +275,29 @@ tracking()
     collisionEventSuite();
 
     if (mesh()->parallelMng()->commSize() > 1) {
-      m_local_ids_in.clear();
+      local_ids_in.clear();
 
       // On essaye de recevoir tant que quelqu'un bosse encore.
       do {
         // Echange particles.
-        pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &m_local_ids_in, 0);
+        pe->exchangeItems(m_local_ids_out.size(), m_local_ids_out, m_rank_out, &local_ids_in, 0);
 
         done = ((mesh()->parallelMng()->reduce(
                 Parallel::ReduceMax,
-                m_local_ids_in.size() + m_local_ids_extra.size())) == 0);
+                local_ids_in.size() + m_local_ids_extra.size())) == 0);
 
 
         // pinfo(6) << "/////////";
         // pinfo(6) << "Proc#" << mesh()->parallelMng()->commRank();
         // pinfo(6) << "Nb Particles out : " << m_local_ids_out.size();
-        // pinfo(6) << "Nb Particles in : " << m_local_ids_in.size();
+        // pinfo(6) << "Nb Particles in : " << local_ids_in.size();
         // pinfo(6) << "/////////";
 
         m_rank_out.clear();
         m_local_ids_out.clear();
-      } while (m_local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
+      } while (local_ids_in.size() == 0 && m_local_ids_extra.size() == 0 && !done);
 
-      inView = m_particle_family->view(m_local_ids_in);
+      inView = m_particle_family->view(local_ids_in);
     }
 
     else if (m_local_ids_extra.size() == 0) {
@@ -537,18 +539,32 @@ collisionEventSuite()
   ParticleVectorView viewP = m_particle_family->view(particles_lid);
 
   // On effectue la suite de la collision.
-  for (Integer i = 0; i < particles_lid.size(); i++) {
-    Particle particle = Particle(viewP[i].internal());
-    updateTrajectory(m_local_ids_extra_energyOut[i], m_local_ids_extra_angleOut[i], particle);
-  }
+  arcaneParallelFor(0, viewP.size(), [&](Integer begin, Integer size) {
+    for (Integer i = begin; i < (begin+size); i++) {
+      Particle particle(viewP[i].internal());
+      updateTrajectory(m_local_ids_extra_energyOut[i], m_local_ids_extra_angleOut[i], particle);
+    }
+  });
+  // ENUMERATE_PARTICLE(ipartic, viewP) {
+  //   Integer index = ipartic.index();
+  //   updateTrajectory(m_local_ids_extra_energyOut[index], m_local_ids_extra_angleOut[index], (*ipartic));
+  // }
 
   viewP = m_particle_family->view(m_local_ids_extra);
 
-  for (Integer i = 0; i < m_local_ids_extra.size(); i++) {
-    Particle particle = Particle(viewP[i].internal());
-    updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
-    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
-  }
+  arcaneParallelFor(0, viewP.size(), [&](Integer begin, Integer size) {
+    for (Integer i = begin; i < (begin+size); i++) {
+      Particle particle(viewP[i].internal());
+      updateTrajectory(m_local_ids_extra_energyOut_pSrc[i], m_local_ids_extra_angleOut_pSrc[i], particle);
+      m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
+    }
+  });
+
+  // ENUMERATE_PARTICLE(ipartic, viewP) {
+  //   Integer index = ipartic.index();
+  //   updateTrajectory(m_local_ids_extra_energyOut_pSrc[index], m_local_ids_extra_angleOut_pSrc[index], (*ipartic));
+  //   m_particle_ene_grp[ipartic] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[ipartic]);
+  // }
 
   //m_local_ids_extra.copy(particles_lid);
 
@@ -769,16 +785,21 @@ collisionEvent(Particle particle)
   //    Tally the collision
   //--------------------------------------------------------------------------------------------------------------
 
-  // Set the reaction for this particle.
   m_collision_a++;
+
+  // Dans QS original, une particule peut se fissionner en 1 partie (une particule => une particule).
+  // {nOut = 1 / reactionType = Fission} possible.
+  #ifdef QS_LEGACY_COMPATIBILITY
+
+  // Set the reaction for this particle.
   NuclearDataReaction::Enum reactionType = m_nuclearData->_isotopes[selectedUniqueNumber]._species[0]._reactions[selectedReact]._reactionType;
 
   switch (reactionType) {
-  case NuclearDataReaction::Scatter:
-    m_scatter_a++;
-    break;
   case NuclearDataReaction::Absorption:
     m_absorb_a++;
+    break;
+  case NuclearDataReaction::Scatter:
+    m_scatter_a++;
     break;
   case NuclearDataReaction::Fission:
     m_fission_a++;
@@ -788,17 +809,32 @@ collisionEvent(Particle particle)
     ARCANE_ASSERT(false, "reactionType invalid");
   }
 
+  #endif
+
   if (nOut == 0) {
+    #ifndef QS_LEGACY_COMPATIBILITY
+    m_absorb_a++;
+    #endif
+
     return 0;
   }
 
   else if (nOut == 1) {
+    #ifndef QS_LEGACY_COMPATIBILITY
+    m_scatter_a++;
+    #endif
     updateTrajectory(energyOut[0], angleOut[0], particle);
     m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
   // On enregistre les infos pour la future phase création des particules.
   else {
+    #ifndef QS_LEGACY_COMPATIBILITY
+    m_fission_a++;
+    m_produce_a += nOut;
+    #endif
+
+
     GlobalMutex::ScopedLock(m_mutex_extra);
     for (Integer secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++) {
       Int64 rns = rngSpawn_Random_Number_Seed(&m_particle_rns[particle]);
@@ -814,6 +850,7 @@ collisionEvent(Particle particle)
     m_local_ids_extra.add(particle.localId());
     m_local_ids_extra_energyOut_pSrc.add(energyOut[0]);
     m_local_ids_extra_angleOut_pSrc.add(angleOut[0]);
+
   }
 
   return nOut;
@@ -901,10 +938,19 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
 {
   ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
   ParticleVectorView viewNewP = m_particle_family->view(idsNew);
-  ENUMERATE_PARTICLE (iparticle, viewSrcP) {
-    Particle pNew(viewNewP[iparticle.index()].internal());
-    cloneParticle((*iparticle), pNew, rnsNew[iparticle.index()]);
-  }
+
+  // ENUMERATE_PARTICLE (ipartic, viewSrcP) {
+  //   Particle pNew(viewNewP[ipartic.index()].internal());
+  //   cloneParticle((*ipartic), pNew, rnsNew[ipartic.index()]);
+  // }
+
+  arcaneParallelFor(0, idsSrc.size(), [&](Integer begin,Integer size){
+    for (Integer i = begin; i < (begin+size); i++) {
+      Particle pSrc(viewSrcP[i].internal());
+      Particle pNew(viewNewP[i].internal());
+      cloneParticle(pSrc, pNew, rnsNew[i]);
+    }
+  });
 }
 
 /**
@@ -1035,21 +1081,19 @@ weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
 Real TrackingMCModule::
 macroscopicCrossSection(const Integer& reactionIndex, Cell cell, const Integer& isoIndex, const Integer& energyGroup)
 {
-  // Initialize various data items.
-
-  Real atom_fraction = m_atom_fraction[cell][isoIndex];
-
-  Real microscopicCrossSection = 0.0;
   // The cell number density is the fraction of the atoms in cell
   // volume of this isotope.  We set this (elsewhere) to 1/nIsotopes.
   // This is a statement that we treat materials as if all of their
   // isotopes are present in equal amounts
   Real cell_number_density = m_cell_number_density[cell];
+  Real atom_fraction = m_atom_fraction[cell][isoIndex];
 
-  Integer isotopeGid = m_iso_gid[cell][isoIndex];
   if (atom_fraction == 0.0 || cell_number_density == 0.0) {
     return 1e-20;
   }
+
+  Integer isotopeGid = m_iso_gid[cell][isoIndex];
+  Real microscopicCrossSection = 0.0;
 
   if (reactionIndex < 0) {
     // Return total cross section
