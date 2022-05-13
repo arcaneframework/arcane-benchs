@@ -77,6 +77,14 @@ sampleCollision(Real incidentEnergy,
   }
 }
 
+// Return the cross section for this energy group
+Real NuclearDataReaction::
+getCrossSection(Integer group)
+{
+  ARCANE_ASSERT(group < _crossSection.size(), "group >= _crossSection.size()");
+  return _crossSection[group];
+}
+
 // Then call this for each reaction to set cross section values
 void NuclearDataSpecies::
 addReaction(NuclearDataReaction::Enum type, Real nuBar,
@@ -91,7 +99,7 @@ addReaction(NuclearDataReaction::Enum type, Real nuBar,
 // Set up the energies boundaries of the neutron
 NuclearData::
 NuclearData(Integer numGroups, Real energyLow, Real energyHigh)
-: _energies(numGroups + 1)
+: _energies(numGroups + 1), m_totalCrossSection(0), m_totalCrossSectionAC(false)
 {
   ARCANE_ASSERT(energyLow < energyHigh, "energyLow >= energyHigh");
   _energies[0] = energyLow;
@@ -171,15 +179,9 @@ addIsotope(Integer nReactions,
   return _isotopes.size() - 1;
 }
 
-// Return the cross section for this energy group
-Real NuclearDataReaction::
-getCrossSection(Integer group)
-{
-  ARCANE_ASSERT(group < _crossSection.size(), "group >= _crossSection.size()");
-  return _crossSection[group];
-}
 
-Integer NuclearData::getNumberReactions(Integer isotopeIndex)
+Integer NuclearData::
+getNumberReactions(Integer isotopeIndex)
 {
   ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   return _isotopes[isotopeIndex]._species[0]._reactions.size();
@@ -216,16 +218,15 @@ getEnergyGroup(Real energy)
 Real NuclearData::
 getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
+  if(m_totalCrossSectionAC) return m_totalCrossSection;
+  m_totalCrossSectionAC = true;
   ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   Integer numReacts = _isotopes[isotopeIndex]._species[0]._reactions.size();
-  Real totalCrossSection = 0.0;
+  m_totalCrossSection = 0.0;
   for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
-    totalCrossSection += _isotopes[isotopeIndex]
-                         ._species[0]
-                         ._reactions[reactIndex]
-                         .getCrossSection(group);
+    m_totalCrossSection += getReactionCrossSection( reactIndex, isotopeIndex,  group);
   }
-  return totalCrossSection;
+  return m_totalCrossSection;
 }
 
 // Return the total cross section for this energy group

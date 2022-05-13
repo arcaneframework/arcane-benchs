@@ -362,7 +362,7 @@ populationControl()
  * @param rns La graine à donner à la particule.
  */
 void SamplingMCModule::
-initParticle(Particle p, Int64 rns)
+initParticle(Particle p, const Int64& rns)
 {
   m_particle_rns[p] = rns;
   m_particle_coord[p][MD_DirX] = 0.0;
@@ -425,7 +425,7 @@ cloneParticles(Int32UniqueArray idsSrc,
  * @param rns La graine à donner à la particule destination.
  */
 void SamplingMCModule::
-cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
+cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
   m_particle_rns[pNew] = rns;
 

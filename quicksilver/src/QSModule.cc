@@ -167,6 +167,7 @@ initMesh()
     // (en regardant la cellule (0, 0, 0)).
     Real sens = (iface.index() < 3 ? -1.0 : 1.0);
 
+    // Calcul du vecteur normal à la face, puis normalisation.
     Real aa = (((n1.y - n0.y) * (n2.z - n0.z)) - ((n1.z - n0.z) * (n2.y - n0.y)) == 0 ? 0 : sens);
     Real bb = (((n1.z - n0.z) * (n2.x - n0.x)) - ((n1.x - n0.x) * (n2.z - n0.z)) == 0 ? 0 : sens);
     Real cc = (((n1.x - n0.x) * (n2.y - n0.y)) - ((n1.y - n0.y) * (n2.x - n0.x)) == 0 ? 0 : sens);
@@ -306,7 +307,7 @@ cycleFinalizeTallies()
  * @return ParticleEvent La condition aux bords de maillage.
  */
 ParticleEvent QSModule::
-getBoundaryCondition(Integer pos)
+getBoundaryCondition(const Integer& pos)
 {
   switch (options()->getBoundaryCondition()) {
   case eBoundaryCondition::REFLECT:

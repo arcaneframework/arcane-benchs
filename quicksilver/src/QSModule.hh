@@ -51,7 +51,7 @@ public ArcaneQSObject
   void cycleFinalizeTallies();
   void initMesh();
   void initTallies();
-  ParticleEvent getBoundaryCondition(Integer pos);
+  ParticleEvent getBoundaryCondition(const Integer& pos);
 };
 
 /*---------------------------------------------------------------------------*/

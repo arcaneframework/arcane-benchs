@@ -349,7 +349,7 @@ updateTallies()
  * @return false Si la cellule n'a pas son centre dans le matériau.
  */
 bool TrackingMCModule::
-isInGeometry(Integer pos, Cell cell)
+isInGeometry(const Integer& pos, Cell cell)
 {
   bool inside = false;
   switch (options()->geometry[pos].getShape()) {
@@ -797,6 +797,7 @@ collisionEvent(Particle particle)
     m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
+  // On enregistre les infos pour la future phase création des particules.
   else {
     GlobalMutex::ScopedLock(m_mutex_extra);
     for (Integer secondaryIndex = 1; secondaryIndex < nOut; secondaryIndex++) {
@@ -915,7 +916,7 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
  * @param rns La graine à donner à la particule destination.
  */
 void TrackingMCModule::
-cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
+cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
   m_particle_rns[pNew] = rns;
 
@@ -956,7 +957,7 @@ cloneParticle(Particle pSrc, Particle pNew, Int64 rns)
  * @param particle La particule à traiter.
  */
 void TrackingMCModule::
-updateTrajectory(Real energy, Real angle, Particle particle)
+updateTrajectory(const Real& energy, const Real& angle, Particle particle)
 {
   m_particle_kin_ene[particle] = energy;
   Real cosTheta = angle;
@@ -1002,7 +1003,7 @@ computeCrossSection()
  * @return Real La distance entre la particule et la prochaine collision.
  */
 void TrackingMCModule::
-weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
+weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
 {
   // GlobalMutex::ScopedLock(m_mutex_total);
   // Real precomputedCrossSection = m_total[cell][energyGroup];
@@ -1032,7 +1033,7 @@ weightedMacroscopicCrossSection(Cell cell, Integer energyGroup)
  * @return Real 
  */
 Real TrackingMCModule::
-macroscopicCrossSection(Integer reactionIndex, Cell cell, Integer isoIndex, Integer energyGroup)
+macroscopicCrossSection(const Integer& reactionIndex, Cell cell, const Integer& isoIndex, const Integer& energyGroup)
 {
   // Initialize various data items.
 
@@ -1167,9 +1168,9 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
  * @return Real 
  */
 Real TrackingMCModule::
-distanceToSegmentFacet(Real plane_tolerance,
-                       Real facet_normal_dot_direction_cosine,
-                       Real A, Real B, Real C, Real D,
+distanceToSegmentFacet(const Real& plane_tolerance,
+                       const Real& facet_normal_dot_direction_cosine,
+                       const Real& A, const Real& B, const Real& C, const Real& D,
                        const Real3& facet_coords0,
                        const Real3& facet_coords1,
                        const Real3& facet_coords2,
@@ -1408,7 +1409,7 @@ findMin(UniqueArray<T> array)
  * @param cos_Phi 
  */
 void TrackingMCModule::
-rotate3DVector(Particle particle, Real sin_Theta, Real cos_Theta, Real sin_Phi, Real cos_Phi)
+rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi)
 {
   // Calculate additional variables in the rotation matrix.
   Real cos_theta = m_particle_dir_cos[particle][MD_DirG];

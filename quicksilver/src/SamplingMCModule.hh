@@ -65,11 +65,11 @@ public ArcaneSamplingMCObject
   void setStatus();
   void sourceParticles();
   void populationControl();
+  void initParticle(Particle p, const Int64& rns);
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
-  void cloneParticle(Particle pSrc, Particle pNew, Int64 rns);
+  void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
   Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);
   void rouletteLowWeightParticles();
-  void initParticle(Particle p, Int64 rns);
   void generate3DCoordinate(Particle p, VariableNodeReal3& node_coord);
   void sampleIsotropic(Particle p);
   Real getSpeedFromEnergy(Particle p);
