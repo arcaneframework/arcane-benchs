@@ -15,7 +15,6 @@
 #include <arcane/Concurrency.h>
 #include <map>
 #include <set>
-#include "MC_Facet_Geometry.hh"
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
 
@@ -865,26 +864,12 @@ facetCrossingEvent(Particle particle)
 void TrackingMCModule::
 reflectParticle(Particle particle, VariableNodeReal3& node_coord)
 {
-  Integer facet = m_particle_facet[particle];
+  Real3 facet_normal(m_normalFace[m_particle_face[particle]]);
 
-  Cell cell = particle.cell();
-  Face face = cell.face(m_particle_face[particle]);
-
-  Integer first_pos_node = (scan_order[m_particle_face[particle]] ? ((facet == 3) ? 0 : facet + 1) : facet);
-  Integer second_pos_node = (scan_order[m_particle_face[particle]] ? facet : ((facet == 3) ? 0 : facet + 1));
-
-  Node first_node = face.node(first_pos_node);
-  Node second_node = face.node(second_pos_node);
-
-  Real3 point0(node_coord[first_node]);
-  Real3 point1(node_coord[second_node]);
-  Real3 point2(m_face_center_coord[face]);
-
-  MC_General_Plane plane(point0, point1, point2);
-
-  Real3 facet_normal(plane.A, plane.B, plane.C);
-
-  Real dot = 2.0 * (m_particle_dir_cos[particle][MD_DirA] * facet_normal.x + m_particle_dir_cos[particle][MD_DirB] * facet_normal.y + m_particle_dir_cos[particle][MD_DirG] * facet_normal.z);
+  Real dot = 2.0 * (
+    m_particle_dir_cos[particle][MD_DirA] * facet_normal.x + 
+    m_particle_dir_cos[particle][MD_DirB] * facet_normal.y + 
+    m_particle_dir_cos[particle][MD_DirG] * facet_normal.z);
 
   // do not reflect a particle that is ALREADY pointing inward
   if (dot > 0) {
@@ -1093,71 +1078,75 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
   DistanceToFacet nearest_facet;
   Integer retry = 1;
 
+  Real plane_tolerance = 1e-16 * (
+    m_particle_coord[particle][MD_DirX] * m_particle_coord[particle][MD_DirX] + 
+    m_particle_coord[particle][MD_DirY] * m_particle_coord[particle][MD_DirY] + 
+    m_particle_coord[particle][MD_DirZ] * m_particle_coord[particle][MD_DirZ]);
 
   while (retry) // will break out when distance is found
   {
     // Determine the distance to each facet of the cell.
     // (1e-8 * Radius)^2
-    Real plane_tolerance = 1e-16 * (m_particle_coord[particle][MD_DirX] * m_particle_coord[particle][MD_DirX] + m_particle_coord[particle][MD_DirY] * m_particle_coord[particle][MD_DirY] + m_particle_coord[particle][MD_DirZ] * m_particle_coord[particle][MD_DirZ]);
 
     DistanceToFacet distance_to_facet[24];
 
-    Integer facet_index = -1;
     ENUMERATE_FACE (iface, cell.faces()) {
       Face face = *iface;
+      Real3 point2(m_face_center_coord[iface]);
 
-      for (Integer i = 0; i < 4; i++) {
-        facet_index++;
+      Integer index = iface.index();
+      Integer facet_index = index * 4;
 
-        Integer first_pos_node = (scan_order[iface.index()] ? ((i == 3) ? 0 : i + 1) : i);
-        Integer second_pos_node = (scan_order[iface.index()] ? i : ((i == 3) ? 0 : i + 1));
+      Real dd = -1.0 * 
+        (m_normalFace[index].x * point2.x +
+         m_normalFace[index].y * point2.y +
+         m_normalFace[index].z * point2.z);
 
-        Node first_node = face.node(first_pos_node);
-        Node second_node = face.node(second_pos_node);
+      Real facet_normal_dot_direction_cosine =
+       (m_normalFace[index].x * m_particle_dir_cos[particle][MD_DirA] +
+        m_normalFace[index].y * m_particle_dir_cos[particle][MD_DirB] +
+        m_normalFace[index].z * m_particle_dir_cos[particle][MD_DirG]);
 
-        Real3 point0(node_coord[first_node]);
-        Real3 point1(node_coord[second_node]);
-        Real3 point2(m_face_center_coord[iface]);
+      // Consider only those facets whose outer normals have
+      // a positive dot product with the direction cosine.
+      // I.e. the particle is LEAVING the cell.
+      if (facet_normal_dot_direction_cosine <= 0.0) {
+        for (Integer i = 0; i < 4; i++) {
+          distance_to_facet[facet_index+i].distance = PhysicalConstants::_hugeDouble;
+        }
+      }
+      else {
+        for (Integer i = 0; i < 4; i++) {
 
-        distance_to_facet[facet_index].distance = PhysicalConstants::_hugeDouble;
+          Node first_node = face.node(i);
+          Node second_node = face.node((i == 3) ? 0 : i + 1);
 
-        MC_General_Plane plane(point0, point1, point2);
+          Real3 point0(node_coord[first_node]);
+          Real3 point1(node_coord[second_node]);
 
-        Real facet_normal_dot_direction_cosine =
-        (plane.A * m_particle_dir_cos[particle][MD_DirA] +
-         plane.B * m_particle_dir_cos[particle][MD_DirB] +
-         plane.C * m_particle_dir_cos[particle][MD_DirG]);
-
-        // Consider only those facets whose outer normals have
-        // a positive dot product with the direction cosine.
-        // I.e. the particle is LEAVING the cell.
-        if (facet_normal_dot_direction_cosine <= 0.0)
-          continue;
-
-        Real t = distanceToSegmentFacet(
-        plane_tolerance,
-        facet_normal_dot_direction_cosine, plane.A, plane.B, plane.C, plane.D,
-        point0, point1, point2,
-        particle, false);
-
-        distance_to_facet[facet_index].distance = t;
+          distance_to_facet[facet_index+i].distance = distanceToSegmentFacet(
+            plane_tolerance,
+            facet_normal_dot_direction_cosine, 
+            m_normalFace[index].x, m_normalFace[index].y, m_normalFace[index].z, dd,
+            point2, point0, point1,
+            particle, false);
+        }
       }
     }
 
     nearest_facet = findNearestFacet(
-    particle,
-    iteration, move_factor,
-    distance_to_facet,
-    retry);
+      particle,
+      iteration, move_factor,
+      distance_to_facet,
+      retry);
   }
 
   if (nearest_facet.distance < 0) {
     nearest_facet.distance = 0;
   }
 
-  if (nearest_facet.distance >= PhysicalConstants::_hugeDouble) {
-    ARCANE_ASSERT(false, "nearest_facet.distance_to_facet < PhysicalConstants::_hugeDouble");
-  }
+  ARCANE_ASSERT(nearest_facet.distance < PhysicalConstants::_hugeDouble, "nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble");
+  
   return nearest_facet;
 }
 

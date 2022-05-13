@@ -61,6 +61,4 @@ struct DistanceToFacet
     {}
 };
 
-static bool scan_order[]  = {true, true, false, false, false, true};
-
 #endif
