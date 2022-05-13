@@ -752,16 +752,18 @@ collisionEvent(Particle particle)
   Integer selectedUniqueNumber = -1;
   Integer selectedReact = -1;
   Integer numIsos = m_iso_gid[cell].size();
+  Real cell_number_density = m_cell_number_density[cell];
 
   for (Integer isoIndex = 0; isoIndex < numIsos && currentCrossSection >= 0; isoIndex++) {
-    Integer uniqueNumber = m_iso_gid[cell][isoIndex];
-    Integer numReacts = m_nuclearData->getNumberReactions(uniqueNumber);
+    Real atom_fraction = m_atom_fraction[cell][isoIndex];
+    Integer isotopeGid = m_iso_gid[cell][isoIndex];
+    Integer numReacts = m_nuclearData->getNumberReactions(isotopeGid);
     for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
-      currentCrossSection -= macroscopicCrossSection(reactIndex, cell,
+      currentCrossSection -= macroscopicCrossSection(reactIndex, cell_number_density, atom_fraction, isotopeGid,
                                                      isoIndex, m_particle_ene_grp[particle]);
       if (currentCrossSection < 0) {
         selectedIso = isoIndex;
-        selectedUniqueNumber = uniqueNumber;
+        selectedUniqueNumber = isotopeGid;
         selectedReact = reactIndex;
         break;
       }
@@ -1051,21 +1053,17 @@ computeCrossSection()
 void TrackingMCModule::
 weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
 {
-  // GlobalMutex::ScopedLock(m_mutex_total);
-  // Real precomputedCrossSection = m_total[cell][energyGroup];
-
-  // if (precomputedCrossSection > 0.0)
-  //   return precomputedCrossSection;
-
+  Real cell_number_density = m_cell_number_density[cell];
+  
   Integer nIsotopes = m_iso_gid[cell].size();
   Real sum = 0.0;
   for (Integer isoIndex = 0; isoIndex < nIsotopes; isoIndex++) {
-    sum += macroscopicCrossSection(-1, cell, isoIndex, energyGroup);
+    Real atom_fraction = m_atom_fraction[cell][isoIndex];
+    Integer isotopeGid = m_iso_gid[cell][isoIndex];
+    sum += macroscopicCrossSection(-1, cell_number_density, atom_fraction, isotopeGid, isoIndex, energyGroup);
   }
 
   m_total[cell][energyGroup] = sum;
-
-  //return sum;
 }
 
 /**
@@ -1079,20 +1077,22 @@ weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
  * @return Real 
  */
 Real TrackingMCModule::
-macroscopicCrossSection(const Integer& reactionIndex, Cell cell, const Integer& isoIndex, const Integer& energyGroup)
+macroscopicCrossSection(const Integer& reactionIndex, 
+                        const Real& cell_number_density, 
+                        const Real& atom_fraction, 
+                        const Integer& isotopeGid, 
+                        const Integer& isoIndex, 
+                        const Integer& energyGroup)
 {
   // The cell number density is the fraction of the atoms in cell
   // volume of this isotope.  We set this (elsewhere) to 1/nIsotopes.
   // This is a statement that we treat materials as if all of their
   // isotopes are present in equal amounts
-  Real cell_number_density = m_cell_number_density[cell];
-  Real atom_fraction = m_atom_fraction[cell][isoIndex];
 
   if (atom_fraction == 0.0 || cell_number_density == 0.0) {
     return 1e-20;
   }
 
-  Integer isotopeGid = m_iso_gid[cell][isoIndex];
   Real microscopicCrossSection = 0.0;
 
   if (reactionIndex < 0) {

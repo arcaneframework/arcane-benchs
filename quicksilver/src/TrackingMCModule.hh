@@ -124,7 +124,12 @@ public ArcaneTrackingMCObject
   void updateTrajectory(const Real& energy, const Real& angle, Particle particle);
   void computeCrossSection();
   void weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
-  Real macroscopicCrossSection(const Integer& reactionIndex, Cell cell, const Integer& isoIndex, const Integer& energyGroup);
+  Real macroscopicCrossSection(const Integer& reactionIndex, 
+                        const Real& cell_number_density, 
+                        const Real& atom_fraction, 
+                        const Integer& isotopeGid, 
+                        const Integer& isoIndex, 
+                        const Integer& energyGroup);
   DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord);
   Real distanceToSegmentFacet(const Real& plane_tolerance,
                               const Real& facet_normal_dot_direction_cosine,
