@@ -1037,8 +1037,23 @@ computeCrossSection()
 {
   arcaneParallelForeach(ownCells(), [&](CellVectorView cells) {
     ENUMERATE_CELL (icell, cells) {
-      for (Integer i = 0; i < m_n_groups(); i++) {
-        weightedMacroscopicCrossSection((*icell), i);
+
+      const Real cell_number_density = m_cell_number_density[icell];
+      ConstArrayView<Real> atom_fraction_av = m_atom_fraction[icell];
+      ConstArrayView<Integer> iso_gid_av = m_iso_gid[icell];
+      ArrayView<Real> total = m_total[icell];
+      Integer nIsotopes = iso_gid_av.size();
+
+      for (Integer energyGroup = 0; energyGroup < m_n_groups(); energyGroup++) {
+        Real sum = 0.0;
+
+        for (Integer isoIndex = 0; isoIndex < nIsotopes; isoIndex++) {
+          const Real atom_fraction = atom_fraction_av[isoIndex];
+          const Integer isotope_gid = iso_gid_av[isoIndex];
+          sum += macroscopicCrossSection(-1, cell_number_density, atom_fraction, isotope_gid, isoIndex, energyGroup);
+        }
+
+        total[energyGroup] = sum;
       }
     }
   });
