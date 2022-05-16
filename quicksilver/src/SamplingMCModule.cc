@@ -138,6 +138,11 @@ void SamplingMCModule::
 sourceParticles()
 {
   Real local_weight_particles = 0;
+  Real total_weight_particles = 0;
+  Int64 num_particles = options()->getNParticles();
+  Int64 particle_count = 0;
+
+  #if 1 //def QS_LEGACY_COMPATIBILITY
 
   // On regarde le nombre de particule que chaque cellule générera.
   ENUMERATE_CELL (icell, ownCells()) {
@@ -146,21 +151,16 @@ sourceParticles()
     local_weight_particles += cell_weight_particles;
   }
 
-  Real total_weight_particles = 0;
 
   total_weight_particles = mesh()->parallelMng()->reduce(
   Parallel::ReduceSum, local_weight_particles);
 
-  Int64 num_particles = options()->getNParticles();
-
   Real source_fraction = 0.1;
   Real source_particle_weight =
   total_weight_particles / (source_fraction * num_particles);
-
   // Store the source particle weight for later use.
   m_source_particle_weight = source_particle_weight;
 
-  Int64 particle_count = 0;
   // Int64UniqueArray num_particles_cells_decal(ownCells().size()+1);
   // num_particles_cells_decal[0] = 0;
 
@@ -174,6 +174,24 @@ sourceParticles()
     // num_particles_cells_decal[icell.localId()] = particle_count;
   }
 
+  #else
+
+  // On regarde le nombre de particule que chaque cellule générera.
+  ENUMERATE_CELL (icell, ownCells()) {
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell];
+    local_weight_particles += cell_weight_particles;
+  }
+
+  Real source_particle_weight = 1;
+
+  // Store the source particle weight for later use.
+  m_source_particle_weight = source_particle_weight;
+
+  particle_count = local_weight_particles;
+
+  #endif
+  
+
   Int64UniqueArray uids(particle_count);
   Int32UniqueArray local_id_cells(particle_count);
   Int32UniqueArray particles_lid(particle_count);
@@ -183,8 +201,11 @@ sourceParticles()
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.
   ENUMERATE_CELL (icell, ownCells()) {
-    Real cell_weight_particles =
-    m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+  #if 1 //def QS_LEGACY_COMPATIBILITY
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+  #else
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell];
+  #endif
     Real cell_num_particles_float =
     cell_weight_particles / source_particle_weight;
     Integer cell_num_particles = (Integer)cell_num_particles_float;

@@ -66,7 +66,7 @@ sampleCollision(Real incidentEnergy,
     Integer numParticleOut = (Integer)(_nuBar + rngSample(seed));
     ARCANE_ASSERT(numParticleOut <= max_production_size, "numParticleOut > max_production_size");
 #else
-    Integer numParticleOut = (Integer)((_nuBar * rngSample(seed) * max_production_size) % max_production_size);
+    Integer numParticleOut = ((Integer)(_nuBar * rngSample(seed) * max_production_size) % max_production_size);
 #endif
     nOut = numParticleOut;
     for (Integer outIndex = 0; outIndex < numParticleOut; outIndex++) {
