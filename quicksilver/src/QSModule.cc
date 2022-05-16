@@ -112,7 +112,7 @@ initMesh()
       m_face_center_coord[iface][MD_DirX] /= 4;
       m_face_center_coord[iface][MD_DirY] /= 4;
       m_face_center_coord[iface][MD_DirZ] /= 4;
-      
+
       m_cell_center_coord[icell][MD_DirX] += m_face_center_coord[iface][MD_DirX];
       m_cell_center_coord[icell][MD_DirY] += m_face_center_coord[iface][MD_DirY];
       m_cell_center_coord[icell][MD_DirZ] += m_face_center_coord[iface][MD_DirZ];
@@ -129,7 +129,7 @@ initMesh()
       // Si la face est au bord du domaine entier.
       if (face.isSubDomainBoundary()) {
         // D'origine, dans le code QS, dans le cas octant :
-        //   les faces 0, 1, 2 sont escape 
+        //   les faces 0, 1, 2 sont escape
         //   les faces 3, 4, 5 sont reflection
         m_boundary_cond[iface] = getBoundaryCondition(iface.index());
       }
@@ -154,16 +154,15 @@ initMesh()
     m_volume[icell] = volume;
   }
 
-  m_normalFace.resize(6);
-  ENUMERATE_FACE(iface, ((CellVectorView) ownCells().view())[0].faces())
-  {
+  m_normal_face.resize(6);
+  ENUMERATE_FACE (iface, ((CellVectorView)ownCells().view())[0].faces()) {
     Face face = (*iface);
     Real3 n0 = m_face_center_coord[iface];
     Real3 n1 = node_coord[face.node(0)];
     Real3 n2 = node_coord[face.node(1)];
 
     // Les trois premières faces sont les faces externes,
-    // les trois suivantes sont internes 
+    // les trois suivantes sont internes
     // (en regardant la cellule (0, 0, 0)).
     Real sens = (iface.index() < 3 ? -1.0 : 1.0);
 
@@ -172,7 +171,7 @@ initMesh()
     Real bb = (((n1.z - n0.z) * (n2.x - n0.x)) - ((n1.x - n0.x) * (n2.z - n0.z)) == 0 ? 0 : sens);
     Real cc = (((n1.x - n0.x) * (n2.y - n0.y)) - ((n1.y - n0.y) * (n2.x - n0.x)) == 0 ? 0 : sens);
 
-    m_normalFace[iface.index()] = Real3(aa, bb, cc);
+    m_normal_face[iface.index()] = Real3(aa, bb, cc);
   }
 
   m_total.resize(m_n_groups());
@@ -216,8 +215,8 @@ cycleFinalizeTallies()
 
   // Somme des m_scalar_flux_tally.
   Real sum_scalar_flux_tally = 0.0;
-  ENUMERATE_CELL(icell, ownCells()){
-    for(Integer i = 0; i < m_n_groups(); i++){
+  ENUMERATE_CELL (icell, ownCells()) {
+    for (Integer i = 0; i < m_n_groups(); i++) {
       sum_scalar_flux_tally += m_scalar_flux_tally[icell][i];
       m_scalar_flux_tally[icell][i] = 0.0;
     }

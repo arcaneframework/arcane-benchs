@@ -11,6 +11,7 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
+#include "structEnum.hh"
 #include <arcane/IAsyncParticleExchanger.h>
 #include <arcane/IItemFamily.h>
 #include <arcane/IMesh.h>
@@ -19,14 +20,13 @@
 #include <arcane/IParticleFamily.h>
 #include <arcane/ITimeLoopMng.h>
 #include <arcane/ModuleBuildInfo.h>
+#include <arcane/Timer.h>
 #include <arcane/materials/IMeshMaterialMng.h>
 #include <arcane/materials/MaterialVariableBuildInfo.h>
 #include <arcane/materials/MeshEnvironmentBuildInfo.h>
 #include <arcane/materials/MeshMaterialModifier.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "arcane/Timer.h"
-#include "structEnum.hh"
 
 #include "TrackingMC_axl.h"
 
@@ -35,15 +35,18 @@
 using namespace Arcane;
 using namespace Arcane::Materials;
 
+/**
+ * @brief Structure simple permettant de stocker la distance d'une facet à une particule.
+ */
 struct DistanceToFacet
 {
-    Real distance;
-    Integer facet;
-    
-    DistanceToFacet()
-    : distance(0.0),
-      facet(0)
-    {}
+  Real distance;
+  Integer facet;
+
+  DistanceToFacet()
+  : distance(0.0)
+  , facet(0)
+  {}
 };
 
 /**
@@ -51,8 +54,7 @@ struct DistanceToFacet
  * Module permettant de suivre les particules contenues dans la famille
  * jusqu'a leur temps de census (ou leur sortie de maillage).
  */
-class TrackingMCModule : 
-public ArcaneTrackingMCObject
+class TrackingMCModule : public ArcaneTrackingMCObject
 {
  public:
   explicit TrackingMCModule(const ModuleBuildInfo& mbi)
@@ -60,6 +62,19 @@ public ArcaneTrackingMCObject
   , m_particle_family(nullptr)
   , m_material_mng(nullptr)
   , m_timer(nullptr)
+  , m_nuclearData(nullptr)
+  , m_exited_particles_local_ids(0)
+  , m_extra_particles_local_ids(0)
+  , m_extra_particles_particle_src(0)
+  , m_extra_particles_cellid_dst(0)
+  , m_extra_particles_global_id(0)
+  , m_extra_particles_rns(0)
+  , m_extra_particles_energy_out(0)
+  , m_extra_particles_angle_out(0)
+  , m_extra_particles_energy_out_particle_src(0)
+  , m_extra_particles_angle_out_particle_src(0)
+  , m_outgoing_particles_local_ids(0)
+  , m_outgoing_particles_rank_to(0)
   {}
 
  public:
@@ -67,29 +82,31 @@ public ArcaneTrackingMCObject
   void cycleTracking() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 3, 0); }
 
  protected:
   IItemFamily* m_particle_family;
 
-  Arcane::Materials::IMeshMaterialMng* m_material_mng;
+  IMeshMaterialMng* m_material_mng;
   NuclearData* m_nuclearData;
+  Timer* m_timer;
 
-  Int32UniqueArray m_local_ids_exit;
+  Int32UniqueArray m_exited_particles_local_ids;
 
-  Int32UniqueArray m_local_ids_extra;
+  // Les particules "extra" sont les particules qui n'ont pas fini leur itération
+  // (et donc necessite une autre sous-itération).
+  Int32UniqueArray m_extra_particles_local_ids;
+  Int32UniqueArray m_extra_particles_particle_src; //Particle localId source
+  Int32UniqueArray m_extra_particles_cellid_dst; //Cell localId dst
+  Int64UniqueArray m_extra_particles_global_id; //Futur globalId
+  Int64UniqueArray m_extra_particles_rns; //Futur RNS
+  RealUniqueArray m_extra_particles_energy_out; //updateTrajectory
+  RealUniqueArray m_extra_particles_angle_out; //updateTrajectory
+  RealUniqueArray m_extra_particles_energy_out_particle_src; //updateTrajectory
+  RealUniqueArray m_extra_particles_angle_out_particle_src; //updateTrajectory
 
-  Int32UniqueArray m_local_ids_extra_srcP; //Particle localId source
-  Int32UniqueArray m_local_ids_extra_cellId; //Cell localId dst
-  Int64UniqueArray m_local_ids_extra_gId; //Futur globalId
-  Int64UniqueArray m_local_ids_extra_rns; //Futur RNS
-  RealUniqueArray m_local_ids_extra_energyOut; //updateTrajectory
-  RealUniqueArray m_local_ids_extra_angleOut; //updateTrajectory
-  RealUniqueArray m_local_ids_extra_energyOut_pSrc; //updateTrajectory
-  RealUniqueArray m_local_ids_extra_angleOut_pSrc; //updateTrajectory
-
-  Int32UniqueArray m_local_ids_out;
-  Int32UniqueArray m_rank_out;
+  Int32UniqueArray m_outgoing_particles_local_ids;
+  Int32UniqueArray m_outgoing_particles_rank_to;
 
   std::atomic<Int64> m_num_segments_a{ 0 };
   std::atomic<Int64> m_escape_a{ 0 };
@@ -104,8 +121,6 @@ public ArcaneTrackingMCObject
   GlobalMutex m_mutex_extra;
   GlobalMutex m_mutex_out;
   GlobalMutex m_mutex_flux;
-
-  Timer* m_timer;
 
  protected:
   void tracking();
@@ -124,12 +139,12 @@ public ArcaneTrackingMCObject
   void updateTrajectory(const Real& energy, const Real& angle, Particle particle);
   void computeCrossSection();
   void weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
-  Real macroscopicCrossSection(const Integer& reactionIndex, 
-                        const Real& cell_number_density, 
-                        const Real& atom_fraction, 
-                        const Integer& isotopeGid, 
-                        const Integer& isoIndex, 
-                        const Integer& energyGroup);
+  Real macroscopicCrossSection(const Integer& reactionIndex,
+                               const Real& cell_number_density,
+                               const Real& atom_fraction,
+                               const Integer& isotopeGid,
+                               const Integer& isoIndex,
+                               const Integer& energyGroup);
   DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord);
   Real distanceToSegmentFacet(const Real& plane_tolerance,
                               const Real& facet_normal_dot_direction_cosine,
@@ -139,11 +154,11 @@ public ArcaneTrackingMCObject
                               const Real3& facet_coords2,
                               Particle particle,
                               bool allow_enter);
-  DistanceToFacet findNearestFacet( Particle particle,
-                                    Integer& iteration,
-                                    Real& move_factor,
-                                    DistanceToFacet* distance_to_facet,
-                                    Integer& retry);
+  DistanceToFacet findNearestFacet(Particle particle,
+                                   Integer& iteration,
+                                   Real& move_factor,
+                                   DistanceToFacet* distance_to_facet,
+                                   Integer& retry);
   DistanceToFacet nearestFacet(DistanceToFacet* distance_to_facet);
   template <typename T>
   Integer findMin(UniqueArray<T> array);

@@ -253,7 +253,7 @@
         need-sync="true" />
 
     <variable
-        field-name="normalFace"
+        field-name="normal_face"
         name="NormalFace"
         data-type="real3"
         item-kind="none"
