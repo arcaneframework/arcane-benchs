@@ -3,6 +3,7 @@
 #define NUCLEAR_DATA_ARC_HH
 
 #include "arcane/ItemVector.h"
+#include "structEnum.hh"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -50,8 +51,8 @@ class NuclearDataReaction
 
   Real getCrossSection(Integer group);
 
-  void sampleCollision(Real incidentEnergy, Real material_mass, Real* energyOut,
-                       Real* angleOut, Integer& nOut, Int64* seed,
+  void sampleCollision(Real incidentEnergy, Real material_mass, RealUniqueArray& energyOut,
+                       RealUniqueArray& angleOut, Integer& nOut, Int64* seed,
                        Integer max_production_size);
 
   RealUniqueArray _crossSection; //!< tabular data for microscopic cross section

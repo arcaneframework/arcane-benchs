@@ -387,7 +387,7 @@
     <variable 
         field-name="iso_gid"
         name="IsoGid"
-        data-type="real"
+        data-type="integer"
         item-kind="cell"
         dim="1"
         need-sync="true"
@@ -421,7 +421,7 @@
         need-sync="true" />
 
     <variable
-        field-name="normalFace"
+        field-name="normal_face"
         name="NormalFace"
         data-type="real3"
         item-kind="none"
@@ -442,6 +442,10 @@
       <name lang="fr">echangeur-particule</name>
       <description>Service utilisé pour échanger les particules.</description>
 	  </service-instance>
+
+    <simple name="max_production_size" type="integer" default="4">
+      <description>Nombre de particules max généré par une fission</description>
+    </simple>
 
     <!-- Infos sur les Geometry -->
     <complex name="geometry" type="Geometry" minOccurs="1" maxOccurs="unbounded">

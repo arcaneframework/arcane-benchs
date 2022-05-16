@@ -15,10 +15,10 @@
 #include <arcane/Concurrency.h>
 // #include <arcane/ILoadBalanceMng.h>
 // #include <arcane/IMeshPartitionerBase.h>
-#include <map>
-#include <set>
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
+#include <map>
+#include <set>
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -57,18 +57,18 @@ cycleInit()
     populationControl(); // controls particle population
 
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-            << " - SourceParticles: " << m_source_a << " particle(s) created.";
+             << " - SourceParticles: " << m_source_a << " particle(s) created.";
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-            << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
-            << m_split_a << " particle(s) created by splitting.";
+             << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
+             << m_split_a << " particle(s) created by splitting.";
     Int64 tmpLog = m_rr_a;
 
     // Roulette sur les particules avec faible poids.
     rouletteLowWeightParticles(); // Delete particles with low statistical weight
 
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-            << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
-            << " particle(s) killed.";
+             << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
+             << " particle(s) killed.";
 
     updateTallies();
 
@@ -88,9 +88,9 @@ cycleInit()
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void SamplingMCModule::
-endModule() 
+endModule()
 {
-  delete(m_timer);
+  delete (m_timer);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -121,15 +121,13 @@ setStatus()
 {
   arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
     ENUMERATE_PARTICLE (ipartic, particles) {
-      if (m_particle_status[ipartic] != ParticleState::exitedParticle 
-      && m_particle_status[ipartic] != ParticleState::censusParticle) {
+      if (m_particle_status[ipartic] != ParticleState::exitedParticle && m_particle_status[ipartic] != ParticleState::censusParticle) {
         ARCANE_FATAL("Particule non traitée dans Sampling");
       }
       m_particle_status[ipartic] = ParticleState::oldParticle;
     }
   });
 }
-
 
 /**
  * @brief Méthode permettant de créer des particules.
@@ -140,6 +138,11 @@ void SamplingMCModule::
 sourceParticles()
 {
   Real local_weight_particles = 0;
+  Real total_weight_particles = 0;
+  Int64 num_particles = options()->getNParticles();
+  Int64 particle_count = 0;
+
+  #if 1 //def QS_LEGACY_COMPATIBILITY
 
   // On regarde le nombre de particule que chaque cellule générera.
   ENUMERATE_CELL (icell, ownCells()) {
@@ -148,21 +151,16 @@ sourceParticles()
     local_weight_particles += cell_weight_particles;
   }
 
-  Real total_weight_particles = 0;
 
   total_weight_particles = mesh()->parallelMng()->reduce(
   Parallel::ReduceSum, local_weight_particles);
 
-  Int64 num_particles = options()->getNParticles();
-
   Real source_fraction = 0.1;
   Real source_particle_weight =
   total_weight_particles / (source_fraction * num_particles);
-
   // Store the source particle weight for later use.
   m_source_particle_weight = source_particle_weight;
 
-  Int64 particle_count = 0;
   // Int64UniqueArray num_particles_cells_decal(ownCells().size()+1);
   // num_particles_cells_decal[0] = 0;
 
@@ -176,6 +174,24 @@ sourceParticles()
     // num_particles_cells_decal[icell.localId()] = particle_count;
   }
 
+  #else
+
+  // On regarde le nombre de particule que chaque cellule générera.
+  ENUMERATE_CELL (icell, ownCells()) {
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell];
+    local_weight_particles += cell_weight_particles;
+  }
+
+  Real source_particle_weight = 1;
+
+  // Store the source particle weight for later use.
+  m_source_particle_weight = source_particle_weight;
+
+  particle_count = local_weight_particles;
+
+  #endif
+  
+
   Int64UniqueArray uids(particle_count);
   Int32UniqueArray local_id_cells(particle_count);
   Int32UniqueArray particles_lid(particle_count);
@@ -185,8 +201,11 @@ sourceParticles()
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.
   ENUMERATE_CELL (icell, ownCells()) {
-    Real cell_weight_particles =
-    m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+  #if 1 //def QS_LEGACY_COMPATIBILITY
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
+  #else
+    Real cell_weight_particles = m_volume[icell] * m_source_rate[icell];
+  #endif
     Real cell_num_particles_float =
     cell_weight_particles / source_particle_weight;
     Integer cell_num_particles = (Integer)cell_num_particles_float;
@@ -276,7 +295,8 @@ populationControl()
   globalNumParticles =
   mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
 
-  if(globalNumParticles == 0) ARCANE_FATAL("Nombre de particule global == 0");
+  if (globalNumParticles == 0)
+    ARCANE_FATAL("Nombre de particule global == 0");
 
   // Soit on augmente la population (>1), soit on l'a diminue (<1), soit on n'y
   // touche pas (=1).
@@ -514,7 +534,6 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
   // Determine the cell-center nodal point coordinates.
   Real3 center(m_cell_center_coord[cell]);
 
-
   Real random_number = rngSample(random_number_seed);
   Real which_volume = random_number * 6.0 * m_volume[cell];
 
@@ -524,20 +543,20 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
   Node second_node;
   Face face;
 
-  #ifdef QS_LEGACY_COMPATIBILITY
+#ifdef QS_LEGACY_COMPATIBILITY
   // Pour pouvoir comparer les résultats avec ceux de QS original,
   // on doit explorer les facet de la même manière que QS original.
   /// La face QS n°0 correspond à la face Arcane n°4, &c.
   ///                        Face QS : 0, 1, 2, 3, 4, 5
-  static Integer QS_to_arcaneFace[] = {4, 1, 5, 2, 3, 0};
+  static Integer QS_to_arcaneFace[] = { 4, 1, 5, 2, 3, 0 };
 
   /// Le node QS n°0 de la face Arcane n°5 correspond au node Arcane n°1, &c.
-  static Integer QS_to_arcaneNode[] = { 0, 1, 2, 3,  // QS : F0{0, 1, 2, 3} = Arcane : F4{0, 1, 2, 3}
-                                        0, 3, 2, 1,  // QS : F1{0, 1, 2, 3} = Arcane : F1{0, 3, 2, 1}
-                                        1, 0, 3, 2,  // QS : F2{0, 1, 2, 3} = Arcane : F5{1, 0, 3, 2}
-                                        0, 1, 2, 3,  // QS : F3{0, 1, 2, 3} = Arcane : F2{0, 1, 2, 3}
-                                        0, 1, 2, 3,  // QS : F4{0, 1, 2, 3} = Arcane : F3{0, 1, 2, 3}
-                                        0, 3, 2, 1}; // QS : F5{0, 1, 2, 3} = Arcane : F0{0, 3, 2, 1}
+  static Integer QS_to_arcaneNode[] = { 0, 1, 2, 3, // QS : F0{0, 1, 2, 3} = Arcane : F4{0, 1, 2, 3}
+                                        0, 3, 2, 1, // QS : F1{0, 1, 2, 3} = Arcane : F1{0, 3, 2, 1}
+                                        1, 0, 3, 2, // QS : F2{0, 1, 2, 3} = Arcane : F5{1, 0, 3, 2}
+                                        0, 1, 2, 3, // QS : F3{0, 1, 2, 3} = Arcane : F2{0, 1, 2, 3}
+                                        0, 1, 2, 3, // QS : F4{0, 1, 2, 3} = Arcane : F3{0, 1, 2, 3}
+                                        0, 3, 2, 1 }; // QS : F5{0, 1, 2, 3} = Arcane : F0{0, 3, 2, 1}
 
   for (Integer i = 0; i < 6; i++) {
     face = cell.face(QS_to_arcaneFace[i]);
@@ -563,15 +582,13 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
     if (current_volume >= which_volume)
       break;
   }
-  #else
-  ENUMERATE_FACE(iface, cell.faces())
-  {
+#else
+  ENUMERATE_FACE (iface, cell.faces()) {
     face = (*iface);
     Real3 point2(m_face_center_coord[face]);
-    for (Integer i = 0; i < 4; i++)
-    {
-      first_node  = face.node(i);
-      second_node = face.node(((i == 3) ? 0 : i+1));
+    for (Integer i = 0; i < 4; i++) {
+      first_node = face.node(i);
+      second_node = face.node(((i == 3) ? 0 : i + 1));
 
       Real3 point0(node_coord[first_node]);
       Real3 point1(node_coord[second_node]);
@@ -579,11 +596,13 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
       Real subvolume = computeTetVolume(point0, point1, point2, center);
       current_volume += subvolume;
 
-      if(current_volume >= which_volume) break;
+      if (current_volume >= which_volume)
+        break;
     }
-    if(current_volume >= which_volume) break;
+    if (current_volume >= which_volume)
+      break;
   }
- #endif
+#endif
 
   // Sample from the tet.
   Real r1 = rngSample(random_number_seed);

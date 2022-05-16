@@ -44,8 +44,8 @@ NuclearDataReaction(Enum reactionType, Real nuBar,
 
 void NuclearDataReaction::
 sampleCollision(Real incidentEnergy,
-                Real material_mass, Real* energyOut,
-                Real* angleOut, Integer& nOut,
+                Real material_mass, RealUniqueArray& energyOut,
+                RealUniqueArray& angleOut, Integer& nOut,
                 Int64* seed,
                 Integer max_production_size)
 {
@@ -62,8 +62,12 @@ sampleCollision(Real incidentEnergy,
   case Absorption:
     break;
   case Fission: {
+#ifdef QS_LEGACY_COMPATIBILITY
     Integer numParticleOut = (Integer)(_nuBar + rngSample(seed));
     ARCANE_ASSERT(numParticleOut <= max_production_size, "numParticleOut > max_production_size");
+#else
+    Integer numParticleOut = ((Integer)(_nuBar * rngSample(seed) * max_production_size) % max_production_size);
+#endif
     nOut = numParticleOut;
     for (Integer outIndex = 0; outIndex < numParticleOut; outIndex++) {
       randomNumber = rngSample(seed) / 2.0 + 0.5;
@@ -99,7 +103,9 @@ addReaction(NuclearDataReaction::Enum type, Real nuBar,
 // Set up the energies boundaries of the neutron
 NuclearData::
 NuclearData(Integer numGroups, Real energyLow, Real energyHigh)
-: _energies(numGroups + 1), m_totalCrossSection(0), m_totalCrossSectionAC(false)
+: _energies(numGroups + 1)
+, m_totalCrossSection(0)
+, m_totalCrossSectionAC(false)
 {
   ARCANE_ASSERT(energyLow < energyHigh, "energyLow >= energyHigh");
   _energies[0] = energyLow;
@@ -179,7 +185,6 @@ addIsotope(Integer nReactions,
   return _isotopes.size() - 1;
 }
 
-
 Integer NuclearData::
 getNumberReactions(Integer isotopeIndex)
 {
@@ -218,13 +223,14 @@ getEnergyGroup(Real energy)
 Real NuclearData::
 getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
-  if(m_totalCrossSectionAC) return m_totalCrossSection;
+  if (m_totalCrossSectionAC)
+    return m_totalCrossSection;
   m_totalCrossSectionAC = true;
   ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   Integer numReacts = _isotopes[isotopeIndex]._species[0]._reactions.size();
   m_totalCrossSection = 0.0;
   for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
-    m_totalCrossSection += getReactionCrossSection( reactIndex, isotopeIndex,  group);
+    m_totalCrossSection += getReactionCrossSection(reactIndex, isotopeIndex, group);
   }
   return m_totalCrossSection;
 }

@@ -11,15 +11,15 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
+#include "structEnum.hh"
 #include <arcane/IItemFamily.h>
 #include <arcane/IMesh.h>
+#include <arcane/IParallelMng.h>
 #include <arcane/IParticleFamily.h>
+#include <arcane/ITimeLoopMng.h>
 #include <arcane/ModuleBuildInfo.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
-#include <arcane/IParallelMng.h>
-#include <arcane/ITimeLoopMng.h>
 #include <arccore/concurrency/Mutex.h>
-#include "structEnum.hh"
 
 #include "SamplingMC_axl.h"
 
@@ -29,8 +29,7 @@ using namespace Arcane;
  * @brief Module SamplingMC.
  * Module permettant de créer des particules et de controler la population.
  */
-class SamplingMCModule : 
-public ArcaneSamplingMCObject
+class SamplingMCModule : public ArcaneSamplingMCObject
 {
  public:
   explicit SamplingMCModule(const ModuleBuildInfo& mbi)
@@ -44,7 +43,7 @@ public ArcaneSamplingMCObject
   void cycleInit() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 1, 0); }
 
  protected:
   IItemFamily* m_particle_family;
