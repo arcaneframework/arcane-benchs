@@ -20,6 +20,7 @@
 #include <arcane/ModuleBuildInfo.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
+#include "ISimpleOutput.hh"
 
 #include "SamplingMC_axl.h"
 
@@ -64,7 +65,7 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   void setStatus();
   void sourceParticles();
   void populationControl();
-  void initParticle(Particle p, const Int64& rns);
+  void initParticle(ParticleEnumerator p, const Int64& rns);
   void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
   void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
   Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);

@@ -36,9 +36,9 @@
   </meshes>
 
   <q-s>
-    <dt>2e-09</dt>
+    <dt>2e-10</dt>
     <boundaryCondition>reflect</boundaryCondition>
-    <nSteps>2</nSteps>
+    <nSteps>20</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
@@ -48,6 +48,9 @@
   </q-s>
 
   <sampling-m-c>
+    <csv-output name="CsvOutput">
+      <path>./csv/</path>
+    </csv-output>
     <nParticles>100000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
@@ -74,13 +77,13 @@
       <mass>12.011</mass>
       <nIsotopes>20</nIsotopes>
       <nReactions>9</nReactions>
-      <sourceRate>1e+10</sourceRate>
+      <sourceRate>5</sourceRate>
       <totalCrossSection>1.5</totalCrossSection>
       <absorptionCrossSection>flat</absorptionCrossSection>
       <fissionCrossSection>flat</fissionCrossSection>
       <scatteringCrossSection>flat</scatteringCrossSection>
-      <absorptionCrossSectionRatio>0.04</absorptionCrossSectionRatio>
-      <fissionCrossSectionRatio>0.05</fissionCrossSectionRatio>
+      <absorptionCrossSectionRatio>1</absorptionCrossSectionRatio>
+      <fissionCrossSectionRatio>0</fissionCrossSectionRatio>
       <scatteringCrossSectionRatio>1</scatteringCrossSectionRatio>
     </material>
 
