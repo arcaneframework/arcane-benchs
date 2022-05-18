@@ -47,15 +47,18 @@ initModule()
 void TrackingMCModule::
 cycleTracking()
 {
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
   {
     Timer::Sentry ts(m_timer);
     computeCrossSection();
     tracking();
     updateTallies();
+    m_particle_family->compactItems(false);
   }
 
   Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
   info() << "--- Tracking duration: " << time << " s ---";
+  csv->addElemRow("Tracking", time);
 }
 
 /**

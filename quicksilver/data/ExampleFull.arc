@@ -48,9 +48,9 @@
   </q-s>
 
   <sampling-m-c>
-    <csv-output name="CsvOutput">
-      <path>./csv/</path>
-    </csv-output>
+    <!-- <csv-output name="CsvOutput">
+      <file>./csv/test.csv</file>
+    </csv-output> -->
     <nParticles>100000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>

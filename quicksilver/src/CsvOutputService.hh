@@ -30,7 +30,14 @@ public:
     , size_columns(0)
     , name_rows(0)
     , name_columns(0)
-    {}
+    {
+      if(sbi.creationType() == ST_CaseOption) {
+        path_file = options()->getFile();
+      }
+      else {
+        path_file = "./output.csv";
+      }
+    }
   
   virtual ~CsvOutputService() {};
 
@@ -49,7 +56,8 @@ public:
   virtual bool addElemColumn(String name_column, Real elem, bool create_if_not_exist){return false;}
 
   virtual void print();
-  virtual void writeFile(String name_file);
+  virtual bool writeFile();
+  virtual bool writeFile(String path_file);
 
 private:
   bool addElemsRow(Integer pos, ConstArrayView<Real>& elems);
@@ -65,6 +73,8 @@ private:
   UniqueArray<String> name_columns;  // TODO : Mettre HashTableMapT
 
   String separator;
+
+  String path_file;
 };
 
 #endif

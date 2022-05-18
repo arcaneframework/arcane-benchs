@@ -136,12 +136,34 @@ print()
   }
 }
 
-void CsvOutputService::
-writeFile(String name_file)
+bool CsvOutputService::
+writeFile()
 {
-  std::ofstream ofile( (options()->getPath() + name_file).localstr() );
+  if(!path_file.endsWith(".csv")) {
+    error() << "Nom de fichier .csv invalide. Il doit avoir l'extension '.csv'";
+    return false;
+  }
+
+  std::ofstream ofile(path_file.localstr());
   for(Integer i = 0; i < rows.size(); i++) {
     ofile << rows[i] << std::endl;
   }
   ofile.close();
+  return true;
+}
+
+bool CsvOutputService::
+writeFile(String path_file)
+{
+  if(!path_file.endsWith(".csv")) {
+    error() << "Nom de fichier .csv invalide. Il doit avoir l'extension '.csv'";
+    return false;
+  }
+
+  std::ofstream ofile(path_file.localstr());
+  for(Integer i = 0; i < rows.size(); i++) {
+    ofile << rows[i] << std::endl;
+  }
+  ofile.close();
+  return true;
 }

@@ -40,7 +40,8 @@ public:
   virtual bool addElemColumn(String name_column, Real elem, bool create_if_not_exist = true) = 0;
 
   virtual void print() = 0;
-  virtual void writeFile(String name_file) = 0;
+  virtual bool writeFile() = 0;
+  virtual bool writeFile(String path_file) = 0;
 };
 
 #endif

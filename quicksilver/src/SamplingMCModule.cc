@@ -36,7 +36,7 @@ initModule()
 
 
 
-  ISimpleOutput* csv = options()->csvOutput();
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
 
   csv->init("QAMA", ";");
   // csv->addRow("Sampling1");
@@ -51,10 +51,12 @@ initModule()
 void SamplingMCModule::
 cycleInit()
 {
-  ISimpleOutput* csv = options()->csvOutput();
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  //ISimpleOutput* csv = options()->csvOutput();
   csv->addColumn("Iteration " + String::fromNumber(m_global_iteration()));
   {
-    //Timer::Sentry ts(m_timer);
+    Timer::Sentry ts(m_timer);
 
     clearCrossSectionCache();
 
@@ -84,6 +86,8 @@ cycleInit()
 
     updateTallies();
 
+    m_particle_family->compactItems(false);
+
     // ENUMERATE_PARTICLE (ipartic, m_processingView) {
     //   m_num_particles[(*ipartic).cell()]++;
     // }
@@ -92,10 +96,10 @@ cycleInit()
     // subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
   }
 
-  //Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
-  //info() << "--- Sampling duration: " << time << " s ---";
+  Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
+  info() << "--- Sampling duration: " << time << " s ---";
 
-
+  csv->addElemRow("Sampling", time);
 }
 
 /**
@@ -104,9 +108,9 @@ cycleInit()
 void SamplingMCModule::
 endModule()
 {
-  ISimpleOutput* csv = options()->csvOutput();
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
   csv->print();
-  csv->writeFile("test.csv");
+  csv->writeFile("./csv/test.csv");
   delete (m_timer);
 }
 
@@ -154,8 +158,6 @@ setStatus()
 void SamplingMCModule::
 sourceParticles()
 {
-  ISimpleOutput* csv = options()->csvOutput();
-
   Real local_weight_particles = 0;
   Real total_weight_particles = 0;
   Int64 num_particles = options()->getNParticles();
@@ -260,121 +262,46 @@ sourceParticles()
     }
   }
 
-
-
-
-  {
-    Timer::Sentry ts(m_timer);
-
-    m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells,
-                                                        particles_lid);
-  }
-  Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
-  csv->addElemRow("Sampling0", time);
-
-
-
-
-
-  {
-    Timer::Sentry ts(m_timer);
-    m_particle_family->endUpdate();
-  }
-
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
-  csv->addElemRow("Sampling1", time);
-
-
-
-
+  m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells,
+                                                      particles_lid);
+  m_particle_family->endUpdate();
 
   VariableNodeReal3& node_coord = nodesCoordinates();
 
-  {
-    Timer::Sentry ts(m_timer);
-    VariableNodeReal3& node_coord = nodesCoordinates();
-  }
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
-  csv->addElemRow("Sampling4", time);
+  ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
 
+  // Les particules sont créées, on les initialise donc.
+  arcaneParallelForeach(viewSrcP, [&](ParticleVectorView particles) {
+    ENUMERATE_PARTICLE (ipartic, particles) {
+      Particle p = (*ipartic);
+      m_particle_coord[ipartic][MD_DirX] = 0.0;
 
+      initParticle(ipartic, rng[p.uniqueId().asInt64()]);
 
+      generate3DCoordinate(p, node_coord);
+      sampleIsotropic(p);
+      m_particle_kin_ene[ipartic] =
+      (m_e_max() - m_e_min()) * rngSample(&m_particle_rns[ipartic]) + m_e_min();
 
-  ParticleVectorView viewSrcP;
-  {
-    Timer::Sentry ts(m_timer);
-    viewSrcP = m_particle_family->view(particles_lid);
-  }
+      Real speed = getSpeedFromEnergy(p);
 
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
-  csv->addElemRow("Sampling2", time);
+      m_particle_velocity[ipartic][MD_DirX] = speed * m_particle_dir_cos[ipartic][MD_DirA];
+      m_particle_velocity[ipartic][MD_DirY] = speed * m_particle_dir_cos[ipartic][MD_DirB];
+      m_particle_velocity[ipartic][MD_DirZ] = speed * m_particle_dir_cos[ipartic][MD_DirG];
 
-  {
-    Timer::Sentry ts(m_timer);
+      m_particle_weight[ipartic] = source_particle_weight;
 
-    // Les particules sont créées, on les initialise donc.
-    //arcaneParallelForeach(viewSrcP, [&](ParticleVectorView particles) {
-      ENUMERATE_PARTICLE (ipartic, viewSrcP) {
-        //Particle p = (*ipartic);
-        m_particle_coord[ipartic][MD_DirX] = 0.0;
+      Real randomNumber = rngSample(&m_particle_rns[ipartic]);
+      m_particle_num_mean_free_path[ipartic] = -1.0 * std::log(randomNumber);
 
-        //initParticle(ipartic, rng[p.uniqueId().asInt64()]);
+      randomNumber = rngSample(&m_particle_rns[ipartic]);
+      m_particle_time_census[ipartic] = m_global_deltat() * randomNumber;
 
-        //generate3DCoordinate(p, node_coord);
-        //sampleIsotropic(p);
-        //m_particle_kin_ene[ipartic] =
-        //(m_e_max() - m_e_min()) * rngSample(&m_particle_rns[ipartic]) + m_e_min();
+      m_source_a++;
+    }
+  });
 
-        //Real speed = getSpeedFromEnergy(p);
-
-        //m_particle_velocity[ipartic][MD_DirX] = speed * m_particle_dir_cos[ipartic][MD_DirA];
-        //m_particle_velocity[ipartic][MD_DirY] = speed * m_particle_dir_cos[ipartic][MD_DirB];
-        //m_particle_velocity[ipartic][MD_DirZ] = speed * m_particle_dir_cos[ipartic][MD_DirG];
-
-        //m_particle_weight[ipartic] = source_particle_weight;
-
-        //Real randomNumber = rngSample(&m_particle_rns[ipartic]);
-        //m_particle_num_mean_free_path[ipartic] = -1.0 * std::log(randomNumber);
-
-        //randomNumber = rngSample(&m_particle_rns[ipartic]);
-        //m_particle_time_census[ipartic] = m_global_deltat() * randomNumber;
-
-        //m_source_a++;
-      }
-    //});
-
-  }
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
-  csv->addElemRow("Sampling3", time);
-
-  ENUMERATE_PARTICLE (ipartic, viewSrcP) {
-    Particle p = (*ipartic);
-
-        initParticle(ipartic, rng[p.uniqueId().asInt64()]);
-    generate3DCoordinate(p, node_coord);
-    sampleIsotropic(p);
-    m_particle_kin_ene[ipartic] =
-    (m_e_max() - m_e_min()) * rngSample(&m_particle_rns[ipartic]) + m_e_min();
-
-    Real speed = getSpeedFromEnergy(p);
-
-    m_particle_velocity[ipartic][MD_DirX] = speed * m_particle_dir_cos[ipartic][MD_DirA];
-    m_particle_velocity[ipartic][MD_DirY] = speed * m_particle_dir_cos[ipartic][MD_DirB];
-    m_particle_velocity[ipartic][MD_DirZ] = speed * m_particle_dir_cos[ipartic][MD_DirG];
-
-    m_particle_weight[ipartic] = source_particle_weight;
-
-    Real randomNumber = rngSample(&m_particle_rns[ipartic]);
-    m_particle_num_mean_free_path[ipartic] = -1.0 * std::log(randomNumber);
-
-    randomNumber = rngSample(&m_particle_rns[ipartic]);
-    m_particle_time_census[ipartic] = m_global_deltat() * randomNumber;
-
-    m_source_a++;
-  }
-    m_processingView = m_particle_family->view();
-
-    // TODO : essayer compactItems().
+  m_processingView = m_particle_family->view();
 }
 
 /**
