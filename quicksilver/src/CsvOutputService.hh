@@ -32,10 +32,10 @@ public:
     , name_columns(0)
     {
       if(sbi.creationType() == ST_CaseOption) {
-        path_file = options()->getFile();
+        path_name = options()->getFile();
       }
       else {
-        path_file = "./output.csv";
+        path_name = "./output.csv";
       }
     }
   
@@ -69,12 +69,12 @@ private:
   UniqueArray<Integer> size_rows;
   UniqueArray<Integer> size_columns;
 
-  UniqueArray<String> name_rows;     // TODO : Mettre HashTableMapT
-  UniqueArray<String> name_columns;  // TODO : Mettre HashTableMapT
+  UniqueArray<String> name_rows;
+  UniqueArray<String> name_columns;
 
   String separator;
 
-  String path_file;
+  String path_name;
 };
 
 #endif

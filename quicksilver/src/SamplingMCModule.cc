@@ -33,16 +33,6 @@ initModule()
   m_particle_family->setHasUniqueIdMap(false);
 
   m_timer = new Timer(subDomain(), "SamplingMC", Timer::TimerReal);
-
-
-
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  csv->init("QAMA", ";");
-  // csv->addRow("Sampling1");
-  // csv->addRow("Sampling4");
-  // csv->addRow("Sampling2");
-  // csv->addRow("Sampling3");
 }
 
 /**
@@ -51,10 +41,10 @@ initModule()
 void SamplingMCModule::
 cycleInit()
 {
+  // On ajoute une colonne dans le csv.
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  //ISimpleOutput* csv = options()->csvOutput();
   csv->addColumn("Iteration " + String::fromNumber(m_global_iteration()));
+
   {
     Timer::Sentry ts(m_timer);
 
@@ -86,7 +76,9 @@ cycleInit()
 
     updateTallies();
 
-    m_particle_family->compactItems(false);
+    if(m_rr_a != 0){
+      m_particle_family->compactItems(false);
+    }
 
     // ENUMERATE_PARTICLE (ipartic, m_processingView) {
     //   m_num_particles[(*ipartic).cell()]++;
@@ -99,6 +91,7 @@ cycleInit()
   Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
   info() << "--- Sampling duration: " << time << " s ---";
 
+  // On ajoute une valeur à la ligne "Sampling" (on l'a crée si elle n'existe pas).
   csv->addElemRow("Sampling", time);
 }
 
@@ -108,9 +101,6 @@ cycleInit()
 void SamplingMCModule::
 endModule()
 {
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-  csv->print();
-  csv->writeFile("./csv/test.csv");
   delete (m_timer);
 }
 
@@ -163,7 +153,7 @@ sourceParticles()
   Int64 num_particles = options()->getNParticles();
   Int64 particle_count = 0;
 
-  #if 0 //def QS_LEGACY_COMPATIBILITY
+  #if 1 //def QS_LEGACY_COMPATIBILITY
 
   // On regarde le nombre de particule que chaque cellule générera.
   ENUMERATE_CELL (icell, ownCells()) {
@@ -222,7 +212,7 @@ sourceParticles()
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.
   ENUMERATE_CELL (icell, ownCells()) {
-  #if 0 //def QS_LEGACY_COMPATIBILITY
+  #if 1 //def QS_LEGACY_COMPATIBILITY
     Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
   #else
     Real cell_weight_particles = m_volume[icell] * m_source_rate[icell];

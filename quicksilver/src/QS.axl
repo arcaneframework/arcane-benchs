@@ -326,6 +326,12 @@
       <enumvalue name="octant" genvalue="OCTANT"  />
     </enumeration>
 
+    <simple name="csvFile" type="string" default="">
+      <description>
+        Path and name for csv file (example: ./example.csv ).
+      </description>
+    </simple>
+
   </options>
 
 </module>

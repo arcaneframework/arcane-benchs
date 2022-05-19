@@ -131,20 +131,22 @@ addElemsColumn(Integer pos, ConstArrayView<Real>& elems)
 void CsvOutputService::
 print()
 {
+  info() << "Ecriture du .csv dans la sortie standard :";
   for(Integer i = 0; i < rows.size(); i++) {
     std::cout << rows[i] << std::endl;
   }
+  info() << "Fin écriture .csv";
 }
 
 bool CsvOutputService::
 writeFile()
 {
-  if(!path_file.endsWith(".csv")) {
+  if(!path_name.endsWith(".csv")) {
     error() << "Nom de fichier .csv invalide. Il doit avoir l'extension '.csv'";
     return false;
   }
 
-  std::ofstream ofile(path_file.localstr());
+  std::ofstream ofile(path_name.localstr());
   for(Integer i = 0; i < rows.size(); i++) {
     ofile << rows[i] << std::endl;
   }

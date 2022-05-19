@@ -16,6 +16,8 @@
 #include <arcane/ITimeLoopMng.h>
 #include <arcane/cartesianmesh/CellDirectionMng.h>
 #include <arcane/cartesianmesh/ICartesianMesh.h>
+#include <arcane/ServiceBuilder.h>
+#include "ISimpleOutput.hh"
 
 #include "structEnum.hh"
 
