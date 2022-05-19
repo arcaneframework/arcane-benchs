@@ -74,11 +74,14 @@ cycleInit()
              << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
              << " particle(s) killed.";
 
-    updateTallies();
-
     if(m_rr_a != 0){
       m_particle_family->compactItems(false);
+
+      // TODO : A retirer lors de la correction du compactItems() dans Arcane.
+      m_particle_family->prepareForDump();
     }
+
+    updateTallies();
 
     // ENUMERATE_PARTICLE (ipartic, m_processingView) {
     //   m_num_particles[(*ipartic).cell()]++;
