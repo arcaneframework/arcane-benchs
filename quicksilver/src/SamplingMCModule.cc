@@ -267,7 +267,6 @@ sourceParticles()
   arcaneParallelForeach(viewSrcP, [&](ParticleVectorView particles) {
     ENUMERATE_PARTICLE (ipartic, particles) {
       Particle p = (*ipartic);
-      m_particle_coord[ipartic][MD_DirX] = 0.0;
 
       initParticle(ipartic, rng[p.uniqueId().asInt64()]);
 
