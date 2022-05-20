@@ -41,6 +41,10 @@ initModule()
 void SamplingMCModule::
 cycleInit()
 {
+  // On ajoute une colonne dans le csv.
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  csv->addColumn("Iteration " + String::fromNumber(m_global_iteration()));
+
   {
     Timer::Sentry ts(m_timer);
 
@@ -70,6 +74,13 @@ cycleInit()
              << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
              << " particle(s) killed.";
 
+    if(m_rr_a != 0){
+      m_particle_family->compactItems(false);
+
+      // TODO : A retirer lors de la correction du compactItems() dans Arcane.
+      m_particle_family->prepareForDump();
+    }
+
     updateTallies();
 
     // ENUMERATE_PARTICLE (ipartic, m_processingView) {
@@ -82,6 +93,9 @@ cycleInit()
 
   Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
   info() << "--- Sampling duration: " << time << " s ---";
+
+  // On ajoute une valeur à la ligne "Sampling" (on l'a crée si elle n'existe pas).
+  csv->addElemRow("Sampling", time);
 }
 
 /**
@@ -240,38 +254,40 @@ sourceParticles()
       particle_index_g++;
     }
   }
+
   m_particle_family->toParticleFamily()->addParticles(uids, local_id_cells,
                                                       particles_lid);
   m_particle_family->endUpdate();
 
-  ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
-
   VariableNodeReal3& node_coord = nodesCoordinates();
+
+  ParticleVectorView viewSrcP = m_particle_family->view(particles_lid);
 
   // Les particules sont créées, on les initialise donc.
   arcaneParallelForeach(viewSrcP, [&](ParticleVectorView particles) {
     ENUMERATE_PARTICLE (ipartic, particles) {
       Particle p = (*ipartic);
-      initParticle(p, rng[p.uniqueId().asInt64()]);
+
+      initParticle(ipartic, rng[p.uniqueId().asInt64()]);
 
       generate3DCoordinate(p, node_coord);
       sampleIsotropic(p);
-      m_particle_kin_ene[p] =
-      (m_e_max() - m_e_min()) * rngSample(&m_particle_rns[p]) + m_e_min();
+      m_particle_kin_ene[ipartic] =
+      (m_e_max() - m_e_min()) * rngSample(&m_particle_rns[ipartic]) + m_e_min();
 
       Real speed = getSpeedFromEnergy(p);
 
-      m_particle_velocity[p][MD_DirX] = speed * m_particle_dir_cos[p][MD_DirA];
-      m_particle_velocity[p][MD_DirY] = speed * m_particle_dir_cos[p][MD_DirB];
-      m_particle_velocity[p][MD_DirZ] = speed * m_particle_dir_cos[p][MD_DirG];
+      m_particle_velocity[ipartic][MD_DirX] = speed * m_particle_dir_cos[ipartic][MD_DirA];
+      m_particle_velocity[ipartic][MD_DirY] = speed * m_particle_dir_cos[ipartic][MD_DirB];
+      m_particle_velocity[ipartic][MD_DirZ] = speed * m_particle_dir_cos[ipartic][MD_DirG];
 
-      m_particle_weight[p] = source_particle_weight;
+      m_particle_weight[ipartic] = source_particle_weight;
 
-      Real randomNumber = rngSample(&m_particle_rns[p]);
-      m_particle_num_mean_free_path[p] = -1.0 * std::log(randomNumber);
+      Real randomNumber = rngSample(&m_particle_rns[ipartic]);
+      m_particle_num_mean_free_path[ipartic] = -1.0 * std::log(randomNumber);
 
-      randomNumber = rngSample(&m_particle_rns[p]);
-      m_particle_time_census[p] = m_global_deltat() * randomNumber;
+      randomNumber = rngSample(&m_particle_rns[ipartic]);
+      m_particle_time_census[ipartic] = m_global_deltat() * randomNumber;
 
       m_source_a++;
     }
@@ -382,7 +398,7 @@ populationControl()
  * @param rns La graine à donner à la particule.
  */
 void SamplingMCModule::
-initParticle(Particle p, const Int64& rns)
+initParticle(ParticleEnumerator p, const Int64& rns)
 {
   m_particle_rns[p] = rns;
   m_particle_coord[p][MD_DirX] = 0.0;

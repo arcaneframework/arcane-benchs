@@ -8,12 +8,14 @@ main.cc
 QSModule.cc QS_axl.h 
 SamplingMCModule.cc SamplingMC_axl.h
 TrackingMCModule.cc TrackingMC_axl.h
+CsvOutputService.cc CsvOutput_axl.h
 MC_RNG_State.cc
 NuclearData.cc )
 
 arcane_generate_axl(QS)
 arcane_generate_axl(SamplingMC)
 arcane_generate_axl(TrackingMC)
+arcane_generate_axl(CsvOutput)
 arcane_add_arcane_libraries_to_target(Quicksilver)
 target_compile_options(Quicksilver PUBLIC -Wpedantic)
 target_include_directories(Quicksilver PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})

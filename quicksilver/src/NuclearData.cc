@@ -223,9 +223,9 @@ getEnergyGroup(Real energy)
 Real NuclearData::
 getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
-  if (m_totalCrossSectionAC)
-    return m_totalCrossSection;
-  m_totalCrossSectionAC = true;
+  //if (m_totalCrossSectionAC)
+  //  return m_totalCrossSection;
+  //m_totalCrossSectionAC = true;
   ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   Integer numReacts = _isotopes[isotopeIndex]._species[0]._reactions.size();
   m_totalCrossSection = 0.0;

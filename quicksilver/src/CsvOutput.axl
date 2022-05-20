@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<service name="CsvOutput" version="1.0" singleton="true">
+
+  <description>Jeu de données du service CsvOutput</description>
+  <interface name="ISimpleOutput" />
+
+	<variables>
+  </variables>
+
+	<options>
+    <simple name="file" type="string" default="./output.csv">
+      <description>
+        Emplacement fichier .csv
+      </description>
+    </simple>
+	</options>
+</service>

@@ -28,6 +28,10 @@ initModule()
   m_cartesian_mesh->computeDirections();
   initMesh();
   initTallies();
+
+  // Initialisation de la sortie CSV.
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  csv->init("QAMA", ";");
 }
 
 /**
@@ -46,7 +50,14 @@ cycleFinalize()
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void QSModule::
-endModule() {}
+endModule()
+{
+  if(options()->getCsvFile() != "") {
+    ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+    csv->print();
+    csv->writeFile(options()->getCsvFile());
+  }
+}
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/

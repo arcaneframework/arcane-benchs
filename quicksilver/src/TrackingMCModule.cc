@@ -51,11 +51,22 @@ cycleTracking()
     Timer::Sentry ts(m_timer);
     computeCrossSection();
     tracking();
+    
+    if(m_absorb_a != 0 || m_escape_a != 0){
+      m_particle_family->compactItems(false);
+
+      // TODO : A retirer lors de la correction du compactItems() dans Arcane.
+      m_particle_family->prepareForDump();
+    }
+
     updateTallies();
   }
 
   Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
   info() << "--- Tracking duration: " << time << " s ---";
+
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  csv->addElemRow("Tracking", time);
 }
 
 /**

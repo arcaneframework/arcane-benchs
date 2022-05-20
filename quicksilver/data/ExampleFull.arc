@@ -36,6 +36,7 @@
   </meshes>
 
   <q-s>
+    <!-- <dt>2e-10</dt> -->
     <dt>2e-09</dt>
     <boundaryCondition>reflect</boundaryCondition>
     <nSteps>2</nSteps>
@@ -45,9 +46,13 @@
     <lx>100.0</lx>
     <ly>100.0</ly>
     <lz>100.0</lz>
+    <csvFile>./csv/test.csv</csvFile>
   </q-s>
 
   <sampling-m-c>
+    <!-- <csv-output name="CsvOutput">
+      <file>./csv/test.csv</file>
+    </csv-output> -->
     <nParticles>100000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>
@@ -74,11 +79,14 @@
       <mass>12.011</mass>
       <nIsotopes>20</nIsotopes>
       <nReactions>9</nReactions>
+      <!-- <sourceRate>5</sourceRate> -->
       <sourceRate>1e+10</sourceRate>
       <totalCrossSection>1.5</totalCrossSection>
       <absorptionCrossSection>flat</absorptionCrossSection>
       <fissionCrossSection>flat</fissionCrossSection>
       <scatteringCrossSection>flat</scatteringCrossSection>
+      <!-- <absorptionCrossSectionRatio>1</absorptionCrossSectionRatio> -->
+      <!-- <fissionCrossSectionRatio>0</fissionCrossSectionRatio> -->
       <absorptionCrossSectionRatio>0.04</absorptionCrossSectionRatio>
       <fissionCrossSectionRatio>0.05</fissionCrossSectionRatio>
       <scatteringCrossSectionRatio>1</scatteringCrossSectionRatio>
@@ -131,4 +139,4 @@
 *I-QS             Number of segements                                   (m_num_segments): 1098441
 *I-QS             Number of particles at end of cycle                            (m_end): 90242
 *I-QS             Particles contribution to the scalar flux      (sum_scalar_flux_tally): 200813514.61978
- -->
+  -->
