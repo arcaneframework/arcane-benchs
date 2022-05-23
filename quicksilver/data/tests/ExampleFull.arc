@@ -46,13 +46,10 @@
     <lx>100.0</lx>
     <ly>100.0</ly>
     <lz>100.0</lz>
-    <csvFile>./csv/test.csv</csvFile>
+    <csvFile>./ExampleFull_P@proc_id@.csv</csvFile>
   </q-s>
 
   <sampling-m-c>
-    <!-- <csv-output name="CsvOutput">
-      <file>./csv/test.csv</file>
-    </csv-output> -->
     <nParticles>100000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
     <fMax>0.1</fMax>

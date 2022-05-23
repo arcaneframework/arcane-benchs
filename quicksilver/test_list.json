@@ -1,0 +1,47 @@
+{
+    "tests_arc" : [
+        { "name" : "ExampleFull", "nb-proc" : "4", "nb-thread" : "2" },
+        { "name" : "TestSmall", "nb-proc" : "128", "nb-thread" : "2" },
+        { "name" : "TestMedium", "nb-proc" : "256", "nb-thread" : "2" },
+        { "name" : "TestLarge", "nb-proc" : "1024", "nb-thread" : "2" },
+        { "name" : "TestHuge", "nb-proc" : "2560", "nb-thread" : "2" }
+    ],
+    "tests_coral2" : [
+        { "name" : "Coral2_P1_n128", "nb-proc" : "128", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n256", "nb-proc" : "256", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n512", "nb-proc" : "512", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n1024", "nb-proc" : "1024", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n2048", "nb-proc" : "2048", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n4096", "nb-proc" : "4096", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n8192", "nb-proc" : "8192", "nb-thread" : "2" },
+        { "name" : "Coral2_P1_n131072", "nb-proc" : "131072", "nb-thread" : "2" },
+
+        { "name" : "Coral2_P2_n128", "nb-proc" : "128", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n256", "nb-proc" : "256", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n512", "nb-proc" : "512", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n1024", "nb-proc" : "1024", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n2048", "nb-proc" : "2048", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n4096", "nb-proc" : "4096", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n8192", "nb-proc" : "8192", "nb-thread" : "2" },
+        { "name" : "Coral2_P2_n131072", "nb-proc" : "131072", "nb-thread" : "2" }
+    ],
+    "tests_cts2" : [
+        { "name" : "CTS2_n128", "nb-proc" : "128", "nb-thread" : "1" },
+        { "name" : "CTS2_n256", "nb-proc" : "256", "nb-thread" : "1" },
+        { "name" : "CTS2_n512", "nb-proc" : "512", "nb-thread" : "1" },
+        { "name" : "CTS2_n1024", "nb-proc" : "1024", "nb-thread" : "1" },
+        { "name" : "CTS2_n2048", "nb-proc" : "2048", "nb-thread" : "1" },
+        { "name" : "CTS2_n4096", "nb-proc" : "4096", "nb-thread" : "1" },
+        { "name" : "CTS2_n8192", "nb-proc" : "8192", "nb-thread" : "1" },
+        { "name" : "CTS2_n131072", "nb-proc" : "131072", "nb-thread" : "1" }
+    ],
+    "tests_qs_original" : [
+        { "name" : "allAbsorb", "nb-proc" : "8", "nb-thread" : "2" },
+        { "name" : "allEscape", "nb-proc" : "32", "nb-thread" : "2" },
+        { "name" : "scatteringOnly", "nb-proc" : "32", "nb-thread" : "2" },
+        { "name" : "homogeneousProblem", "nb-proc" : "32", "nb-thread" : "2" },
+        { "name" : "no.collisions", "nb-proc" : "32", "nb-thread" : "2" },
+        { "name" : "noFission", "nb-proc" : "32", "nb-thread" : "2" },
+        { "name" : "NonFlatXC", "nb-proc" : "32", "nb-thread" : "2" }
+    ]
+}

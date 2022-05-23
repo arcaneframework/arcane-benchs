@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <case codename="Quicksilver" xml:lang="en" codeversion="1.0">
   <arcane>
-    <title>Coral2_P2</title>
+    <title>CTS2_n256</title>
     <timeloop>QAMALoop</timeloop>
   </arcane>
 
@@ -10,25 +10,25 @@
       <generator name="Cartesian3D" >
         <face-numbering-version>1</face-numbering-version>
 
-        <nb-part-x>2</nb-part-x> 
-        <nb-part-y>2</nb-part-y>
-        <nb-part-z>1</nb-part-z>
+        <nb-part-x>8</nb-part-x> 
+        <nb-part-y>8</nb-part-y>
+        <nb-part-z>4</nb-part-z>
 
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>100.0</length>
-          <n>10</n>
+          <length>128.0</length>
+          <n>128</n>
         </x>
 
         <y>
-          <length>100.0</length>
-          <n>10</n>
+          <length>128.0</length>
+          <n>128</n>
         </y>
 
         <z>
-          <length>100.0</length>
-          <n>10</n>
+          <length>64.0</length>
+          <n>64</n>
         </z>
 
       </generator>
@@ -36,20 +36,26 @@
   </meshes>
 
   <q-s>
-    <dt>1e-08</dt>
+    <dt>1.1e-07</dt>
     <boundaryCondition>reflect</boundaryCondition>
+    <lx>128</lx>
+    <ly>128</ly>
+    <lz>64</lz>
     <nSteps>100</nSteps>
     <eMax>20</eMax>
     <eMin>1e-08</eMin>
     <nGroups>230</nGroups>
+    <csvFile>./CTS2_n256.csv</csvFile>
   </q-s>
 
   <sampling-m-c>
+    <nParticles>10485760</nParticles>
+    <fMax>0.1</fMax>
+    <seed>1029384756</seed>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 
   <tracking-m-c>
-    
     <geometry>
       <material>sourceMaterial</material>
       <shape>brick</shape>
@@ -64,10 +70,10 @@
     <material>
       <name>sourceMaterial</name>
       <mass>1.5</mass>
-      <nIsotopes>10</nIsotopes>
-      <nReactions>3</nReactions>
+      <nIsotopes>20</nIsotopes>
+      <nReactions>9</nReactions>
       <sourceRate>1e+10</sourceRate>
-      <totalCrossSection>16.75</totalCrossSection>
+      <totalCrossSection>1.5227</totalCrossSection>
       <absorptionCrossSection>absorb</absorptionCrossSection>
       <fissionCrossSection>fission</fissionCrossSection>
       <scatteringCrossSection>scatter</scatteringCrossSection>
@@ -103,7 +109,6 @@
       <D>0</D>
       <E>97</E>
     </cross_section>
-
   </tracking-m-c>
 
 </case>

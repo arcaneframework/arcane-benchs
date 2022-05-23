@@ -25,17 +25,19 @@ class CsvOutputService
 public:
   CsvOutputService(const ServiceBuildInfo & sbi)
     : ArcaneCsvOutputObject(sbi) 
-    , rows(1)
-    , size_rows(0)
-    , size_columns(0)
-    , name_rows(0)
-    , name_columns(0)
+    , m_rows(1)
+    , m_size_rows(0)
+    , m_size_columns(0)
+    , m_name_rows(0)
+    , m_name_columns(0)
+    , m_name_computed(false)
+    , m_only_P0(true)
     {
       if(sbi.creationType() == ST_CaseOption) {
-        path_name = options()->getFile();
+        m_path_name = options()->getFile();
       }
       else {
-        path_name = "./output.csv";
+        m_path_name = "./output.csv";
       }
     }
   
@@ -55,26 +57,29 @@ public:
   virtual bool addElemColumn(Integer pos, Real elem){return false;}
   virtual bool addElemColumn(String name_column, Real elem, bool create_if_not_exist){return false;}
 
-  virtual void print();
+  virtual void print(bool only_P0);
   virtual bool writeFile();
   virtual bool writeFile(String path_file);
 
 private:
   bool addElemsRow(Integer pos, ConstArrayView<Real>& elems);
   bool addElemsColumn(Integer pos, ConstArrayView<Real>& elems);
+  void computePathName();
 
 private:
-  UniqueArray<String> rows;
+  UniqueArray<String> m_rows;
 
-  UniqueArray<Integer> size_rows;
-  UniqueArray<Integer> size_columns;
+  UniqueArray<Integer> m_size_rows;
+  UniqueArray<Integer> m_size_columns;
 
-  UniqueArray<String> name_rows;
-  UniqueArray<String> name_columns;
+  UniqueArray<String> m_name_rows;
+  UniqueArray<String> m_name_columns;
 
-  String separator;
+  String m_separator;
 
-  String path_name;
+  String m_path_name;
+  bool m_name_computed;
+  bool m_only_P0;
 };
 
 #endif

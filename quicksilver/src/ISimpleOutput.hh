@@ -39,7 +39,7 @@ public:
   virtual bool addElemColumn(Integer pos, Real elem) = 0;
   virtual bool addElemColumn(String name_column, Real elem, bool create_if_not_exist = true) = 0;
 
-  virtual void print() = 0;
+  virtual void print(bool only_P0 = true) = 0;
   virtual bool writeFile() = 0;
   virtual bool writeFile(String path_file) = 0;
 };

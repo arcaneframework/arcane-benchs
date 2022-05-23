@@ -24,14 +24,16 @@
 void QSModule::
 initModule()
 {
+  // Initialisation de la sortie CSV.
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  csv->init("QAMA", ";");
+
   m_cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
   m_cartesian_mesh->computeDirections();
   initMesh();
   initTallies();
+  m_timer = new Timer(subDomain(), "QS", Timer::TimerReal);
 
-  // Initialisation de la sortie CSV.
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-  csv->init("QAMA", ";");
 }
 
 /**
@@ -40,10 +42,22 @@ initModule()
 void QSModule::
 cycleFinalize()
 {
-  cycleFinalizeTallies();
+  {
+    Timer::Sentry ts(m_timer);
+    cycleFinalizeTallies();
 
-  if (m_global_iteration() == options()->getNSteps())
-    subDomain()->timeLoopMng()->stopComputeLoop(true);
+    if (m_global_iteration() == options()->getNSteps())
+      subDomain()->timeLoopMng()->stopComputeLoop(true);
+  }
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  Real time = m_timer->lastActivationTime();
+
+  csv->addElemRow("Finalize duration (Proc)", time);
+  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, time);
+  if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Finalize duration (ReduceMax)", time);
+
+  info() << "--- Finalize duration: " << time << " s ---";
 }
 
 /**
@@ -54,7 +68,7 @@ endModule()
 {
   if(options()->getCsvFile() != "") {
     ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-    csv->print();
+    //csv->print();
     csv->writeFile(options()->getCsvFile());
   }
 }
@@ -214,6 +228,28 @@ initTallies()
 
   m_scalar_flux_tally.resize(m_n_groups());
   m_scalar_flux_tally.fill(0.0);
+
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  // On crée les lignes "Proc" ici pour les avoir en haut du csv du proc0.
+  csv->addRow("Sampling duration (Proc)");
+  csv->addRow("Tracking duration (Proc)");
+  csv->addRow("Finalize duration (Proc)");
+  csv->addRow("m_start (Proc)");
+  csv->addRow("m_source (Proc)");
+  csv->addRow("m_rr (Proc)");
+  csv->addRow("m_split (Proc)");
+  csv->addRow("m_absorb (Proc)");
+  csv->addRow("m_scatter (Proc)");
+  csv->addRow("m_fission (Proc)");
+  csv->addRow("m_produce (Proc)");
+  csv->addRow("m_collision (Proc)");
+  csv->addRow("m_escape (Proc)");
+  csv->addRow("m_census (Proc)");
+  csv->addRow("m_num_segments (Proc)");
+  csv->addRow("m_end (Proc)");
+  csv->addRow("sum_scalar_flux_tally (Proc)");
+  
 }
 
 /**
@@ -233,6 +269,23 @@ cycleFinalizeTallies()
     }
   }
 
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  csv->addElemRow("m_start (Proc)", m_start.value());
+  csv->addElemRow("m_source (Proc)", m_source.value());
+  csv->addElemRow("m_rr (Proc)", m_rr.value());
+  csv->addElemRow("m_split (Proc)", m_split.value());
+  csv->addElemRow("m_absorb (Proc)", m_absorb.value());
+  csv->addElemRow("m_scatter (Proc)", m_scatter.value());
+  csv->addElemRow("m_fission (Proc)", m_fission.value());
+  csv->addElemRow("m_produce (Proc)", m_produce.value());
+  csv->addElemRow("m_collision (Proc)", m_collision.value());
+  csv->addElemRow("m_escape (Proc)", m_escape.value());
+  csv->addElemRow("m_census (Proc)", m_census.value());
+  csv->addElemRow("m_num_segments (Proc)", m_num_segments.value());
+  csv->addElemRow("m_end (Proc)", m_end.value());
+  csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
+
   m_absorb.reduce(Parallel::ReduceSum);
   m_census.reduce(Parallel::ReduceSum);
   m_escape.reduce(Parallel::ReduceSum);
@@ -247,6 +300,23 @@ cycleFinalizeTallies()
   m_start.reduce(Parallel::ReduceSum);
   m_end.reduce(Parallel::ReduceSum);
   sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
+
+  if(mesh()->parallelMng()->commRank() == 0){
+    csv->addElemRow("m_start (ReduceSum)", m_start.value());
+    csv->addElemRow("m_source (ReduceSum)", m_source.value());
+    csv->addElemRow("m_rr (ReduceSum)", m_rr.value());
+    csv->addElemRow("m_split (ReduceSum)", m_split.value());
+    csv->addElemRow("m_absorb (ReduceSum)", m_absorb.value());
+    csv->addElemRow("m_scatter (ReduceSum)", m_scatter.value());
+    csv->addElemRow("m_fission (ReduceSum)", m_fission.value());
+    csv->addElemRow("m_produce (ReduceSum)", m_produce.value());
+    csv->addElemRow("m_collision (ReduceSum)", m_collision.value());
+    csv->addElemRow("m_escape (ReduceSum)", m_escape.value());
+    csv->addElemRow("m_census (ReduceSum)", m_census.value());
+    csv->addElemRow("m_num_segments (ReduceSum)", m_num_segments.value());
+    csv->addElemRow("m_end (ReduceSum)", m_end.value());
+    csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_scalar_flux_tally);
+  }
 
   info() << "End iteration #" << m_global_iteration();
   info() << "  Informations:";

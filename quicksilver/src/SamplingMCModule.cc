@@ -91,11 +91,14 @@ cycleInit()
     // subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
   }
 
-  Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
+  Real time = m_timer->lastActivationTime();
+
+  csv->addElemRow("Sampling duration (Proc)", time);
+  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, time);
+  if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Sampling duration (ReduceMax)", time);
+
   info() << "--- Sampling duration: " << time << " s ---";
 
-  // On ajoute une valeur à la ligne "Sampling" (on l'a crée si elle n'existe pas).
-  csv->addElemRow("Sampling", time);
 }
 
 /**

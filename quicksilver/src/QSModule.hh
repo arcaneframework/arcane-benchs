@@ -48,6 +48,7 @@ public ArcaneQSObject
 
  protected:
   ICartesianMesh* m_cartesian_mesh;
+  Timer* m_timer;
 
  protected:
   void cycleFinalizeTallies();

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <case codename="Quicksilver" xml:lang="en" codeversion="1.0">
   <arcane>
-    <title>TestMedium</title>
+    <title>TestHuge</title>
     <timeloop>QAMALoop</timeloop>
   </arcane>
 
@@ -10,9 +10,9 @@
       <generator name="Cartesian3D" >
         <face-numbering-version>1</face-numbering-version>
 
-        <nb-part-x>8</nb-part-x> 
-        <nb-part-y>8</nb-part-y>
-        <nb-part-z>4</nb-part-z>
+        <nb-part-x>16</nb-part-x> 
+        <nb-part-y>16</nb-part-y>
+        <nb-part-z>10</nb-part-z>
 
         <origin>0.0 0.0 0.0</origin>
 
@@ -45,11 +45,12 @@
     <lx>640.0</lx>
     <ly>640.0</ly>
     <lz>640.0</lz>
+    <csvFile>./TestHuge_P@proc_id@.csv</csvFile>
   </q-s>
 
   <sampling-m-c>
     <!-- Weak Scaling -->
-    <!-- <nParticles>256000000</nParticles> -->
+    <!-- <nParticles>2560000000</nParticles> -->
 
     <!-- Strong Scaling -->
     <nParticles>128000000</nParticles>
@@ -60,11 +61,9 @@
   </sampling-m-c>
 
   <tracking-m-c>
-
     <particle-exchanger name="BasicParticleExchanger">
       <max-nb-message-without-reduce>-1</max-nb-message-without-reduce>
     </particle-exchanger>
-
     <geometry>
       <material>sourceMaterial</material>
       <shape>brick</shape>
