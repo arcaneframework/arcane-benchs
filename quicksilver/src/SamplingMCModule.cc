@@ -98,7 +98,6 @@ cycleInit()
   if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Sampling duration (ReduceMax)", time);
 
   info() << "--- Sampling duration: " << time << " s ---";
-
 }
 
 /**

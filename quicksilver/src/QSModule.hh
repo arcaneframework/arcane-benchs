@@ -16,6 +16,7 @@
 #include <arcane/ITimeLoopMng.h>
 #include <arcane/cartesianmesh/CellDirectionMng.h>
 #include <arcane/cartesianmesh/ICartesianMesh.h>
+#include <arcane/ICartesianMeshGenerationInfo.h>
 #include <arcane/ServiceBuilder.h>
 #include "ISimpleOutput.hh"
 
@@ -47,7 +48,6 @@ public ArcaneQSObject
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
  protected:
-  ICartesianMesh* m_cartesian_mesh;
   Timer* m_timer;
 
  protected:

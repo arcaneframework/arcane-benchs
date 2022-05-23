@@ -38,9 +38,6 @@
   <q-s>
     <dt>1e-08</dt>
     <boundaryCondition>reflect</boundaryCondition>
-    <lx>100</lx>
-    <ly>100</ly>
-    <lz>100</lz>
     <nSteps>10</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>

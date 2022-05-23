@@ -42,9 +42,6 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <lx>640.0</lx>
-    <ly>640.0</ly>
-    <lz>640.0</lz>
     <csvFile>./TestHuge_P@proc_id@.csv</csvFile>
   </q-s>
 

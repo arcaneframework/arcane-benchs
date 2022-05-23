@@ -42,9 +42,6 @@
     <eMax>20</eMax>
     <eMin>1e-08</eMin>
     <nGroups>230</nGroups>
-    <lx>44.0</lx>
-    <ly>44.0</ly>
-    <lz>44.0</lz>
     <csvFile>./Coral2_P2_n8192.csv</csvFile>
   </q-s>
 

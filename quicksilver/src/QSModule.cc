@@ -28,12 +28,9 @@ initModule()
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
   csv->init("QAMA", ";");
 
-  m_cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
-  m_cartesian_mesh->computeDirections();
   initMesh();
   initTallies();
   m_timer = new Timer(subDomain(), "QS", Timer::TimerReal);
-
 }
 
 /**
@@ -85,32 +82,38 @@ initMesh()
 {
   info() << "Initialisation des grandeurs/variables";
 
+  ICartesianMesh* cartesian_mesh = ICartesianMesh::getReference(mesh(), true);
+  cartesian_mesh->computeDirections();
+
   // On recherche le nombre de cellules en x, y, z.
   Int64 m_nx, m_ny, m_nz;
   {
-    CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirX));
+    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirX));
     m_nx = cdm.globalNbCell();
   }
   {
-    CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirY));
+    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirY));
     m_ny = cdm.globalNbCell();
   }
   {
-    CellDirectionMng cdm(m_cartesian_mesh->cellDirection(MD_DirZ));
+    CellDirectionMng cdm(cartesian_mesh->cellDirection(MD_DirZ));
     m_nz = cdm.globalNbCell();
   }
 
   VariableNodeReal3& node_coord = nodesCoordinates();
+
+  ICartesianMeshGenerationInfo* aaa = ICartesianMeshGenerationInfo::getReference(mesh(), false);
+
+  Real3 lenght = aaa->globalLength();
+  m_lx = lenght[MD_DirX];
+  m_ly = lenght[MD_DirY];
+  m_lz = lenght[MD_DirZ];
 
   m_global_deltat = options()->getDt();
 
   m_e_min = options()->getEMin();
   m_e_max = options()->getEMax();
   m_n_groups = options()->getNGroups();
-
-  m_lx = options()->getLx(); // TODO : Récupérer directement les <length> du cartesian mesh.
-  m_ly = options()->getLy();
-  m_lz = options()->getLz();
 
   // Voir si la parallélisation ici sert à quelque chose
   // sachant qu'il faut gérer la répartition des faces par threads.

@@ -37,9 +37,6 @@
 
   <q-s>
     <dt>1e6</dt>
-    <lx>10</lx>
-    <ly>10</ly>
-    <lz>10</lz>
     <boundaryCondition>reflect</boundaryCondition>
     <nSteps>20</nSteps>
     <eMax>1</eMax>

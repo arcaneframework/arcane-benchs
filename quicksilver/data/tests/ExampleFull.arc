@@ -43,9 +43,6 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <lx>100.0</lx>
-    <ly>100.0</ly>
-    <lz>100.0</lz>
     <csvFile>./ExampleFull_P@proc_id@.csv</csvFile>
   </q-s>
 
