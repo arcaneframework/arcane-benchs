@@ -62,11 +62,15 @@ cycleTracking()
     updateTallies();
   }
 
-  Real time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, m_timer->lastActivationTime());
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  Real time = m_timer->lastActivationTime();
+
+  csv->addElemRow("Tracking duration (Proc)", time);
+  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, time);
+  if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Tracking duration (ReduceMax)", time);
+
   info() << "--- Tracking duration: " << time << " s ---";
 
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-  csv->addElemRow("Tracking", time);
 }
 
 /**

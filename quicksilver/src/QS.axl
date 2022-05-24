@@ -301,24 +301,6 @@
       </description>
     </simple>
 
-    <simple name="lx" type="real" default="100.0">
-      <description>
-        x-size of simulation (cm)
-      </description>
-    </simple>
-
-    <simple name="ly" type="real" default="100.0">
-      <description>
-        y-size of simulation (cm)
-      </description>
-    </simple>
-
-    <simple name="lz" type="real" default="100.0">
-      <description>
-        z-size of simulation (cm)
-      </description>
-    </simple>
-
     <enumeration name="boundaryCondition" type="eBoundaryCondition" default="reflect">
       <description>Boundary Condition</description>
       <enumvalue name="reflect" genvalue="REFLECT"  />

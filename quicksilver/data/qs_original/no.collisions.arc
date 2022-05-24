@@ -37,9 +37,6 @@
 
   <q-s>
     <dt>1e-08</dt>
-    <lx>100</lx>
-    <ly>100</ly>
-    <lz>100</lz>
     <nSteps>10</nSteps>
     <eMax>1.000001</eMax>
     <eMin>1.000000</eMin>

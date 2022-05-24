@@ -3,7 +3,7 @@
 
 ### How to use it?
 
-Build and Install Arcane.
+Build and Install Arcane (version 3.6.4+).
 
 And:
 
@@ -15,7 +15,7 @@ QS_SOURCE_DIR=arcane-benchs/quicksilver # your src path
 QS_BUILD_DIR=build_qama # build dir
 
 QS_EXE=${QS_BUILD_DIR}/src/Quicksilver
-QS_ARC=${QS_SOURCE_DIR}/data/ExampleFull.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
 cd ${QS_BUILD_DIR}
 
 cmake -S ${QS_SOURCE_DIR} -B ${QS_BUILD_DIR} -DCMAKE_PREFIX_PATH=${ARCANE_INSTALL_PATH} -DCMAKE_BUILD_TYPE=${QS_BUILD_TYPE}
@@ -34,22 +34,46 @@ ${QS_EXE} -A,T=2 ${QS_ARC}
 mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 ```
 
-Arc input files examples:
+All arc input files examples:
 
 ```sh
-QS_ARC=${QS_SOURCE_DIR}/data/ExampleFull.arc
-QS_ARC=${QS_SOURCE_DIR}/data/ExampleDefault.arc
-QS_ARC=${QS_SOURCE_DIR}/data/TestSmall.arc
-QS_ARC=${QS_SOURCE_DIR}/data/TestMedium.arc
-QS_ARC=${QS_SOURCE_DIR}/data/TestLarge.arc
-QS_ARC=${QS_SOURCE_DIR}/data/TestHuge.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleDefault.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/TestSmall.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/TestMedium.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/TestLarge.arc
+QS_ARC=${QS_SOURCE_DIR}/data/tests/TestHuge.arc
 
-QS_ARC=${QS_SOURCE_DIR}/data/qs_original/Coral2_P1.arc
-QS_ARC=${QS_SOURCE_DIR}/data/qs_original/Coral2_P2.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n128.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n256.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n512.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n1024.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n2048.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n4096.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n8192.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n131072.arc
+
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n128.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n256.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n512.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n1024.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n2048.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n4096.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n8192.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n131072.arc
+
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n128.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n256.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n512.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n1024.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n2048.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n4096.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n8192.arc
+QS_ARC=${QS_SOURCE_DIR}/data/CTS2/CTS2_n131072.arc
+
 QS_ARC=${QS_SOURCE_DIR}/data/qs_original/allAbsorb.arc
 QS_ARC=${QS_SOURCE_DIR}/data/qs_original/allEscape.arc
 QS_ARC=${QS_SOURCE_DIR}/data/qs_original/scatteringOnly.arc
-QS_ARC=${QS_SOURCE_DIR}/data/qs_original/CTS2.arc
 QS_ARC=${QS_SOURCE_DIR}/data/qs_original/homogeneousProblem.arc
 QS_ARC=${QS_SOURCE_DIR}/data/qs_original/no.collisions.arc
 QS_ARC=${QS_SOURCE_DIR}/data/qs_original/noFission.arc
