@@ -111,7 +111,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   Int32UniqueArray m_outgoing_particles_rank_to;
 
   std::atomic<Int64> m_num_segments_a{ 0 };
-  std::atomic<Int64> m_escape_a{ 0 };
+  //std::atomic<Int64> m_escape_a{ 0 };
   std::atomic<Int64> m_census_a{ 0 };
   std::atomic<Int64> m_collision_a{ 0 };
   std::atomic<Int64> m_scatter_a{ 0 };

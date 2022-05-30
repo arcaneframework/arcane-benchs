@@ -63,18 +63,18 @@ cycleInit()
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
              << " - SourceParticles: " << m_source_a << " particle(s) created.";
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-             << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
-             << m_split_a << " particle(s) created by splitting.";
-    Int64 tmpLog = m_rr_a;
+             << " - PopulationControl: " << m_rr() << " particle(s) killed / "
+             << m_split() << " particle(s) created by splitting.";
+    Int64 tmpLog = m_rr();
 
     // Roulette sur les particules avec faible poids.
     rouletteLowWeightParticles(); // Delete particles with low statistical weight
 
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-             << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
+             << " - RouletteLowWeightParticles: " << m_rr() - tmpLog
              << " particle(s) killed.";
 
-    if(m_rr_a != 0){
+    if(m_rr() != 0){
       m_particle_family->compactItems(false);
 
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
@@ -121,8 +121,9 @@ clearCrossSectionCache()
   ENUMERATE_CELL (icell, ownCells()) {
     m_num_particles[icell] = 0;
 
+    RealArrayView total_icell = m_total[icell];
     for (Integer i = 0; i < m_n_groups(); i++) {
-      m_total[icell][i] = 0.0;
+      total_icell[i] = 0.0;
     }
   }
 }
@@ -333,9 +334,10 @@ populationControl()
         Real randomNumber = rngSample(&m_particle_rns[iparticle]);
         if (randomNumber > splitRRFactor) {
           // Kill
-          m_rr_a++;
+          //m_rr_a++;
           GlobalMutex::ScopedLock(m_mutex);
           supprP.add(iparticle.localId());
+          m_rr = m_rr() + 1;
         }
         else {
           // Ici, splitRRFactor < 1 donc on augmente la taille de la
@@ -370,7 +372,8 @@ populationControl()
         GlobalMutex::ScopedLock(m_mutex);
         for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor;
              splitFactorIndex++) {
-          m_split_a++;
+          //m_split_a++;
+          m_split = m_split() + 1;
           Int64 rns =
           rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
           addRns.add(rns);
@@ -403,18 +406,9 @@ void SamplingMCModule::
 initParticle(ParticleEnumerator p, const Int64& rns)
 {
   m_particle_rns[p] = rns;
-  m_particle_coord[p][MD_DirX] = 0.0;
-  m_particle_coord[p][MD_DirY] = 0.0;
-  m_particle_coord[p][MD_DirZ] = 0.0;
-
-  m_particle_velocity[p][MD_DirX] = 0.0;
-  m_particle_velocity[p][MD_DirY] = 0.0;
-  m_particle_velocity[p][MD_DirZ] = 0.0;
-
-  m_particle_dir_cos[p][MD_DirA] = 0.0;
-  m_particle_dir_cos[p][MD_DirB] = 0.0;
-  m_particle_dir_cos[p][MD_DirG] = 0.0;
-
+  m_particle_coord[p] = 0.0;
+  m_particle_velocity[p] = 0.0;
+  m_particle_dir_cos[p] = 0.0;
   m_particle_kin_ene[p] = 0.0;
   m_particle_weight[p] = 0.0;
   m_particle_time_census[p] = 0.0;
@@ -467,18 +461,9 @@ cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
   m_particle_rns[pNew] = rns;
 
-  m_particle_coord[pNew][MD_DirX] = m_particle_coord[pSrc][MD_DirX];
-  m_particle_coord[pNew][MD_DirY] = m_particle_coord[pSrc][MD_DirY];
-  m_particle_coord[pNew][MD_DirZ] = m_particle_coord[pSrc][MD_DirZ];
-
-  m_particle_velocity[pNew][MD_DirX] = m_particle_velocity[pSrc][MD_DirX];
-  m_particle_velocity[pNew][MD_DirY] = m_particle_velocity[pSrc][MD_DirY];
-  m_particle_velocity[pNew][MD_DirZ] = m_particle_velocity[pSrc][MD_DirZ];
-
-  m_particle_dir_cos[pNew][MD_DirA] = m_particle_dir_cos[pSrc][MD_DirA];
-  m_particle_dir_cos[pNew][MD_DirB] = m_particle_dir_cos[pSrc][MD_DirB];
-  m_particle_dir_cos[pNew][MD_DirG] = m_particle_dir_cos[pSrc][MD_DirG];
-
+  m_particle_coord[pNew] = m_particle_coord[pSrc];
+  m_particle_velocity[pNew] = m_particle_velocity[pSrc];
+  m_particle_dir_cos[pNew] = m_particle_dir_cos[pSrc];
   m_particle_kin_ene[pNew] = m_particle_kin_ene[pSrc];
   m_particle_weight[pNew] = m_particle_weight[pSrc];
   m_particle_time_census[pNew] = m_particle_time_census[pSrc];
@@ -522,9 +507,10 @@ rouletteLowWeightParticles()
           }
           else {
             // Kill
-            m_rr_a++;
+            //m_rr_a++;
             GlobalMutex::ScopedLock(m_mutex);
             supprP.add(iparticle.localId());
+            m_rr = m_rr() + 1;
           }
         }
       }
@@ -566,15 +552,15 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
   // on doit explorer les facet de la même manière que QS original.
   /// La face QS n°0 correspond à la face Arcane n°4, &c.
   ///                        Face QS : 0, 1, 2, 3, 4, 5
-  static Integer QS_to_arcaneFace[] = { 4, 1, 5, 2, 3, 0 };
+  static const Integer QS_to_arcaneFace[] = { 4, 1, 5, 2, 3, 0 };
 
   /// Le node QS n°0 de la face Arcane n°5 correspond au node Arcane n°1, &c.
-  static Integer QS_to_arcaneNode[] = { 0, 1, 2, 3, // QS : F0{0, 1, 2, 3} = Arcane : F4{0, 1, 2, 3}
-                                        0, 3, 2, 1, // QS : F1{0, 1, 2, 3} = Arcane : F1{0, 3, 2, 1}
-                                        1, 0, 3, 2, // QS : F2{0, 1, 2, 3} = Arcane : F5{1, 0, 3, 2}
-                                        0, 1, 2, 3, // QS : F3{0, 1, 2, 3} = Arcane : F2{0, 1, 2, 3}
-                                        0, 1, 2, 3, // QS : F4{0, 1, 2, 3} = Arcane : F3{0, 1, 2, 3}
-                                        0, 3, 2, 1 }; // QS : F5{0, 1, 2, 3} = Arcane : F0{0, 3, 2, 1}
+  static const Integer QS_to_arcaneNode[] = { 0, 1, 2, 3, // QS : F0{0, 1, 2, 3} = Arcane : F4{0, 1, 2, 3}
+                                              0, 3, 2, 1, // QS : F1{0, 1, 2, 3} = Arcane : F1{0, 3, 2, 1}
+                                              1, 0, 3, 2, // QS : F2{0, 1, 2, 3} = Arcane : F5{1, 0, 3, 2}
+                                              0, 1, 2, 3, // QS : F3{0, 1, 2, 3} = Arcane : F2{0, 1, 2, 3}
+                                              0, 1, 2, 3, // QS : F4{0, 1, 2, 3} = Arcane : F3{0, 1, 2, 3}
+                                              0, 3, 2, 1 }; // QS : F5{0, 1, 2, 3} = Arcane : F0{0, 3, 2, 1}
 
   for (Integer i = 0; i < 6; i++) {
     face = cell.face(QS_to_arcaneFace[i]);
@@ -699,14 +685,17 @@ computeTetVolume(const Real3& v0_,
 void SamplingMCModule::
 sampleIsotropic(Particle p)
 {
-  m_particle_dir_cos[p][MD_DirG] = 1.0 - 2.0 * rngSample(&m_particle_rns[p]);
+  Real3 particle_dir_cos_p = m_particle_dir_cos[p];
+  particle_dir_cos_p[MD_DirG] = 1.0 - 2.0 * rngSample(&m_particle_rns[p]);
   Real sine_gamma = sqrt((
-  1.0 - (m_particle_dir_cos[p][MD_DirG] * m_particle_dir_cos[p][MD_DirG])));
+  1.0 - (particle_dir_cos_p[MD_DirG] * particle_dir_cos_p[MD_DirG])));
   Real phi =
   PhysicalConstants::_pi * (2.0 * rngSample(&m_particle_rns[p]) - 1.0);
 
-  m_particle_dir_cos[p][MD_DirA] = sine_gamma * cos(phi);
-  m_particle_dir_cos[p][MD_DirB] = sine_gamma * sin(phi);
+  particle_dir_cos_p[MD_DirA] = sine_gamma * cos(phi);
+  particle_dir_cos_p[MD_DirB] = sine_gamma * sin(phi);
+
+  m_particle_dir_cos[p] = particle_dir_cos_p;
 }
 
 /**
@@ -719,7 +708,7 @@ sampleIsotropic(Particle p)
 Real SamplingMCModule::
 getSpeedFromEnergy(Particle p)
 {
-  Real energy = m_particle_kin_ene[p];
+  const Real energy = m_particle_kin_ene[p];
   static const Real rest_mass_energy =
   PhysicalConstants::_neutronRestMassEnergy;
   static const Real speed_of_light = PhysicalConstants::_speedOfLight;
@@ -737,10 +726,10 @@ void SamplingMCModule::
 updateTallies()
 {
   m_source = m_source_a;
-  m_rr = m_rr_a;
-  m_split = m_split_a;
+  //m_rr = m_rr_a;
+  //m_split = m_split_a;
 
   m_source_a = 0;
-  m_rr_a = 0;
-  m_split_a = 0;
+  //m_rr_a = 0;
+  //m_split_a = 0;
 }

@@ -53,8 +53,8 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   Real m_source_particle_weight;
 
   std::atomic<Int64> m_source_a{ 0 };
-  std::atomic<Int64> m_rr_a{ 0 };
-  std::atomic<Int64> m_split_a{ 0 };
+  //std::atomic<Int64> m_rr_a{ 0 };
+  //std::atomic<Int64> m_split_a{ 0 };
 
   GlobalMutex m_mutex;
 
