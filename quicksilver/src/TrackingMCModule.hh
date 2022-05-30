@@ -77,12 +77,14 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   , m_extra_particles_angle_out_particle_src(0)
   , m_outgoing_particles_local_ids(0)
   , m_outgoing_particles_rank_to(0)
-  , m_escape_a(0)
+  , m_escape(0)
+  , m_end(0)
   {}
 
  public:
   void initModule() override;
   void cycleTracking() override;
+  void cycleFinalize() override;
   void endModule() override;
 
   VersionInfo versionInfo() const override { return VersionInfo(1, 3, 0); }
@@ -112,14 +114,14 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   Int32UniqueArray m_outgoing_particles_rank_to;
 
   std::atomic<Int64> m_num_segments_a{ 0 };
-  //std::atomic<Int64> m_escape_a{ 0 };
-  Int64 m_escape_a;
+  Int64 m_escape;
   std::atomic<Int64> m_census_a{ 0 };
   std::atomic<Int64> m_collision_a{ 0 };
   std::atomic<Int64> m_scatter_a{ 0 };
   std::atomic<Int64> m_fission_a{ 0 };
   std::atomic<Int64> m_absorb_a{ 0 };
   std::atomic<Int64> m_produce_a{ 0 };
+  Int64 m_end;
 
   GlobalMutex m_mutex_exit;
   GlobalMutex m_mutex_extra;

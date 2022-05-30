@@ -39,6 +39,9 @@ initModule()
 
   // Configuration des materiaux.
   initNuclearData();
+
+  m_scalar_flux_tally.resize(m_n_groups());
+  m_scalar_flux_tally.fill(0.0);
 }
 
 /**
@@ -52,14 +55,12 @@ cycleTracking()
     computeCrossSection();
     tracking();
     
-    if(m_absorb_a != 0 || m_escape_a != 0){
+    if(m_absorb_a != 0 || m_escape != 0){
       m_particle_family->compactItems(false);
 
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
       m_particle_family->prepareForDump();
     }
-
-    updateTallies();
   }
 
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
@@ -71,6 +72,110 @@ cycleTracking()
 
   info() << "--- Tracking duration: " << time << " s ---";
 
+}
+
+/**
+ * @brief Méthode .
+ */
+void TrackingMCModule::
+cycleFinalize()
+{
+  // Somme des m_scalar_flux_tally.
+  Real sum_scalar_flux_tally = 0.0;
+  ENUMERATE_CELL (icell, ownCells()) {
+    for (Integer i = 0; i < m_n_groups(); i++) {
+      sum_scalar_flux_tally += m_scalar_flux_tally[icell][i];
+      m_scalar_flux_tally[icell][i] = 0.0;
+    }
+  }
+
+  Int64 m_absorb = m_absorb_a;
+  Int64 m_scatter = m_scatter_a;
+  Int64 m_fission = m_fission_a;
+  Int64 m_produce = m_produce_a;
+  Int64 m_collision = m_collision_a;
+  Int64 m_census = m_census_a;
+  Int64 m_num_segments = m_num_segments_a;
+
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  csv->addElemRow("m_absorb (Proc)", m_absorb);
+  csv->addElemRow("m_scatter (Proc)", m_scatter);
+  csv->addElemRow("m_fission (Proc)", m_fission);
+  csv->addElemRow("m_produce (Proc)", m_produce);
+  csv->addElemRow("m_collision (Proc)", m_collision);
+  csv->addElemRow("m_escape (Proc)", m_escape);
+  csv->addElemRow("m_census (Proc)", m_census);
+  csv->addElemRow("m_num_segments (Proc)", m_num_segments);
+  csv->addElemRow("m_end (Proc)", m_end);
+
+  csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
+
+  m_absorb = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_absorb);
+  m_scatter = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_scatter);
+  m_fission = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_fission);
+  m_produce = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_produce);
+  m_collision = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_collision);
+  m_escape = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_escape);
+  m_census = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_census);
+  m_num_segments = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_num_segments);
+  m_end = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_end);
+
+  sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
+
+  if(mesh()->parallelMng()->commRank() == 0){
+    csv->addElemRow("m_absorb (ReduceSum)", m_absorb);
+    csv->addElemRow("m_scatter (ReduceSum)", m_scatter);
+    csv->addElemRow("m_fission (ReduceSum)", m_fission);
+    csv->addElemRow("m_produce (ReduceSum)", m_produce);
+    csv->addElemRow("m_collision (ReduceSum)", m_collision);
+    csv->addElemRow("m_escape (ReduceSum)", m_escape);
+    csv->addElemRow("m_census (ReduceSum)", m_census);
+    csv->addElemRow("m_num_segments (ReduceSum)", m_num_segments);
+    csv->addElemRow("m_end (ReduceSum)", m_end);
+    csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_scalar_flux_tally);
+  }
+
+  info() << "    Number of particles absorbed                                "
+            "(m_absorb): "
+         << m_absorb;
+  info() << "    Number of scatters                                         "
+            "(m_scatter): "
+         << m_scatter;
+  info() << "    Number of fission events                                   "
+            "(m_fission): "
+         << m_fission;
+  info() << "    Number of particles created by collisions                  "
+            "(m_produce): "
+         << m_produce;
+  info() << "    Number of collisions                                     "
+            "(m_collision): "
+         << m_collision;
+  info() << "    Number of particles that escape                             "
+            "(m_escape): "
+         << m_escape;
+  info() << "    Number of particles that enter census                       "
+            "(m_census): "
+         << m_census;
+  info() << "    Number of segements                                   "
+            "(m_num_segments): "
+         << m_num_segments;
+  info() << "    Number of particles at end of cycle                           "
+            " (m_end): "
+         << m_end;
+  info() << "    Particles contribution to the scalar flux     "
+            " (sum_scalar_flux_tally): "
+         << sum_scalar_flux_tally;
+
+  m_absorb_a = 0;
+  m_census_a = 0;
+  m_escape = 0;
+  m_collision_a = 0;
+  m_fission_a = 0;
+  m_produce_a = 0;
+  m_scatter_a = 0;
+  m_num_segments_a = 0;
+  m_end = 0;
 }
 
 /**
@@ -329,31 +434,6 @@ tracking()
 }
 
 /**
- * @brief Méthode permettant de copier les atomics dans les variables Arcane.
- */
-void TrackingMCModule::
-updateTallies()
-{
-  m_absorb = m_absorb_a;
-  m_census = m_census_a;
-  m_escape = m_escape_a;
-  m_collision = m_collision_a;
-  m_fission = m_fission_a;
-  m_produce = m_produce_a;
-  m_scatter = m_scatter_a;
-  m_num_segments = m_num_segments_a;
-
-  m_absorb_a = 0;
-  m_census_a = 0;
-  m_escape_a = 0;
-  m_collision_a = 0;
-  m_fission_a = 0;
-  m_produce_a = 0;
-  m_scatter_a = 0;
-  m_num_segments_a = 0;
-}
-
-/**
  * @brief Méthode permettant de savoir si une cellule est dans un matériau.
  * On a les dimensions du matériau (en cm) et la position du centre de la cellule
  * (en cm), cette méthode permet de savoir si le centre de la cellule est dans le 
@@ -494,7 +574,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_exited_particles_local_ids.add(particle.localId());
-          m_escape_a++;
+          m_escape++;
         }
         break;
 

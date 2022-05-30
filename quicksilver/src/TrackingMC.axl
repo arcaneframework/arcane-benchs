@@ -87,87 +87,6 @@
         need-sync="true" />
 
     <variable
-        field-name="absorb"
-        name="Absorb"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="census"
-        name="Census"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="escape"
-        name="Escape"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="collision"
-        name="Collision"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="fission"
-        name="Fission"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="produce"
-        name="Produce"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="scatter"
-        name="Scatter"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="num_segments"
-        name="NumSegments"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="end"
-        name="End"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
         field-name="total"
         name="Total"
         data-type="real"
@@ -434,6 +353,7 @@
   <entry-points>
     <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
     <entry-point method-name="cycleTracking" name="CycleTracking" where="compute-loop" property="none" />
+    <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
     <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
   </entry-points>
 

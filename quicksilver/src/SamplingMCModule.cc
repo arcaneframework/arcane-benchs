@@ -39,7 +39,7 @@ initModule()
  * @brief Méthode permettant de créer/tuer des particules.
  */
 void SamplingMCModule::
-cycleInit()
+cycleSampling()
 {
   // On ajoute une colonne dans le csv.
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
@@ -63,25 +63,23 @@ cycleInit()
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
              << " - SourceParticles: " << m_source_a << " particle(s) created.";
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-             << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
-             << m_split_a << " particle(s) created by splitting.";
-    Int64 tmpLog = m_rr_a;
+             << " - PopulationControl: " << m_rr << " particle(s) killed / "
+             << m_split << " particle(s) created by splitting.";
+    Int64 tmpLog = m_rr;
 
     // Roulette sur les particules avec faible poids.
     rouletteLowWeightParticles(); // Delete particles with low statistical weight
 
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-             << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
+             << " - RouletteLowWeightParticles: " << m_rr - tmpLog
              << " particle(s) killed.";
 
-    if(m_rr_a != 0){
+    if(m_rr != 0){
       m_particle_family->compactItems(false);
 
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
       m_particle_family->prepareForDump();
     }
-
-    updateTallies();
 
     // ENUMERATE_PARTICLE (ipartic, m_processingView) {
     //   m_num_particles[(*ipartic).cell()]++;
@@ -98,6 +96,54 @@ cycleInit()
   if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Sampling duration (ReduceMax)", time);
 
   info() << "--- Sampling duration: " << time << " s ---";
+}
+
+/**
+ * @brief Méthode .
+ */
+void SamplingMCModule::
+cycleFinalize()
+{
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  Int64 m_source = m_source_a;
+
+  csv->addElemRow("m_start (Proc)", m_start);
+  csv->addElemRow("m_source (Proc)", m_source);
+  csv->addElemRow("m_rr (Proc)", m_rr);
+  csv->addElemRow("m_split (Proc)", m_split);
+
+
+  m_start = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_start);
+  m_source = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_source);
+  m_rr = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_rr);
+  m_split = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_split);
+
+
+  if(mesh()->parallelMng()->commRank() == 0){
+    csv->addElemRow("m_start (ReduceSum)", m_start);
+    csv->addElemRow("m_source (ReduceSum)", m_source);
+    csv->addElemRow("m_rr (ReduceSum)", m_rr);
+    csv->addElemRow("m_split (ReduceSum)", m_split);
+  }
+
+  info() << "    Number of particles at beginning of cycle                    "
+            "(m_start): "
+         << m_start;
+  info() << "    Number of particles sourced in                              "
+            "(m_source): "
+         << m_source;
+  info() << "    Number of particles Russian Rouletted in population control   "
+            "  (m_rr): "
+         << m_rr;
+  info() << "    Number of particles split in population control              "
+            "(m_split): "
+         << m_split;
+
+  m_start = 0;
+  m_source_a = 0;
+  m_rr = 0;
+  m_split = 0;
 }
 
 /**
@@ -336,8 +382,7 @@ populationControl()
           // Kill
           GlobalMutex::ScopedLock(m_mutex);
           supprP.add(iparticle.localId());
-          m_rr_a++;
-          //m_rr = m_rr() + 1;
+          m_rr++;
         }
         else {
           // Ici, splitRRFactor < 1 donc on augmente la taille de la
@@ -372,8 +417,7 @@ populationControl()
         GlobalMutex::ScopedLock(m_mutex);
         for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor;
              splitFactorIndex++) {
-          m_split_a++;
-          //m_split = m_split() + 1;
+          m_split++;
           Int64 rns =
           rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
           addRns.add(rns);
@@ -509,8 +553,7 @@ rouletteLowWeightParticles()
             // Kill
             GlobalMutex::ScopedLock(m_mutex);
             supprP.add(iparticle.localId());
-            m_rr_a++;
-            //m_rr = m_rr() + 1;
+            m_rr++;
           }
         }
       }
@@ -716,20 +759,4 @@ getSpeedFromEnergy(Particle p)
   return speed_of_light *
   sqrt(energy * (energy + 2.0 * (rest_mass_energy)) /
        ((energy + rest_mass_energy) * (energy + rest_mass_energy)));
-}
-
-/**
- * @brief Méthode permettant de copier les atomics dans les variables Arcane.
- *
- */
-void SamplingMCModule::
-updateTallies()
-{
-  m_source = m_source_a;
-  m_rr = m_rr_a;
-  m_split = m_split_a;
-
-  m_source_a = 0;
-  m_rr_a = 0;
-  m_split_a = 0;
 }

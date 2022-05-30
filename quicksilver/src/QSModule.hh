@@ -48,12 +48,7 @@ public ArcaneQSObject
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
 
  protected:
-  Timer* m_timer;
-
- protected:
-  void cycleFinalizeTallies();
   void initMesh();
-  void initTallies();
   ParticleEvent getBoundaryCondition(const Integer& pos);
 };
 
