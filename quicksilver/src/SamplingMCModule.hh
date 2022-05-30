@@ -38,6 +38,8 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   : ArcaneSamplingMCObject(mbi)
   , m_particle_family(nullptr)
   , m_timer(nullptr)
+  , m_rr_a(0)
+  , m_split_a(0)
   {}
 
  public:
@@ -54,7 +56,9 @@ class SamplingMCModule : public ArcaneSamplingMCObject
 
   std::atomic<Int64> m_source_a{ 0 };
   //std::atomic<Int64> m_rr_a{ 0 };
+  Int64 m_rr_a;
   //std::atomic<Int64> m_split_a{ 0 };
+  Int64 m_split_a;
 
   GlobalMutex m_mutex;
 

@@ -52,7 +52,7 @@ cycleTracking()
     computeCrossSection();
     tracking();
     
-    if(m_absorb_a != 0 || m_escape() != 0){
+    if(m_absorb_a != 0 || m_escape_a != 0){
       m_particle_family->compactItems(false);
 
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
@@ -336,7 +336,7 @@ updateTallies()
 {
   m_absorb = m_absorb_a;
   m_census = m_census_a;
-  //m_escape = m_escape_a;
+  m_escape = m_escape_a;
   m_collision = m_collision_a;
   m_fission = m_fission_a;
   m_produce = m_produce_a;
@@ -345,7 +345,7 @@ updateTallies()
 
   m_absorb_a = 0;
   m_census_a = 0;
-  //m_escape_a = 0;
+  m_escape_a = 0;
   m_collision_a = 0;
   m_fission_a = 0;
   m_produce_a = 0;
@@ -494,7 +494,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_exited_particles_local_ids.add(particle.localId());
-          m_escape = m_escape() + 1;
+          m_escape_a++;
         }
         break;
 

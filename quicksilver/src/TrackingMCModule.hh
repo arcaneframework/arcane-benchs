@@ -77,6 +77,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   , m_extra_particles_angle_out_particle_src(0)
   , m_outgoing_particles_local_ids(0)
   , m_outgoing_particles_rank_to(0)
+  , m_escape_a(0)
   {}
 
  public:
@@ -112,6 +113,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
 
   std::atomic<Int64> m_num_segments_a{ 0 };
   //std::atomic<Int64> m_escape_a{ 0 };
+  Int64 m_escape_a;
   std::atomic<Int64> m_census_a{ 0 };
   std::atomic<Int64> m_collision_a{ 0 };
   std::atomic<Int64> m_scatter_a{ 0 };

@@ -63,18 +63,18 @@ cycleInit()
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
              << " - SourceParticles: " << m_source_a << " particle(s) created.";
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-             << " - PopulationControl: " << m_rr() << " particle(s) killed / "
-             << m_split() << " particle(s) created by splitting.";
-    Int64 tmpLog = m_rr();
+             << " - PopulationControl: " << m_rr_a << " particle(s) killed / "
+             << m_split_a << " particle(s) created by splitting.";
+    Int64 tmpLog = m_rr_a;
 
     // Roulette sur les particules avec faible poids.
     rouletteLowWeightParticles(); // Delete particles with low statistical weight
 
     pinfo(3) << "P" << mesh()->parallelMng()->commRank()
-             << " - RouletteLowWeightParticles: " << m_rr() - tmpLog
+             << " - RouletteLowWeightParticles: " << m_rr_a - tmpLog
              << " particle(s) killed.";
 
-    if(m_rr() != 0){
+    if(m_rr_a != 0){
       m_particle_family->compactItems(false);
 
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
@@ -334,10 +334,10 @@ populationControl()
         Real randomNumber = rngSample(&m_particle_rns[iparticle]);
         if (randomNumber > splitRRFactor) {
           // Kill
-          //m_rr_a++;
           GlobalMutex::ScopedLock(m_mutex);
           supprP.add(iparticle.localId());
-          m_rr = m_rr() + 1;
+          m_rr_a++;
+          //m_rr = m_rr() + 1;
         }
         else {
           // Ici, splitRRFactor < 1 donc on augmente la taille de la
@@ -372,8 +372,8 @@ populationControl()
         GlobalMutex::ScopedLock(m_mutex);
         for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor;
              splitFactorIndex++) {
-          //m_split_a++;
-          m_split = m_split() + 1;
+          m_split_a++;
+          //m_split = m_split() + 1;
           Int64 rns =
           rngSpawn_Random_Number_Seed(&m_particle_rns[iparticle]);
           addRns.add(rns);
@@ -507,10 +507,10 @@ rouletteLowWeightParticles()
           }
           else {
             // Kill
-            //m_rr_a++;
             GlobalMutex::ScopedLock(m_mutex);
             supprP.add(iparticle.localId());
-            m_rr = m_rr() + 1;
+            m_rr_a++;
+            //m_rr = m_rr() + 1;
           }
         }
       }
@@ -726,10 +726,10 @@ void SamplingMCModule::
 updateTallies()
 {
   m_source = m_source_a;
-  //m_rr = m_rr_a;
-  //m_split = m_split_a;
+  m_rr = m_rr_a;
+  m_split = m_split_a;
 
   m_source_a = 0;
-  //m_rr_a = 0;
-  //m_split_a = 0;
+  m_rr_a = 0;
+  m_split_a = 0;
 }
