@@ -24,11 +24,29 @@
 void QSModule::
 initModule()
 {
+  initMesh();
+
   // Initialisation de la sortie CSV.
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
   csv->init("QAMA", ";");
 
-  initMesh();
+  // On crée les lignes "Proc" ici pour les avoir en haut du csv du proc0.
+  csv->addRow("Sampling duration (Proc)");
+  csv->addRow("Tracking duration (Proc)");
+  csv->addRow("m_start (Proc)");
+  csv->addRow("m_source (Proc)");
+  csv->addRow("m_rr (Proc)");
+  csv->addRow("m_split (Proc)");
+  csv->addRow("m_absorb (Proc)");
+  csv->addRow("m_scatter (Proc)");
+  csv->addRow("m_fission (Proc)");
+  csv->addRow("m_produce (Proc)");
+  csv->addRow("m_collision (Proc)");
+  csv->addRow("m_escape (Proc)");
+  csv->addRow("m_census (Proc)");
+  csv->addRow("m_num_segments (Proc)");
+  csv->addRow("m_end (Proc)");
+  csv->addRow("sum_scalar_flux_tally (Proc)");
 }
 
 /**
