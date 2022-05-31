@@ -77,42 +77,6 @@
         need-sync="true" />
 
     <variable
-        field-name="start"
-        name="Start"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="source"
-        name="Source"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="rr"
-        name="Rr"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
-        field-name="split"
-        name="Split"
-        data-type="int64"
-        item-kind="none"
-        dim="0"
-        dump="true"
-        need-sync="true" />
-
-    <variable
         field-name="particle_coord"
         name="ParticleCoord"
         family-name="ArcaneParticles"
@@ -324,7 +288,8 @@
 
   <entry-points>
     <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
-    <entry-point method-name="cycleInit" name="CycleInit" where="compute-loop" property="none" />
+    <entry-point method-name="cycleSampling" name="CycleSampling" where="compute-loop" property="none" />
+    <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
     <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
   </entry-points>
 

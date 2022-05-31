@@ -19,18 +19,34 @@
 
 /**
  * @brief Méthode permettant de lancer l'initialisation des grandeurs
- * au maillage et des tallies.
+ * au maillage.
  */
 void QSModule::
 initModule()
 {
+  initMesh();
+
   // Initialisation de la sortie CSV.
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
   csv->init("QAMA", ";");
 
-  initMesh();
-  initTallies();
-  m_timer = new Timer(subDomain(), "QS", Timer::TimerReal);
+  // On crée les lignes "Proc" ici pour les avoir en haut du csv du proc0.
+  csv->addRow("Sampling duration (Proc)");
+  csv->addRow("Tracking duration (Proc)");
+  csv->addRow("m_start (Proc)");
+  csv->addRow("m_source (Proc)");
+  csv->addRow("m_rr (Proc)");
+  csv->addRow("m_split (Proc)");
+  csv->addRow("m_absorb (Proc)");
+  csv->addRow("m_scatter (Proc)");
+  csv->addRow("m_fission (Proc)");
+  csv->addRow("m_produce (Proc)");
+  csv->addRow("m_collision (Proc)");
+  csv->addRow("m_escape (Proc)");
+  csv->addRow("m_census (Proc)");
+  csv->addRow("m_num_segments (Proc)");
+  csv->addRow("m_end (Proc)");
+  csv->addRow("sum_scalar_flux_tally (Proc)");
 }
 
 /**
@@ -39,22 +55,11 @@ initModule()
 void QSModule::
 cycleFinalize()
 {
-  {
-    Timer::Sentry ts(m_timer);
-    cycleFinalizeTallies();
+  info() << "End iteration #" << m_global_iteration();
+  info() << "  Informations:";
 
-    if (m_global_iteration() == options()->getNSteps())
-      subDomain()->timeLoopMng()->stopComputeLoop(true);
-  }
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  Real time = m_timer->lastActivationTime();
-
-  csv->addElemRow("Finalize duration (Proc)", time);
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, time);
-  if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Finalize duration (ReduceMax)", time);
-
-  info() << "--- Finalize duration: " << time << " s ---";
+  if (m_global_iteration() == options()->getNSteps())
+    subDomain()->timeLoopMng()->stopComputeLoop(true);
 }
 
 /**
@@ -206,180 +211,6 @@ initMesh()
   m_total.fill(0.0);
   m_cell_number_density.fill(1.0);
   m_source_tally.fill(0);
-}
-
-/**
- * @brief Méthode permettant d'initialiser les tallies.
- */
-void QSModule::
-initTallies()
-{
-  info() << "Init tallies";
-  m_absorb = 0; // Number of particles absorbed
-  m_census = 0; // Number of particles that enter census
-  m_escape = 0; // Number of particles that escape
-  m_collision = 0; // Number of collosions
-  m_end = 0; // Number of particles at end of cycle
-  m_fission = 0; // Number of fission events
-  m_produce = 0; // Number of particles created by collisions
-  m_scatter = 0; // Number of scatters
-  m_start = 0; // Number of particles at beginning of cycle
-  m_source = 0; // Number of particles sourced in
-  m_rr = 0; // Number of particles Russian Rouletted in population control
-  m_split = 0; // Number of particles split in population control
-  m_num_segments = 0; // Number of segements
-
-  m_scalar_flux_tally.resize(m_n_groups());
-  m_scalar_flux_tally.fill(0.0);
-
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  // On crée les lignes "Proc" ici pour les avoir en haut du csv du proc0.
-  csv->addRow("Sampling duration (Proc)");
-  csv->addRow("Tracking duration (Proc)");
-  csv->addRow("Finalize duration (Proc)");
-  csv->addRow("m_start (Proc)");
-  csv->addRow("m_source (Proc)");
-  csv->addRow("m_rr (Proc)");
-  csv->addRow("m_split (Proc)");
-  csv->addRow("m_absorb (Proc)");
-  csv->addRow("m_scatter (Proc)");
-  csv->addRow("m_fission (Proc)");
-  csv->addRow("m_produce (Proc)");
-  csv->addRow("m_collision (Proc)");
-  csv->addRow("m_escape (Proc)");
-  csv->addRow("m_census (Proc)");
-  csv->addRow("m_num_segments (Proc)");
-  csv->addRow("m_end (Proc)");
-  csv->addRow("sum_scalar_flux_tally (Proc)");
-  
-}
-
-/**
- * @brief Méthode permettant de récupérer les tallies de tous les sous-domaines
- * et de les afficher.
- */
-void QSModule::
-cycleFinalizeTallies()
-{
-
-  // Somme des m_scalar_flux_tally.
-  Real sum_scalar_flux_tally = 0.0;
-  ENUMERATE_CELL (icell, ownCells()) {
-    for (Integer i = 0; i < m_n_groups(); i++) {
-      sum_scalar_flux_tally += m_scalar_flux_tally[icell][i];
-      m_scalar_flux_tally[icell][i] = 0.0;
-    }
-  }
-
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  csv->addElemRow("m_start (Proc)", m_start.value());
-  csv->addElemRow("m_source (Proc)", m_source.value());
-  csv->addElemRow("m_rr (Proc)", m_rr.value());
-  csv->addElemRow("m_split (Proc)", m_split.value());
-  csv->addElemRow("m_absorb (Proc)", m_absorb.value());
-  csv->addElemRow("m_scatter (Proc)", m_scatter.value());
-  csv->addElemRow("m_fission (Proc)", m_fission.value());
-  csv->addElemRow("m_produce (Proc)", m_produce.value());
-  csv->addElemRow("m_collision (Proc)", m_collision.value());
-  csv->addElemRow("m_escape (Proc)", m_escape.value());
-  csv->addElemRow("m_census (Proc)", m_census.value());
-  csv->addElemRow("m_num_segments (Proc)", m_num_segments.value());
-  csv->addElemRow("m_end (Proc)", m_end.value());
-  csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
-
-  m_absorb.reduce(Parallel::ReduceSum);
-  m_census.reduce(Parallel::ReduceSum);
-  m_escape.reduce(Parallel::ReduceSum);
-  m_collision.reduce(Parallel::ReduceSum);
-  m_fission.reduce(Parallel::ReduceSum);
-  m_produce.reduce(Parallel::ReduceSum);
-  m_scatter.reduce(Parallel::ReduceSum);
-  m_num_segments.reduce(Parallel::ReduceSum);
-  m_source.reduce(Parallel::ReduceSum);
-  m_rr.reduce(Parallel::ReduceSum);
-  m_split.reduce(Parallel::ReduceSum);
-  m_start.reduce(Parallel::ReduceSum);
-  m_end.reduce(Parallel::ReduceSum);
-  sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
-
-  if(mesh()->parallelMng()->commRank() == 0){
-    csv->addElemRow("m_start (ReduceSum)", m_start.value());
-    csv->addElemRow("m_source (ReduceSum)", m_source.value());
-    csv->addElemRow("m_rr (ReduceSum)", m_rr.value());
-    csv->addElemRow("m_split (ReduceSum)", m_split.value());
-    csv->addElemRow("m_absorb (ReduceSum)", m_absorb.value());
-    csv->addElemRow("m_scatter (ReduceSum)", m_scatter.value());
-    csv->addElemRow("m_fission (ReduceSum)", m_fission.value());
-    csv->addElemRow("m_produce (ReduceSum)", m_produce.value());
-    csv->addElemRow("m_collision (ReduceSum)", m_collision.value());
-    csv->addElemRow("m_escape (ReduceSum)", m_escape.value());
-    csv->addElemRow("m_census (ReduceSum)", m_census.value());
-    csv->addElemRow("m_num_segments (ReduceSum)", m_num_segments.value());
-    csv->addElemRow("m_end (ReduceSum)", m_end.value());
-    csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_scalar_flux_tally);
-  }
-
-  info() << "End iteration #" << m_global_iteration();
-  info() << "  Informations:";
-  info() << "    Number of particles at beginning of cycle                    "
-            "(m_start): "
-         << m_start.value();
-  info() << "    Number of particles sourced in                              "
-            "(m_source): "
-         << m_source.value();
-  info() << "    Number of particles Russian Rouletted in population control   "
-            "  (m_rr): "
-         << m_rr.value();
-  info() << "    Number of particles split in population control              "
-            "(m_split): "
-         << m_split.value();
-  info() << "    Number of particles absorbed                                "
-            "(m_absorb): "
-         << m_absorb.value();
-  info() << "    Number of scatters                                         "
-            "(m_scatter): "
-         << m_scatter.value();
-  info() << "    Number of fission events                                   "
-            "(m_fission): "
-         << m_fission.value();
-  info() << "    Number of particles created by collisions                  "
-            "(m_produce): "
-         << m_produce.value();
-  info() << "    Number of collisions                                     "
-            "(m_collision): "
-         << m_collision.value();
-  info() << "    Number of particles that escape                             "
-            "(m_escape): "
-         << m_escape.value();
-  info() << "    Number of particles that enter census                       "
-            "(m_census): "
-         << m_census.value();
-  info() << "    Number of segements                                   "
-            "(m_num_segments): "
-         << m_num_segments.value();
-  info() << "    Number of particles at end of cycle                           "
-            " (m_end): "
-         << m_end.value();
-  info() << "    Particles contribution to the scalar flux     "
-            " (sum_scalar_flux_tally): "
-         << sum_scalar_flux_tally;
-
-  m_start = 0;
-  m_source = 0;
-  m_rr = 0;
-  m_split = 0;
-
-  m_absorb = 0;
-  m_census = 0;
-  m_escape = 0;
-  m_collision = 0;
-  m_fission = 0;
-  m_produce = 0;
-  m_scatter = 0;
-  m_num_segments = 0;
-  m_end = 0;
 }
 
 /**

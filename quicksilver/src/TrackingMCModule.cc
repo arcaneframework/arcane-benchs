@@ -39,6 +39,9 @@ initModule()
 
   // Configuration des materiaux.
   initNuclearData();
+
+  m_scalar_flux_tally.resize(m_n_groups());
+  m_scalar_flux_tally.fill(0.0);
 }
 
 /**
@@ -52,14 +55,12 @@ cycleTracking()
     computeCrossSection();
     tracking();
     
-    if(m_absorb_a != 0 || m_escape_a != 0){
+    if(m_absorb_a != 0 || m_escape != 0){
       m_particle_family->compactItems(false);
 
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
       m_particle_family->prepareForDump();
     }
-
-    updateTallies();
   }
 
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
@@ -70,7 +71,110 @@ cycleTracking()
   if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Tracking duration (ReduceMax)", time);
 
   info() << "--- Tracking duration: " << time << " s ---";
+}
 
+/**
+ * @brief Méthode permettant d'afficher les infos du Tracking (et de remplir le csv).
+ */
+void TrackingMCModule::
+cycleFinalize()
+{
+  // Somme des m_scalar_flux_tally.
+  Real sum_scalar_flux_tally = 0.0;
+  ENUMERATE_CELL (icell, ownCells()) {
+    for (Integer i = 0; i < m_n_groups(); i++) {
+      sum_scalar_flux_tally += m_scalar_flux_tally[icell][i];
+      m_scalar_flux_tally[icell][i] = 0.0;
+    }
+  }
+
+  Int64 m_absorb = m_absorb_a;
+  Int64 m_scatter = m_scatter_a;
+  Int64 m_fission = m_fission_a;
+  Int64 m_produce = m_produce_a;
+  Int64 m_collision = m_collision_a;
+  Int64 m_census = m_census_a;
+  Int64 m_num_segments = m_num_segments_a;
+
+  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+
+  csv->addElemRow("m_absorb (Proc)", m_absorb);
+  csv->addElemRow("m_scatter (Proc)", m_scatter);
+  csv->addElemRow("m_fission (Proc)", m_fission);
+  csv->addElemRow("m_produce (Proc)", m_produce);
+  csv->addElemRow("m_collision (Proc)", m_collision);
+  csv->addElemRow("m_escape (Proc)", m_escape);
+  csv->addElemRow("m_census (Proc)", m_census);
+  csv->addElemRow("m_num_segments (Proc)", m_num_segments);
+  csv->addElemRow("m_end (Proc)", m_end);
+
+  csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
+
+  m_absorb = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_absorb);
+  m_scatter = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_scatter);
+  m_fission = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_fission);
+  m_produce = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_produce);
+  m_collision = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_collision);
+  m_escape = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_escape);
+  m_census = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_census);
+  m_num_segments = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_num_segments);
+  m_end = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_end);
+
+  sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
+
+  if(mesh()->parallelMng()->commRank() == 0){
+    csv->addElemRow("m_absorb (ReduceSum)", m_absorb);
+    csv->addElemRow("m_scatter (ReduceSum)", m_scatter);
+    csv->addElemRow("m_fission (ReduceSum)", m_fission);
+    csv->addElemRow("m_produce (ReduceSum)", m_produce);
+    csv->addElemRow("m_collision (ReduceSum)", m_collision);
+    csv->addElemRow("m_escape (ReduceSum)", m_escape);
+    csv->addElemRow("m_census (ReduceSum)", m_census);
+    csv->addElemRow("m_num_segments (ReduceSum)", m_num_segments);
+    csv->addElemRow("m_end (ReduceSum)", m_end);
+    csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_scalar_flux_tally);
+  }
+
+  info() << "    Number of particles absorbed                                "
+            "(m_absorb): "
+         << m_absorb;
+  info() << "    Number of scatters                                         "
+            "(m_scatter): "
+         << m_scatter;
+  info() << "    Number of fission events                                   "
+            "(m_fission): "
+         << m_fission;
+  info() << "    Number of particles created by collisions                  "
+            "(m_produce): "
+         << m_produce;
+  info() << "    Number of collisions                                     "
+            "(m_collision): "
+         << m_collision;
+  info() << "    Number of particles that escape                             "
+            "(m_escape): "
+         << m_escape;
+  info() << "    Number of particles that enter census                       "
+            "(m_census): "
+         << m_census;
+  info() << "    Number of segements                                   "
+            "(m_num_segments): "
+         << m_num_segments;
+  info() << "    Number of particles at end of cycle                           "
+            " (m_end): "
+         << m_end;
+  info() << "    Particles contribution to the scalar flux     "
+            " (sum_scalar_flux_tally): "
+         << sum_scalar_flux_tally;
+
+  m_absorb_a = 0;
+  m_census_a = 0;
+  m_escape = 0;
+  m_collision_a = 0;
+  m_fission_a = 0;
+  m_produce_a = 0;
+  m_scatter_a = 0;
+  m_num_segments_a = 0;
+  m_end = 0;
 }
 
 /**
@@ -329,31 +433,6 @@ tracking()
 }
 
 /**
- * @brief Méthode permettant de copier les atomics dans les variables Arcane.
- */
-void TrackingMCModule::
-updateTallies()
-{
-  m_absorb = m_absorb_a;
-  m_census = m_census_a;
-  m_escape = m_escape_a;
-  m_collision = m_collision_a;
-  m_fission = m_fission_a;
-  m_produce = m_produce_a;
-  m_scatter = m_scatter_a;
-  m_num_segments = m_num_segments_a;
-
-  m_absorb_a = 0;
-  m_census_a = 0;
-  m_escape_a = 0;
-  m_collision_a = 0;
-  m_fission_a = 0;
-  m_produce_a = 0;
-  m_scatter_a = 0;
-  m_num_segments_a = 0;
-}
-
-/**
  * @brief Méthode permettant de savoir si une cellule est dans un matériau.
  * On a les dimensions du matériau (en cm) et la position du centre de la cellule
  * (en cm), cette méthode permet de savoir si le centre de la cellule est dans le 
@@ -370,14 +449,14 @@ isInGeometry(const Integer& pos, Cell cell)
   bool inside = false;
   switch (options()->geometry[pos].getShape()) {
   case eShape::BRICK: {
-    Real xMin = ((options()->geometry[pos].getXMin() == -1.0) ? 0.0 : options()->geometry[pos].getXMin());
-    Real xMax = ((options()->geometry[pos].getXMax() == -1.0) ? m_lx() : options()->geometry[pos].getXMax());
+    const Real xMin = ((options()->geometry[pos].getXMin() == -1.0) ? 0.0 : options()->geometry[pos].getXMin());
+    const Real xMax = ((options()->geometry[pos].getXMax() == -1.0) ? m_lx() : options()->geometry[pos].getXMax());
 
-    Real yMin = ((options()->geometry[pos].getYMin() == -1.0) ? 0.0 : options()->geometry[pos].getYMin());
-    Real yMax = ((options()->geometry[pos].getYMax() == -1.0) ? m_ly() : options()->geometry[pos].getYMax());
+    const Real yMin = ((options()->geometry[pos].getYMin() == -1.0) ? 0.0 : options()->geometry[pos].getYMin());
+    const Real yMax = ((options()->geometry[pos].getYMax() == -1.0) ? m_ly() : options()->geometry[pos].getYMax());
 
-    Real zMin = ((options()->geometry[pos].getZMin() == -1.0) ? 0.0 : options()->geometry[pos].getZMin());
-    Real zMax = ((options()->geometry[pos].getZMax() == -1.0) ? m_lz() : options()->geometry[pos].getZMax());
+    const Real zMin = ((options()->geometry[pos].getZMin() == -1.0) ? 0.0 : options()->geometry[pos].getZMin());
+    const Real zMax = ((options()->geometry[pos].getZMax() == -1.0) ? m_lz() : options()->geometry[pos].getZMax());
 
     if ((m_cell_center_coord[cell][MD_DirX] >= xMin && m_cell_center_coord[cell][MD_DirX] <= xMax) &&
         (m_cell_center_coord[cell][MD_DirY] >= yMin && m_cell_center_coord[cell][MD_DirY] <= yMax) &&
@@ -386,10 +465,10 @@ isInGeometry(const Integer& pos, Cell cell)
   } break;
 
   case eShape::SPHERE: {
-    Real xCenter = ((options()->geometry[pos].getXCenter() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getXCenter());
-    Real yCenter = ((options()->geometry[pos].getYCenter() == -1.0) ? (m_ly() / 2) : options()->geometry[pos].getYCenter());
-    Real zCenter = ((options()->geometry[pos].getZCenter() == -1.0) ? (m_lz() / 2) : options()->geometry[pos].getZCenter());
-    Real radius = ((options()->geometry[pos].getRadius() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getRadius());
+    const Real xCenter = ((options()->geometry[pos].getXCenter() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getXCenter());
+    const Real yCenter = ((options()->geometry[pos].getYCenter() == -1.0) ? (m_ly() / 2) : options()->geometry[pos].getYCenter());
+    const Real zCenter = ((options()->geometry[pos].getZCenter() == -1.0) ? (m_lz() / 2) : options()->geometry[pos].getZCenter());
+    const Real radius = ((options()->geometry[pos].getRadius() == -1.0) ? (m_lx() / 2) : options()->geometry[pos].getRadius());
 
     Real3 center(xCenter, yCenter, zCenter);
     Real3 rr(m_cell_center_coord[cell]);
@@ -489,12 +568,12 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
         break;
 
       case ParticleEvent::escape:
-        m_escape_a++;
         done = false;
         m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
           m_exited_particles_local_ids.add(particle.localId());
+          m_escape++;
         }
         break;
 
@@ -611,45 +690,51 @@ collisionEventSuite()
 void TrackingMCModule::
 computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
 {
+  Cell cell = particle.cell();
+  Real particle_num_mean_free_path_particle = m_particle_num_mean_free_path[particle];
+  const Integer particle_ene_grp_particle = m_particle_ene_grp[particle];
+  Real particle_mean_free_path_particle = 0;
+  Real particle_seg_path_length_particle = 0;
+  Real particle_time_census_particle = m_particle_time_census[particle];
+
   // initialize distances to large number
   RealUniqueArray distance(3);
   distance[0] = distance[1] = distance[2] = 1e80;
 
   // Calculate the particle speed
   Real particle_speed = m_particle_velocity[particle].normL2();
-
   // Force collision if a census event narrowly preempts a collision
   bool force_collision = false;
-  if (m_particle_num_mean_free_path[particle] < 0.0) {
+  if (particle_num_mean_free_path_particle < 0.0) {
     force_collision = true;
 
-    if (m_particle_num_mean_free_path[particle] > -900.0) {
+    if (particle_num_mean_free_path_particle > -900.0) {
       printf(" computeNextEvent: m_particle_num_mean_free_path[particle] > -900.0 \n");
     }
 
-    m_particle_num_mean_free_path[particle] = PhysicalConstants::_smallDouble;
+    particle_num_mean_free_path_particle = PhysicalConstants::_smallDouble;
   }
 
   // Randomly determine the distance to the next collision
   // based upon the composition of the current cell.
-  //Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(particle.cell(), m_particle_ene_grp[particle]);
-  Real macroscopic_total_cross_section = m_total[particle.cell()][m_particle_ene_grp[particle]];
+  //Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(cell, particle_ene_grp_particle);
+  Real macroscopic_total_cross_section = m_total[cell][particle_ene_grp_particle];
 
   // Cache the cross section
   m_particle_total_cross_section[particle] = macroscopic_total_cross_section;
   if (macroscopic_total_cross_section == 0.0) {
-    m_particle_mean_free_path[particle] = PhysicalConstants::_hugeDouble;
+    particle_mean_free_path_particle = PhysicalConstants::_hugeDouble;
   }
   else {
-    m_particle_mean_free_path[particle] = 1.0 / macroscopic_total_cross_section;
+    particle_mean_free_path_particle = 1.0 / macroscopic_total_cross_section;
   }
 
-  if (m_particle_num_mean_free_path[particle] == 0.0) {
+  if (particle_num_mean_free_path_particle == 0.0) {
     // Sample the number of mean-free-paths remaining before
     // the next collision from an exponential distribution.
     Real random_number = rngSample(&m_particle_rns[particle]);
 
-    m_particle_num_mean_free_path[particle] = -1.0 * std::log(random_number);
+    particle_num_mean_free_path_particle = -1.0 * std::log(random_number);
   }
 
   // Calculate the distances to collision, nearest facet, and census.
@@ -663,7 +748,7 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
     // Forced collisions do not need to move far.
     distance[ParticleEvent::collision] = PhysicalConstants::_tinyDouble;
 
-    m_particle_seg_path_length[particle] = PhysicalConstants::_tinyDouble;
+    particle_seg_path_length_particle = PhysicalConstants::_tinyDouble;
     m_particle_last_event[particle] = ParticleEvent::collision;
 
     // If collision was forced, set mc_particle.num_mean_free_paths = 0
@@ -679,16 +764,17 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
 
     // Get out of here if the tracker failed to bound this particle's volume.
     if (m_particle_last_event[particle] == ParticleEvent::faceEventUndefined) {
+      m_particle_mean_free_path[particle] = particle_mean_free_path_particle;
       return;
     }
-    distance[ParticleEvent::collision] = m_particle_num_mean_free_path[particle] * m_particle_mean_free_path[particle];
+    distance[ParticleEvent::collision] = particle_num_mean_free_path_particle * particle_mean_free_path_particle;
     // process census
-    distance[ParticleEvent::census] = particle_speed * m_particle_time_census[particle];
+    distance[ParticleEvent::census] = particle_speed * particle_time_census_particle;
 
     // we choose our segment outcome here
     ParticleEvent segment_outcome = (ParticleEvent)findMin(distance);
 
-    m_particle_seg_path_length[particle] = distance[segment_outcome];
+    particle_seg_path_length_particle = distance[segment_outcome];
     m_particle_last_event[particle] = segment_outcome;
 
     // Set the segment path length to be the minimum of
@@ -699,7 +785,7 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
       m_particle_num_mean_free_path[particle] = 0.0;
     }
     else {
-      m_particle_num_mean_free_path[particle] -= m_particle_seg_path_length[particle] / m_particle_mean_free_path[particle];
+      m_particle_num_mean_free_path[particle] = particle_num_mean_free_path_particle - particle_seg_path_length_particle / particle_mean_free_path_particle;
     }
 
     if (segment_outcome == ParticleEvent::faceEventUndefined) {
@@ -708,38 +794,43 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
     }
 
     else if (segment_outcome == ParticleEvent::census) {
-      m_particle_time_census[particle] = std::min(m_particle_time_census[particle], 0.0);
+      particle_time_census_particle = std::min(particle_time_census_particle, 0.0);
     }
 
     // Do not perform any tallies if the segment path length is zero.
     //   This only introduces roundoff errors.
-    if (m_particle_seg_path_length[particle] == 0.0) {
+    if (particle_seg_path_length_particle == 0.0) {
       return;
     }
   }
 
   // Move particle to end of segment, accounting for some physics processes along the segment.
   // Project the particle trajectory along the segment path length.
+  const Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
 
-  m_particle_coord[particle][MD_DirX] += (m_particle_dir_cos[particle][MD_DirA] * m_particle_seg_path_length[particle]);
-  m_particle_coord[particle][MD_DirY] += (m_particle_dir_cos[particle][MD_DirB] * m_particle_seg_path_length[particle]);
-  m_particle_coord[particle][MD_DirZ] += (m_particle_dir_cos[particle][MD_DirG] * m_particle_seg_path_length[particle]);
+  m_particle_coord[particle][MD_DirX] += (particle_dir_cos_particle[MD_DirA] * particle_seg_path_length_particle);
+  m_particle_coord[particle][MD_DirY] += (particle_dir_cos_particle[MD_DirB] * particle_seg_path_length_particle);
+  m_particle_coord[particle][MD_DirZ] += (particle_dir_cos_particle[MD_DirG] * particle_seg_path_length_particle);
 
-  Real segment_path_time = (m_particle_seg_path_length[particle] / particle_speed);
+  Real segment_path_time = (particle_seg_path_length_particle / particle_speed);
 
   // Decrement the time to census and increment age.
-  m_particle_time_census[particle] -= segment_path_time;
+  particle_time_census_particle -= segment_path_time;
   m_particle_age[particle] += segment_path_time;
 
   // Ensure mc_particle.time_to_census is non-negative.
-  if (m_particle_time_census[particle] < 0.0) {
-    m_particle_time_census[particle] = 0.0;
+  if (particle_time_census_particle < 0.0) {
+    particle_time_census_particle = 0.0;
   }
+
+  m_particle_mean_free_path[particle] = particle_mean_free_path_particle;
+  m_particle_seg_path_length[particle] = particle_seg_path_length_particle;
+  m_particle_time_census[particle] = particle_time_census_particle;
 
   // Accumulate the particle's contribution to the scalar flux.
   // Atomic
   GlobalMutex::ScopedLock(m_mutex_flux);
-  m_scalar_flux_tally[particle.cell()][m_particle_ene_grp[particle]] += m_particle_seg_path_length[particle] * m_particle_weight[particle];
+  m_scalar_flux_tally[cell][particle_ene_grp_particle] += particle_seg_path_length_particle * m_particle_weight[particle];
 }
 
 /**
@@ -757,14 +848,16 @@ collisionEvent(Particle particle)
 
   // Pick the isotope and reaction.
   Real random_number = rngSample(&m_particle_rns[particle]);
-  Real total_cross_section = m_particle_total_cross_section[particle];
+  const Real total_cross_section = m_particle_total_cross_section[particle];
   Real current_cross_section = total_cross_section * random_number;
+  const Integer particle_ene_grp_particle = m_particle_ene_grp[particle];
+  const Real particle_kin_ene_particle = m_particle_kin_ene[particle];
 
   Integer selected_iso = -1;
   Integer selected_unique_number = -1;
   Integer selected_react = -1;
 
-  Real cell_number_density = m_cell_number_density[cell];
+  const Real cell_number_density = m_cell_number_density[cell];
   ConstArrayView<Real> atom_fraction_av = m_atom_fraction[cell];
   ConstArrayView<Integer> isotope_gid_av = m_iso_gid[cell];
 
@@ -776,7 +869,7 @@ collisionEvent(Particle particle)
     Integer numReacts = m_nuclearData->getNumberReactions(isotope_gid);
     for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
       current_cross_section -= macroscopicCrossSection(reactIndex, cell_number_density, atom_fraction, isotope_gid,
-                                                       isoIndex, m_particle_ene_grp[particle]);
+                                                       isoIndex, particle_ene_grp_particle);
       if (current_cross_section < 0) {
         selected_iso = isoIndex;
         selected_unique_number = isotope_gid;
@@ -793,10 +886,10 @@ collisionEvent(Particle particle)
   RealUniqueArray energyOut(max_production_size);
   RealUniqueArray angleOut(max_production_size);
   Integer nOut = 0;
-  Real mat_mass = m_mass[cell];
+  const Real mat_mass = m_mass[cell];
 
   m_nuclearData->_isotopes[selected_unique_number]._species[0]._reactions[selected_react].sampleCollision(
-  m_particle_kin_ene[particle], mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size);
+  particle_kin_ene_particle, mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size);
 
   m_collision_a++;
 
@@ -839,7 +932,7 @@ collisionEvent(Particle particle)
     m_scatter_a++;
 #endif
     updateTrajectory(energyOut[0], angleOut[0], particle);
-    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
+    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(particle_kin_ene_particle);
   }
 
   // Si nOut > 1, la particule se "multiplie" et change de trajectoire.
@@ -923,23 +1016,31 @@ facetCrossingEvent(Particle particle)
 void TrackingMCModule::
 reflectParticle(Particle particle, VariableNodeReal3& node_coord)
 {
+  Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
+  Real3 particle_velocity_particle = m_particle_velocity[particle];
+
   Real3 facet_normal(m_normal_face[m_particle_face[particle]]);
 
-  Real dot = 2.0 * (m_particle_dir_cos[particle][MD_DirA] * facet_normal.x + m_particle_dir_cos[particle][MD_DirB] * facet_normal.y + m_particle_dir_cos[particle][MD_DirG] * facet_normal.z);
+  Real dot = 2.0 * (particle_dir_cos_particle[MD_DirA] * facet_normal.x 
+                  + particle_dir_cos_particle[MD_DirB] * facet_normal.y 
+                  + particle_dir_cos_particle[MD_DirG] * facet_normal.z);
 
   // do not reflect a particle that is ALREADY pointing inward
   if (dot > 0) {
     // reflect the particle
-    m_particle_dir_cos[particle][MD_DirA] -= dot * facet_normal.x;
-    m_particle_dir_cos[particle][MD_DirB] -= dot * facet_normal.y;
-    m_particle_dir_cos[particle][MD_DirG] -= dot * facet_normal.z;
+    particle_dir_cos_particle[MD_DirA] -= dot * facet_normal.x;
+    particle_dir_cos_particle[MD_DirB] -= dot * facet_normal.y;
+    particle_dir_cos_particle[MD_DirG] -= dot * facet_normal.z;
   }
 
   // Calculate the reflected, velocity components.
-  Real particle_speed = m_particle_velocity[particle].normL2();
-  m_particle_velocity[particle][MD_DirX] = particle_speed * m_particle_dir_cos[particle][MD_DirA];
-  m_particle_velocity[particle][MD_DirY] = particle_speed * m_particle_dir_cos[particle][MD_DirB];
-  m_particle_velocity[particle][MD_DirZ] = particle_speed * m_particle_dir_cos[particle][MD_DirG];
+  Real particle_speed = particle_velocity_particle.normL2();
+  particle_velocity_particle[MD_DirX] = particle_speed * particle_dir_cos_particle[MD_DirA];
+  particle_velocity_particle[MD_DirY] = particle_speed * particle_dir_cos_particle[MD_DirB];
+  particle_velocity_particle[MD_DirZ] = particle_speed * particle_dir_cos_particle[MD_DirG];
+
+  m_particle_dir_cos[particle] = particle_dir_cos_particle;
+  m_particle_velocity[particle] = particle_velocity_particle;
 }
 
 /**
@@ -983,19 +1084,9 @@ void TrackingMCModule::
 cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
   m_particle_rns[pNew] = rns;
-
-  m_particle_coord[pNew][MD_DirX] = m_particle_coord[pSrc][MD_DirX];
-  m_particle_coord[pNew][MD_DirY] = m_particle_coord[pSrc][MD_DirY];
-  m_particle_coord[pNew][MD_DirZ] = m_particle_coord[pSrc][MD_DirZ];
-
-  m_particle_velocity[pNew][MD_DirX] = m_particle_velocity[pSrc][MD_DirX];
-  m_particle_velocity[pNew][MD_DirY] = m_particle_velocity[pSrc][MD_DirY];
-  m_particle_velocity[pNew][MD_DirZ] = m_particle_velocity[pSrc][MD_DirZ];
-
-  m_particle_dir_cos[pNew][MD_DirA] = m_particle_dir_cos[pSrc][MD_DirA];
-  m_particle_dir_cos[pNew][MD_DirB] = m_particle_dir_cos[pSrc][MD_DirB];
-  m_particle_dir_cos[pNew][MD_DirG] = m_particle_dir_cos[pSrc][MD_DirG];
-
+  m_particle_coord[pNew] = m_particle_coord[pSrc];
+  m_particle_velocity[pNew] = m_particle_velocity[pSrc];
+  m_particle_dir_cos[pNew] = m_particle_dir_cos[pSrc];
   m_particle_kin_ene[pNew] = m_particle_kin_ene[pSrc];
   m_particle_weight[pNew] = m_particle_weight[pSrc];
   m_particle_time_census[pNew] = m_particle_time_census[pSrc];
@@ -1024,6 +1115,10 @@ void TrackingMCModule::
 updateTrajectory(const Real& energy, const Real& angle, Particle particle)
 {
   m_particle_kin_ene[particle] = energy;
+
+  const Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
+  Real3 particle_velocity_particle = m_particle_velocity[particle];
+
   Real cosTheta = angle;
   Real random_number = rngSample(&m_particle_rns[particle]);
   Real phi = 2 * 3.14159265 * random_number;
@@ -1036,12 +1131,14 @@ updateTrajectory(const Real& energy, const Real& angle, Particle particle)
   Real speed = (PhysicalConstants::_speedOfLight *
                 sqrt((1.0 - ((PhysicalConstants::_neutronRestMassEnergy * PhysicalConstants::_neutronRestMassEnergy) / ((energy + PhysicalConstants::_neutronRestMassEnergy) * (energy + PhysicalConstants::_neutronRestMassEnergy))))));
 
-  m_particle_velocity[particle][MD_DirX] = speed * m_particle_dir_cos[particle][MD_DirA];
-  m_particle_velocity[particle][MD_DirY] = speed * m_particle_dir_cos[particle][MD_DirB];
-  m_particle_velocity[particle][MD_DirZ] = speed * m_particle_dir_cos[particle][MD_DirG];
+  particle_velocity_particle[MD_DirX] = speed * particle_dir_cos_particle[MD_DirA];
+  particle_velocity_particle[MD_DirY] = speed * particle_dir_cos_particle[MD_DirB];
+  particle_velocity_particle[MD_DirZ] = speed * particle_dir_cos_particle[MD_DirG];
 
   random_number = rngSample(&m_particle_rns[particle]);
   m_particle_num_mean_free_path[particle] = -1.0 * std::log(random_number);
+
+  m_particle_velocity[particle] = particle_velocity_particle;
 }
 
 /**
@@ -1084,11 +1181,11 @@ computeCrossSection()
 void TrackingMCModule::
 weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
 {
-  Real cell_number_density = m_cell_number_density[cell];
+  const Real cell_number_density = m_cell_number_density[cell];
   ConstArrayView<Real> atom_fraction_av = m_atom_fraction[cell];
   ConstArrayView<Integer> iso_gid_av = m_iso_gid[cell];
 
-  Integer nIsotopes = iso_gid_av.size();
+  const Integer nIsotopes = iso_gid_av.size();
   Real sum = 0.0;
 
   for (Integer isoIndex = 0; isoIndex < nIsotopes; isoIndex++) {
@@ -1152,13 +1249,17 @@ macroscopicCrossSection(const Integer& reactionIndex,
 DistanceToFacet TrackingMCModule::
 getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
 {
+  const Real3 particle_coord_particle = m_particle_coord[particle];
+  const Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
   Cell cell = particle.cell();
   Integer iteration = 0;
   Real move_factor = 0.5 * PhysicalConstants::_smallDouble;
   DistanceToFacet nearest_facet;
   Integer retry = 1;
 
-  Real plane_tolerance = 1e-16 * (m_particle_coord[particle][MD_DirX] * m_particle_coord[particle][MD_DirX] + m_particle_coord[particle][MD_DirY] * m_particle_coord[particle][MD_DirY] + m_particle_coord[particle][MD_DirZ] * m_particle_coord[particle][MD_DirZ]);
+  Real plane_tolerance = 1e-16 * (particle_coord_particle[MD_DirX] * particle_coord_particle[MD_DirX] 
+                                + particle_coord_particle[MD_DirY] * particle_coord_particle[MD_DirY] 
+                                + particle_coord_particle[MD_DirZ] * particle_coord_particle[MD_DirZ]);
 
   while (retry) // will break out when distance is found
   {
@@ -1180,9 +1281,9 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
        m_normal_face[index].z * point2.z);
 
       Real facet_normal_dot_direction_cosine =
-      (m_normal_face[index].x * m_particle_dir_cos[particle][MD_DirA] +
-       m_normal_face[index].y * m_particle_dir_cos[particle][MD_DirB] +
-       m_normal_face[index].z * m_particle_dir_cos[particle][MD_DirG]);
+      (m_normal_face[index].x * particle_dir_cos_particle[MD_DirA] +
+       m_normal_face[index].y * particle_dir_cos_particle[MD_DirB] +
+       m_normal_face[index].z * particle_dir_cos_particle[MD_DirG]);
 
       // Consider only those facets whose outer normals have
       // a positive dot product with the direction cosine.
@@ -1253,8 +1354,14 @@ distanceToSegmentFacet(const Real& plane_tolerance,
                        Particle particle,
                        bool allow_enter)
 {
+  const Real3 particle_coord_particle = m_particle_coord[particle];
+  const Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
+
   Real boundingBox_tolerance = 1e-9;
-  Real numerator = -1.0 * (A * m_particle_coord[particle][MD_DirX] + B * m_particle_coord[particle][MD_DirY] + C * m_particle_coord[particle][MD_DirZ] + D);
+  Real numerator = -1.0 * ( A * particle_coord_particle[MD_DirX] 
+                          + B * particle_coord_particle[MD_DirY] 
+                          + C * particle_coord_particle[MD_DirZ] 
+                          + D);
 
   /* Plane equation: numerator = -P(x,y,z) = -(Ax + By + Cz + D)
       if: numerator < -1e-8*length(x,y,z)   too negative!
@@ -1272,9 +1379,9 @@ distanceToSegmentFacet(const Real& plane_tolerance,
 
   // see if the intersection point of the ray and the plane is within the triangular facet
   Real3 intersection_pt;
-  intersection_pt.x = m_particle_coord[particle][MD_DirX] + distance * m_particle_dir_cos[particle][MD_DirA];
-  intersection_pt.y = m_particle_coord[particle][MD_DirY] + distance * m_particle_dir_cos[particle][MD_DirB];
-  intersection_pt.z = m_particle_coord[particle][MD_DirZ] + distance * m_particle_dir_cos[particle][MD_DirG];
+  intersection_pt.x = particle_coord_particle[MD_DirX] + distance * particle_dir_cos_particle[MD_DirA];
+  intersection_pt.y = particle_coord_particle[MD_DirY] + distance * particle_dir_cos_particle[MD_DirB];
+  intersection_pt.z = particle_coord_particle[MD_DirZ] + distance * particle_dir_cos_particle[MD_DirG];
 
   // if the point is completely below the triangle, it is not in the triangle
 #define IF_POINT_BELOW_CONTINUE(axis) \
@@ -1485,8 +1592,10 @@ findMin(UniqueArray<T> array)
 void TrackingMCModule::
 rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi)
 {
+  Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
+
   // Calculate additional variables in the rotation matrix.
-  Real cos_theta = m_particle_dir_cos[particle][MD_DirG];
+  Real cos_theta = particle_dir_cos_particle[MD_DirG];
   Real sin_theta = sqrt((1.0 - (cos_theta * cos_theta)));
 
   Real cos_phi;
@@ -1497,12 +1606,14 @@ rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, 
     sin_phi = 0.0;
   }
   else {
-    cos_phi = m_particle_dir_cos[particle][MD_DirA] / sin_theta;
-    sin_phi = m_particle_dir_cos[particle][MD_DirB] / sin_theta;
+    cos_phi = particle_dir_cos_particle[MD_DirA] / sin_theta;
+    sin_phi = particle_dir_cos_particle[MD_DirB] / sin_theta;
   }
 
   // Calculate the rotated direction cosine
-  m_particle_dir_cos[particle][MD_DirA] = cos_theta * cos_phi * (sin_Theta * cos_Phi) - sin_phi * (sin_Theta * sin_Phi) + sin_theta * cos_phi * cos_Theta;
-  m_particle_dir_cos[particle][MD_DirB] = cos_theta * sin_phi * (sin_Theta * cos_Phi) + cos_phi * (sin_Theta * sin_Phi) + sin_theta * sin_phi * cos_Theta;
-  m_particle_dir_cos[particle][MD_DirG] = -sin_theta * (sin_Theta * cos_Phi) + cos_theta * cos_Theta;
+  particle_dir_cos_particle[MD_DirA] = cos_theta * cos_phi * (sin_Theta * cos_Phi) - sin_phi * (sin_Theta * sin_Phi) + sin_theta * cos_phi * cos_Theta;
+  particle_dir_cos_particle[MD_DirB] = cos_theta * sin_phi * (sin_Theta * cos_Phi) + cos_phi * (sin_Theta * sin_Phi) + sin_theta * sin_phi * cos_Theta;
+  particle_dir_cos_particle[MD_DirG] = -sin_theta * (sin_Theta * cos_Phi) + cos_theta * cos_Theta;
+
+  m_particle_dir_cos[particle] = particle_dir_cos_particle;
 }

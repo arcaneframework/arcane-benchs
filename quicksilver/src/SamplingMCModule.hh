@@ -38,11 +38,15 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   : ArcaneSamplingMCObject(mbi)
   , m_particle_family(nullptr)
   , m_timer(nullptr)
+  , m_rr(0)
+  , m_split(0)
+  , m_start(0)
   {}
 
  public:
   void initModule() override;
-  void cycleInit() override;
+  void cycleSampling() override;
+  void cycleFinalize() override;
   void endModule() override;
 
   VersionInfo versionInfo() const override { return VersionInfo(1, 1, 0); }
@@ -52,16 +56,16 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   ParticleVectorView m_processingView;
   Real m_source_particle_weight;
 
+  Int64 m_start;
   std::atomic<Int64> m_source_a{ 0 };
-  std::atomic<Int64> m_rr_a{ 0 };
-  std::atomic<Int64> m_split_a{ 0 };
+  Int64 m_rr;
+  Int64 m_split;
 
   GlobalMutex m_mutex;
 
   Timer* m_timer;
 
  protected:
-  void updateTallies();
   void clearCrossSectionCache();
   void setStatus();
   void sourceParticles();

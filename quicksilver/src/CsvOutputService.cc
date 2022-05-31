@@ -36,9 +36,12 @@ addRow(String name_row, bool fill_start)
   if(fill_start) {
     for(Integer i = 1; i < m_size_rows[0]; i++)
       new_line = new_line + m_separator;
+    m_size_rows.add(m_size_columns[0]);
+  }
+  else {
+    m_size_rows.add(0);
   }
 
-  m_size_rows.add(m_size_columns[0]);
 
   m_rows.add(new_line);
   return m_size_columns[0]++;
