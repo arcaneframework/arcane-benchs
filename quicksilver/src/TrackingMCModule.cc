@@ -71,11 +71,10 @@ cycleTracking()
   if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Tracking duration (ReduceMax)", time);
 
   info() << "--- Tracking duration: " << time << " s ---";
-
 }
 
 /**
- * @brief Méthode .
+ * @brief Méthode permettant d'afficher les infos du Tracking (et de remplir le csv).
  */
 void TrackingMCModule::
 cycleFinalize()

@@ -1,3 +1,4 @@
+```
 Coral2_P1
 
 4096 cells/node
@@ -72,3 +73,4 @@ mpirun -n 8192 ${ORI_QS_EXE} -i ${ORI_QS_SOURCE_DIR}/Examples/CORAL2_Benchmark/P
 
 mpirun -n 131072 ${QS_EXE} -A,T=2 ${QS_SOURCE_DIR}/data/Coral2/Coral2_P2_n131072.arc
 mpirun -n 131072 ${ORI_QS_EXE} -i ${ORI_QS_SOURCE_DIR}/Examples/CORAL2_Benchmark/Problem2/Coral2_P2.inp  -X 176 -Y 88 -Z 88  -x 176 -y 88 -z 88  -I 64 -J 64 -K 32  -n 6814720
+```

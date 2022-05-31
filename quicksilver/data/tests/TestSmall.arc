@@ -42,7 +42,7 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./TestSmall_P@proc_id@.csv</csvFile>
+    <csvFile>./TestSmall_P0.csv</csvFile>
   </q-s>
 
   <sampling-m-c>

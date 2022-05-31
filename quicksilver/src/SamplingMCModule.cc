@@ -99,7 +99,7 @@ cycleSampling()
 }
 
 /**
- * @brief Méthode .
+ * @brief Méthode permettant d'afficher les infos du Sampling (et de remplir le csv).
  */
 void SamplingMCModule::
 cycleFinalize()
@@ -283,8 +283,8 @@ sourceParticles()
       Int64 rns;
       Int64 id;
 
-      random_number_seed = m_source_tally[icell]; // TODO : Atomic
-      m_source_tally[icell]++; // TODO : Atomic
+      random_number_seed = m_source_tally[icell];
+      m_source_tally[icell]++;
 
       random_number_seed +=
       (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);

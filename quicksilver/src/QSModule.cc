@@ -19,7 +19,7 @@
 
 /**
  * @brief Méthode permettant de lancer l'initialisation des grandeurs
- * au maillage et des tallies.
+ * au maillage.
  */
 void QSModule::
 initModule()

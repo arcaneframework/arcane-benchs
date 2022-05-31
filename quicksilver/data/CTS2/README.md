@@ -1,3 +1,4 @@
+```
 CTS2
 
 1 rank/core
@@ -38,3 +39,4 @@ mpirun -n 8192   ${ORI_QS_EXE} -i ${ORI_QS_SOURCE_DIR}/Examples/CTS2_Benchmark/C
 
 mpirun -n 131072 ${QS_EXE} ${QS_SOURCE_DIR}/data/CTS2/CTS2_n131072.arc
 mpirun -n 131072 ${ORI_QS_EXE} -i ${ORI_QS_SOURCE_DIR}/Examples/CTS2_Benchmark/CTS2.inp  -X 2048 -Y 512 -Z 512  -x 2048 -y 512 -z 512  -I 64 -J 64 -K 32  -n 5368709120
+```
