@@ -110,8 +110,6 @@ class NuclearData
   // This is the overall energy layout. If we had more than just
   // neutrons, this array would be a vector of vectors.
   RealUniqueArray _energies;
-  Real m_totalCrossSection;
-  bool m_totalCrossSectionAC;
 };
 
 #endif

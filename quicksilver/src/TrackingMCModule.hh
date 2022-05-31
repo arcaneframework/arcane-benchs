@@ -79,6 +79,8 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   , m_outgoing_particles_rank_to(0)
   , m_escape(0)
   , m_end(0)
+  , m_incoming(0)
+  , m_outgoing(0)
   {}
 
  public:
@@ -122,6 +124,9 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   std::atomic<Int64> m_absorb_a{ 0 };
   std::atomic<Int64> m_produce_a{ 0 };
   Int64 m_end;
+
+  Int64 m_incoming;
+  Int64 m_outgoing;
 
   GlobalMutex m_mutex_exit;
   GlobalMutex m_mutex_extra;

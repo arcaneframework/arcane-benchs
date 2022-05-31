@@ -107,8 +107,9 @@ cycleFinalize()
   csv->addElemRow("m_census (Proc)", m_census);
   csv->addElemRow("m_num_segments (Proc)", m_num_segments);
   csv->addElemRow("m_end (Proc)", m_end);
-
   csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
+  csv->addElemRow("m_incoming (Proc)", m_incoming);
+  csv->addElemRow("m_outgoing (Proc)", m_outgoing);
 
   m_absorb = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_absorb);
   m_scatter = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_scatter);
@@ -119,7 +120,8 @@ cycleFinalize()
   m_census = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_census);
   m_num_segments = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_num_segments);
   m_end = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_end);
-
+  m_incoming = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_incoming);
+  m_outgoing = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_outgoing);
   sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
 
   if(mesh()->parallelMng()->commRank() == 0){
@@ -133,6 +135,8 @@ cycleFinalize()
     csv->addElemRow("m_num_segments (ReduceSum)", m_num_segments);
     csv->addElemRow("m_end (ReduceSum)", m_end);
     csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_scalar_flux_tally);
+    csv->addElemRow("m_incoming (ReduceSum)", m_incoming);
+    csv->addElemRow("m_outgoing (ReduceSum)", m_outgoing);
   }
 
   info() << "    Number of particles absorbed                                "
@@ -165,6 +169,12 @@ cycleFinalize()
   info() << "    Particles contribution to the scalar flux     "
             " (sum_scalar_flux_tally): "
          << sum_scalar_flux_tally;
+  info() << "    Number of particles incoming from other sub-domain        "
+            "(m_incoming): "
+         << m_incoming;
+  info() << "    Number of particles outgoing to other sub-domain          "
+            "(m_outgoing): "
+         << m_outgoing;
 
   m_absorb_a = 0;
   m_census_a = 0;
@@ -175,6 +185,8 @@ cycleFinalize()
   m_scatter_a = 0;
   m_num_segments_a = 0;
   m_end = 0;
+  m_incoming = 0;
+  m_outgoing = 0;
 }
 
 /**
@@ -395,6 +407,7 @@ tracking()
 
     if (mesh()->parallelMng()->commSize() > 1) {
       incoming_particles_local_ids.clear();
+      m_outgoing += m_outgoing_particles_local_ids.size();
 
       // On essaye de recevoir tant que quelqu'un bosse encore.
       do {
@@ -416,6 +429,7 @@ tracking()
       } while (incoming_particles_local_ids.size() == 0 && m_extra_particles_local_ids.size() == 0 && !done);
 
       incoming_particles_view = m_particle_family->view(incoming_particles_local_ids);
+      m_incoming += incoming_particles_local_ids.size();
     }
 
     else if (m_extra_particles_local_ids.size() == 0) {

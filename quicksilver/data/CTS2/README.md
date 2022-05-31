@@ -14,7 +14,7 @@ QS_SOURCE_DIR= #QS arcane source path
 ORI_QS_EXE= #QS original executable
 ORI_QS_SOURCE_DIR= #QS original source path
 
-unset OMP_NUM_THREADS
+export OMP_NUM_THREADS=1
 
 mpirun -n 128    ${QS_EXE} ${QS_SOURCE_DIR}/data/CTS2/CTS2_n128.arc
 mpirun -n 128    ${ORI_QS_EXE} -i ${ORI_QS_SOURCE_DIR}/Examples/CTS2_Benchmark/CTS2.inp  -X 128 -Y 64 -Z 64     -x 128 -y 64 -z 64     -I 8 -J 4 -K 4     -n 5242880

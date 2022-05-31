@@ -361,7 +361,7 @@ populationControl()
   mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
 
   if (globalNumParticles == 0)
-    ARCANE_FATAL("Nombre de particule global == 0");
+    ARCANE_FATAL("Nombre de particule global == 0 (cela arrive quand il n'y a assez de particules par maille)");
 
   // Soit on augmente la population (>1), soit on l'a diminue (<1), soit on n'y
   // touche pas (=1).

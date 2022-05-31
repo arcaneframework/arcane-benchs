@@ -47,6 +47,8 @@ initModule()
   csv->addRow("m_num_segments (Proc)");
   csv->addRow("m_end (Proc)");
   csv->addRow("sum_scalar_flux_tally (Proc)");
+  csv->addRow("m_incoming (Proc)");
+  csv->addRow("m_outgoing (Proc)");
 }
 
 /**
