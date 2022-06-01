@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <case codename="Quicksilver" xml:lang="en" codeversion="1.0">
   <arcane>
-    <title>Unbal4</title>
+    <title>Unbal16_16_n16</title>
     <timeloop>QAMALoop</timeloop>
   </arcane>
 
@@ -11,23 +11,23 @@
         <face-numbering-version>1</face-numbering-version>
 
         <nb-part-x>4</nb-part-x> 
-        <nb-part-y>1</nb-part-y>
-        <nb-part-z>1</nb-part-z>
+        <nb-part-y>2</nb-part-y>
+        <nb-part-z>2</nb-part-z>
 
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>16.0</length>
-          <n>4</n> <!-- nMin: 4 -->
+          <length>64.0</length>
+          <n>16</n> <!-- nMin: 16  nMax: 64 -->
         </x>
 
         <y>
-          <length>160.0</length>
+          <length>512.0</length>
           <n>4</n>
         </y>
 
         <z>
-          <length>160.0</length>
+          <length>512.0</length>
           <n>4</n>
         </z>
 
@@ -42,11 +42,11 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./Unbal4_P@proc_id@.csv</csvFile>
+    <csvFile>./Unbal16_16_n16_P@proc_id@.csv</csvFile>
   </q-s>
 
   <sampling-m-c>
-    <nParticles>25600</nParticles>
+    <nParticles>256000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 
@@ -57,55 +57,41 @@
     </particle-exchanger>
 
     <!-- 
-        |H|S|H|S|
-        |H|S|H|S|
-        |H|S|H|S|
-        |H|S|H|S|
+        |S|H|H|S|S|S|S|H|H|H|H|S|S|S|S|S|
+        |S|H|H|S|S|S|S|H|H|H|H|S|S|S|S|S|
+        |S|H|H|S|S|S|S|H|H|H|H|S|S|S|S|S|
+        |S|H|H|S|S|S|S|H|H|H|H|S|S|S|S|S|
     z
     ^
     |__>x
     -->
 
     <geometry>
-      <material>hardComputing</material>
+      <material>softComputing</material>
       <shape>brick</shape>
 
       <xMin>0</xMin>
       <xMax>4</xMax>
 
       <yMin>0</yMin>
-      <yMax>160</yMax>
+      <yMax>512</yMax>
 
       <zMin>0</zMin>
-      <zMax>160</zMax>
-    </geometry>
-
-    <geometry>
-      <material>softComputing</material>
-      <shape>brick</shape>
-
-      <xMin>4</xMin>
-      <xMax>8</xMax>
-
-      <yMin>0</yMin>
-      <yMax>160</yMax>
-
-      <zMin>0</zMin>
-      <zMax>160</zMax>
+      <zMax>512</zMax>
     </geometry>
 
     <geometry>
       <material>hardComputing</material>
       <shape>brick</shape>
 
-      <xMin>8</xMin>
+      <xMin>4</xMin>
       <xMax>12</xMax>
 
       <yMin>0</yMin>
-      <yMax>160</yMax>
+      <yMax>512</yMax>
 
       <zMin>0</zMin>
-      <zMax>160</zMax>
+      <zMax>512</zMax>
     </geometry>
 
     <geometry>
@@ -113,13 +99,41 @@
       <shape>brick</shape>
 
       <xMin>12</xMin>
-      <xMax>16</xMax>
+      <xMax>28</xMax>
 
       <yMin>0</yMin>
-      <yMax>160</yMax>
+      <yMax>512</yMax>
 
       <zMin>0</zMin>
-      <zMax>160</zMax>
+      <zMax>512</zMax>
+    </geometry>
+
+    <geometry>
+      <material>hardComputing</material>
+      <shape>brick</shape>
+
+      <xMin>28</xMin>
+      <xMax>44</xMax>
+
+      <yMin>0</yMin>
+      <yMax>512</yMax>
+
+      <zMin>0</zMin>
+      <zMax>512</zMax>
+    </geometry>
+
+    <geometry>
+      <material>softComputing</material>
+      <shape>brick</shape>
+
+      <xMin>44</xMin>
+      <xMax>64</xMax>
+
+      <yMin>0</yMin>
+      <yMax>512</yMax>
+
+      <zMin>0</zMin>
+      <zMax>512</zMax>
     </geometry>
 
 
@@ -129,7 +143,7 @@
 
       <nIsotopes>20</nIsotopes>
       <nReactions>9</nReactions>
-      <sourceRate>2e+10</sourceRate>
+      <sourceRate>5e+10</sourceRate>
       <totalCrossSection>1.5</totalCrossSection>
 
       <absorptionCrossSection>flat0</absorptionCrossSection>
