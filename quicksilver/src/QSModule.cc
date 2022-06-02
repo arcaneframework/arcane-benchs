@@ -59,7 +59,7 @@ cycleFinalize()
 {
   info() << "End iteration #" << m_global_iteration();
   if(parallelMng()->commSize() == 1) info() << "  Informations:";
-  else                               info() << "  Informations:                                            (variable name): ReduceSum, [ReduceMin, ReduceMax]";
+  else  info() << "  Informations:                                            (variable name): Sum, [Min, Max, Avg]";
 
   if (m_global_iteration() == options()->getNSteps())
     subDomain()->timeLoopMng()->stopComputeLoop(true);

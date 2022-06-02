@@ -104,22 +104,15 @@ cycleSampling()
 void SamplingMCModule::
 cycleFinalize()
 {
-
-  if(mesh()->parallelMng()->commRank() == 0){
-
-  }
-
-
-
-
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  Integer commSize = parallelMng()->commSize();
 
   csv->addElemRow("m_start (Proc)", m_start);
   csv->addElemRow("m_source (Proc)", m_source_a);
   csv->addElemRow("m_rr (Proc)", m_rr);
   csv->addElemRow("m_split (Proc)", m_split);
 
-  if(mesh()->parallelMng()->commSize() == 1){
+  if(commSize == 1){
     info() << "    Number of particles at beginning of cycle                    "
               "(m_start): "
           << m_start;
@@ -143,35 +136,42 @@ cycleFinalize()
     parallelMng()->reduce(Parallel::ReduceMin, min_int64);
     parallelMng()->reduce(Parallel::ReduceMax, max_int64);
 
-    if(mesh()->parallelMng()->commRank() == 0) {
+    if(parallelMng()->commRank() == 0) {
+
+      // TODO : Real ou Int64 ?
+      Int64UniqueArray avg_int64 = sum_int64.clone();
+      for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
 
       csv->addElemRow("m_start (ReduceSum)", sum_int64[0]);
-      csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
-      csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
-      csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
-
       csv->addElemRow("m_start (ReduceMin)", min_int64[0]);
-      csv->addElemRow("m_source (ReduceMin)", min_int64[1]);
-      csv->addElemRow("m_rr (ReduceMin)", min_int64[2]);
-      csv->addElemRow("m_split (ReduceMin)", min_int64[3]);
-
       csv->addElemRow("m_start (ReduceMax)", max_int64[0]);
+      csv->addElemRow("m_start (ReduceAvg)", avg_int64[0]);
+
+      csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
+      csv->addElemRow("m_source (ReduceMin)", min_int64[1]);
       csv->addElemRow("m_source (ReduceMax)", max_int64[1]);
+      csv->addElemRow("m_source (ReduceAvg)", avg_int64[1]);
+
+      csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
+      csv->addElemRow("m_rr (ReduceMin)", min_int64[2]);
       csv->addElemRow("m_rr (ReduceMax)", max_int64[2]);
+      csv->addElemRow("m_rr (ReduceAvg)", avg_int64[2]);
+      
+      csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
+      csv->addElemRow("m_split (ReduceMin)", min_int64[3]);
       csv->addElemRow("m_split (ReduceMax)", max_int64[3]);
+      csv->addElemRow("m_split (ReduceAvg)", avg_int64[3]);
+
+      #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
 
       info() << "    Number of particles at beginning of cycle                    "
-                "(m_start): "
-            << sum_int64[0] << ", [" << min_int64[0] << ", " << max_int64[0] << "]";
+                "(m_start): " << infos(0);
       info() << "    Number of particles sourced in population control           "
-                "(m_source): "
-            << sum_int64[1] << ", [" << min_int64[1] << ", " << max_int64[1] << "]";
+                "(m_source): " << infos(1);
       info() << "    Number of particles Russian Rouletted in population control   "
-                "  (m_rr): "
-            << sum_int64[2] << ", [" << min_int64[2] << ", " << max_int64[2] << "]";
+                "  (m_rr): " << infos(2);
       info() << "    Number of particles split in population control              "
-                "(m_split): "
-            << sum_int64[3] << ", [" << min_int64[3] << ", " << max_int64[3] << "]";
+                "(m_split): " << infos(3);
     }
   }
 

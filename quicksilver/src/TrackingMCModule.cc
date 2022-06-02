@@ -89,6 +89,7 @@ cycleFinalize()
   }
 
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  Integer commSize = parallelMng()->commSize();
 
   csv->addElemRow("m_absorb (Proc)", m_absorb_a);
   csv->addElemRow("m_scatter (Proc)", m_scatter_a);
@@ -103,7 +104,7 @@ cycleFinalize()
   csv->addElemRow("m_outgoing (Proc)", m_outgoing);
   csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
 
-  if(mesh()->parallelMng()->commSize() == 1){
+  if(commSize == 1){
     info() << "    Number of particles absorbed                                "
               "(m_absorb): "
           << m_absorb_a;
@@ -157,87 +158,105 @@ cycleFinalize()
     parallelMng()->reduce(Parallel::ReduceMin, min_int64);
     parallelMng()->reduce(Parallel::ReduceMax, max_int64);
 
-    parallelMng()->reduce(Parallel::ReduceMax, sum_real);
-    parallelMng()->reduce(Parallel::ReduceMax, min_real);
+    parallelMng()->reduce(Parallel::ReduceSum, sum_real);
+    parallelMng()->reduce(Parallel::ReduceMin, min_real);
     parallelMng()->reduce(Parallel::ReduceMax, max_real);
 
     if(mesh()->parallelMng()->commRank() == 0) {
 
+      // TODO : Real ou Int64 ?
+      Int64UniqueArray avg_int64 = sum_int64.clone();
+      for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
+
+
       csv->addElemRow("m_absorb (ReduceSum)", sum_int64[0]);
-      csv->addElemRow("m_scatter (ReduceSum)", sum_int64[1]);
-      csv->addElemRow("m_fission (ReduceSum)", sum_int64[2]);
-      csv->addElemRow("m_produce (ReduceSum)", sum_int64[3]);
-      csv->addElemRow("m_collision (ReduceSum)", sum_int64[4]);
-      csv->addElemRow("m_escape (ReduceSum)", sum_int64[5]);
-      csv->addElemRow("m_census (ReduceSum)", sum_int64[6]);
-      csv->addElemRow("m_num_segments (ReduceSum)", sum_int64[7]);
-      csv->addElemRow("m_end (ReduceSum)", sum_int64[8]);
-      csv->addElemRow("m_incoming (ReduceSum)", sum_int64[9]);
-      csv->addElemRow("m_outgoing (ReduceSum)", sum_int64[10]);
-      csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
-
       csv->addElemRow("m_absorb (ReduceMin)", min_int64[0]);
-      csv->addElemRow("m_scatter (ReduceMin)", min_int64[1]);
-      csv->addElemRow("m_fission (ReduceMin)", min_int64[2]);
-      csv->addElemRow("m_produce (ReduceMin)", min_int64[3]);
-      csv->addElemRow("m_collision (ReduceMin)", min_int64[4]);
-      csv->addElemRow("m_escape (ReduceMin)", min_int64[5]);
-      csv->addElemRow("m_census (ReduceMin)", min_int64[6]);
-      csv->addElemRow("m_num_segments (ReduceMin)", min_int64[7]);
-      csv->addElemRow("m_end (ReduceMin)", min_int64[8]);
-      csv->addElemRow("m_incoming (ReduceMin)", min_int64[9]);
-      csv->addElemRow("m_outgoing (ReduceMin)", min_int64[10]);
-      csv->addElemRow("sum_scalar_flux_tally (ReduceMin)", min_real);
-
       csv->addElemRow("m_absorb (ReduceMax)", max_int64[0]);
+      csv->addElemRow("m_absorb (ReduceAvg)", avg_int64[0]);
+      
+      csv->addElemRow("m_scatter (ReduceSum)", sum_int64[1]);
+      csv->addElemRow("m_scatter (ReduceMin)", min_int64[1]);
       csv->addElemRow("m_scatter (ReduceMax)", max_int64[1]);
+      csv->addElemRow("m_scatter (ReduceAvg)", avg_int64[1]);
+
+      csv->addElemRow("m_fission (ReduceSum)", sum_int64[2]);
+      csv->addElemRow("m_fission (ReduceMin)", min_int64[2]);
       csv->addElemRow("m_fission (ReduceMax)", max_int64[2]);
+      csv->addElemRow("m_fission (ReduceAvg)", avg_int64[2]);
+
+      csv->addElemRow("m_produce (ReduceSum)", sum_int64[3]);
+      csv->addElemRow("m_produce (ReduceMin)", min_int64[3]);
       csv->addElemRow("m_produce (ReduceMax)", max_int64[3]);
+      csv->addElemRow("m_produce (ReduceAvg)", avg_int64[3]);
+
+      csv->addElemRow("m_collision (ReduceSum)", sum_int64[4]);
+      csv->addElemRow("m_collision (ReduceMin)", min_int64[4]);
       csv->addElemRow("m_collision (ReduceMax)", max_int64[4]);
+      csv->addElemRow("m_collision (ReduceAvg)", avg_int64[4]);
+
+      csv->addElemRow("m_escape (ReduceSum)", sum_int64[5]);
+      csv->addElemRow("m_escape (ReduceMin)", min_int64[5]);
       csv->addElemRow("m_escape (ReduceMax)", max_int64[5]);
+      csv->addElemRow("m_escape (ReduceAvg)", avg_int64[5]);
+
+      csv->addElemRow("m_census (ReduceSum)", sum_int64[6]);
+      csv->addElemRow("m_census (ReduceMin)", min_int64[6]);
       csv->addElemRow("m_census (ReduceMax)", max_int64[6]);
+      csv->addElemRow("m_census (ReduceAvg)", avg_int64[6]);
+
+      csv->addElemRow("m_num_segments (ReduceSum)", sum_int64[7]);
+      csv->addElemRow("m_num_segments (ReduceMin)", min_int64[7]);
       csv->addElemRow("m_num_segments (ReduceMax)", max_int64[7]);
+      csv->addElemRow("m_num_segments (ReduceAvg)", avg_int64[7]);
+
+      csv->addElemRow("m_end (ReduceSum)", sum_int64[8]);
+      csv->addElemRow("m_end (ReduceMin)", min_int64[8]);
       csv->addElemRow("m_end (ReduceMax)", max_int64[8]);
+      csv->addElemRow("m_end (ReduceAvg)", avg_int64[8]);
+
+      csv->addElemRow("m_incoming (ReduceSum)", sum_int64[9]);
+      csv->addElemRow("m_incoming (ReduceMin)", min_int64[9]);
       csv->addElemRow("m_incoming (ReduceMax)", max_int64[9]);
+      csv->addElemRow("m_incoming (ReduceAvg)", avg_int64[9]);
+
+      csv->addElemRow("m_outgoing (ReduceSum)", sum_int64[10]);
+      csv->addElemRow("m_outgoing (ReduceMin)", min_int64[10]);
       csv->addElemRow("m_outgoing (ReduceMax)", max_int64[10]);
+      csv->addElemRow("m_outgoing (ReduceAvg)", avg_int64[10]);
+
+      csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
+      csv->addElemRow("sum_scalar_flux_tally (ReduceMin)", min_real);
       csv->addElemRow("sum_scalar_flux_tally (ReduceMax)", max_real);
+      csv->addElemRow("sum_scalar_flux_tally (ReduceAvg)", sum_real/commSize);
+
+
+      #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
 
       info() << "    Number of particles absorbed                                "
-                "(m_absorb): "
-            << sum_int64[0] << ", [" << min_int64[0] << ", " << max_int64[0] << "]";
+                "(m_absorb): " << infos(0);
       info() << "    Number of scatters                                         "
-                "(m_scatter): "
-            << sum_int64[1] << ", [" << min_int64[1] << ", " << max_int64[1] << "]";
+                "(m_scatter): " << infos(1);
       info() << "    Number of fission events                                   "
-                "(m_fission): "
-            << sum_int64[2] << ", [" << min_int64[2] << ", " << max_int64[2] << "]";
+                "(m_fission): " << infos(2);
       info() << "    Number of particles created by collisions                  "
-                "(m_produce): "
-            << sum_int64[3] << ", [" << min_int64[3] << ", " << max_int64[3] << "]";
+                "(m_produce): " << infos(3);
       info() << "    Number of collisions                                     "
-                "(m_collision): "
-            << sum_int64[4] << ", [" << min_int64[4] << ", " << max_int64[4] << "]";
+                "(m_collision): " << infos(4);
       info() << "    Number of particles that escape                             "
-                "(m_escape): "
-            << sum_int64[5] << ", [" << min_int64[5] << ", " << max_int64[5] << "]";
+                "(m_escape): " << infos(5);
       info() << "    Number of particles that enter census                       "
-                "(m_census): "
-            << sum_int64[6] << ", [" << min_int64[6] << ", " << max_int64[6] << "]";
+                "(m_census): " << infos(6);
       info() << "    Number of segements                                   "
-                "(m_num_segments): "
-            << sum_int64[7] << ", [" << min_int64[7] << ", " << max_int64[7] << "]";
+                "(m_num_segments): " << infos(7);
       info() << "    Number of particles at end of cycle                           "
-                " (m_end): "
-            << sum_int64[8] << ", [" << min_int64[8] << ", " << max_int64[8] << "]";
+                " (m_end): " << infos(8);
       info() << "    Number of particles incoming from other sub-domain        "
-                "(m_incoming): "
-            << sum_int64[9] << ", [" << min_int64[9] << ", " << max_int64[9] << "]";
+                "(m_incoming): " << infos(9);
       info() << "    Number of particles outgoing to other sub-domain          "
-                "(m_outgoing): "
-            << sum_int64[10] << ", [" << min_int64[10] << ", " << max_int64[10] << "]";
+                "(m_outgoing): " << infos(10);
       info() << "    Particles contribution to the scalar flux     "
                 " (sum_scalar_flux_tally): "
-            << sum_real << ", [" << min_real << ", " << max_real << "]";
+            << sum_real << ", [" << min_real << ", " << max_real << ", " << sum_real/commSize << "]";
     }
   }
 

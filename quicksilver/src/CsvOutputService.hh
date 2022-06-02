@@ -44,22 +44,22 @@ public:
   virtual ~CsvOutputService() {};
 
 public:
-  virtual void init(String name_csv, String separator);
+  void init(String name_csv, String separator) override;
 
-  virtual Integer addRow(String name_row, bool fill_start);
-  virtual Integer addRow(String name_row, ConstArrayView<Real>& elems);
-  virtual Integer addColumn(String name_column, bool fill_start);
-  virtual Integer addColumn(String name_column, ConstArrayView<Real>& elems);
+  Integer addRow(String name_row, bool fill_start) override;
+  Integer addRow(String name_row, ConstArrayView<Real>& elems) override;
+  Integer addColumn(String name_column, bool fill_start) override;
+  Integer addColumn(String name_column, ConstArrayView<Real>& elems) override;
   
-  virtual bool addElemRow(Integer pos, Real elem);
-  virtual bool addElemRow(String name_row, Real elem, bool create_if_not_exist);
+  bool addElemRow(Integer pos, Real elem) override;
+  bool addElemRow(String name_row, Real elem, bool create_if_not_exist) override;
 
-  virtual bool addElemColumn(Integer pos, Real elem){return false;}
-  virtual bool addElemColumn(String name_column, Real elem, bool create_if_not_exist){return false;}
+  bool addElemColumn(Integer pos, Real elem) override {return false;}
+  bool addElemColumn(String name_column, Real elem, bool create_if_not_exist) override {return false;}
 
-  virtual void print(bool only_P0);
-  virtual bool writeFile();
-  virtual bool writeFile(String path_file);
+  void print(bool only_P0) override;
+  bool writeFile() override;
+  bool writeFile(String path_file) override;
 
 private:
   bool addElemsRow(Integer pos, ConstArrayView<Real>& elems);
