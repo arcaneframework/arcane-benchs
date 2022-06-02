@@ -168,7 +168,7 @@ mpirun -n 2048 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_1/Unbal32_1_n2048.a
 mpirun -n 16384 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_1/Unbal32_1_n16384.arc
 mpirun -n 32768 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_1/Unbal32_1_n32768.arc
 
-mpirun -n 4 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_16/Unbal32_16_n8.arc
+mpirun -n 8 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_16/Unbal32_16_n8.arc
 mpirun -n 32 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_16/Unbal32_16_n32.arc
 mpirun -n 128 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_16/Unbal32_16_n128.arc
 mpirun -n 512 ${QS_EXE} ${QS_SOURCE_DIR}/data/Unbal/Unbal32_16/Unbal32_16_n512.arc

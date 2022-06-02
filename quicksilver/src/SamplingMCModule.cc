@@ -104,41 +104,76 @@ cycleSampling()
 void SamplingMCModule::
 cycleFinalize()
 {
+
+  if(mesh()->parallelMng()->commRank() == 0){
+
+  }
+
+
+
+
   ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
 
-  Int64 m_source = m_source_a;
-
   csv->addElemRow("m_start (Proc)", m_start);
-  csv->addElemRow("m_source (Proc)", m_source);
+  csv->addElemRow("m_source (Proc)", m_source_a);
   csv->addElemRow("m_rr (Proc)", m_rr);
   csv->addElemRow("m_split (Proc)", m_split);
 
-
-  m_start = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_start);
-  m_source = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_source);
-  m_rr = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_rr);
-  m_split = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_split);
-
-
-  if(mesh()->parallelMng()->commRank() == 0){
-    csv->addElemRow("m_start (ReduceSum)", m_start);
-    csv->addElemRow("m_source (ReduceSum)", m_source);
-    csv->addElemRow("m_rr (ReduceSum)", m_rr);
-    csv->addElemRow("m_split (ReduceSum)", m_split);
+  if(mesh()->parallelMng()->commSize() == 1){
+    info() << "    Number of particles at beginning of cycle                    "
+              "(m_start): "
+          << m_start;
+    info() << "    Number of particles sourced in population control           "
+              "(m_source): "
+          << m_source_a;
+    info() << "    Number of particles Russian Rouletted in population control   "
+              "  (m_rr): "
+          << m_rr;
+    info() << "    Number of particles split in population control              "
+              "(m_split): "
+          << m_split;
   }
+  else {
+    Int64UniqueArray sum_int64 = {m_start, m_source_a, m_rr, m_split};
 
-  info() << "    Number of particles at beginning of cycle                    "
-            "(m_start): "
-         << m_start;
-  info() << "    Number of particles sourced in                              "
-            "(m_source): "
-         << m_source;
-  info() << "    Number of particles Russian Rouletted in population control   "
-            "  (m_rr): "
-         << m_rr;
-  info() << "    Number of particles split in population control              "
-            "(m_split): "
-         << m_split;
+    Int64UniqueArray min_int64 = sum_int64.clone();
+    Int64UniqueArray max_int64 = sum_int64.clone();
+
+    parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
+    parallelMng()->reduce(Parallel::ReduceMin, min_int64);
+    parallelMng()->reduce(Parallel::ReduceMax, max_int64);
+
+    if(mesh()->parallelMng()->commRank() == 0) {
+
+      csv->addElemRow("m_start (ReduceSum)", sum_int64[0]);
+      csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
+      csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
+      csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
+
+      csv->addElemRow("m_start (ReduceMin)", min_int64[0]);
+      csv->addElemRow("m_source (ReduceMin)", min_int64[1]);
+      csv->addElemRow("m_rr (ReduceMin)", min_int64[2]);
+      csv->addElemRow("m_split (ReduceMin)", min_int64[3]);
+
+      csv->addElemRow("m_start (ReduceMax)", max_int64[0]);
+      csv->addElemRow("m_source (ReduceMax)", max_int64[1]);
+      csv->addElemRow("m_rr (ReduceMax)", max_int64[2]);
+      csv->addElemRow("m_split (ReduceMax)", max_int64[3]);
+
+      info() << "    Number of particles at beginning of cycle                    "
+                "(m_start): "
+            << sum_int64[0] << ", [" << min_int64[0] << ", " << max_int64[0] << "]";
+      info() << "    Number of particles sourced in population control           "
+                "(m_source): "
+            << sum_int64[1] << ", [" << min_int64[1] << ", " << max_int64[1] << "]";
+      info() << "    Number of particles Russian Rouletted in population control   "
+                "  (m_rr): "
+            << sum_int64[2] << ", [" << min_int64[2] << ", " << max_int64[2] << "]";
+      info() << "    Number of particles split in population control              "
+                "(m_split): "
+            << sum_int64[3] << ", [" << min_int64[3] << ", " << max_int64[3] << "]";
+    }
+  }
 
   m_start = 0;
   m_source_a = 0;

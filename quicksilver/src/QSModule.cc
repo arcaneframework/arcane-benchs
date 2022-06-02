@@ -46,9 +46,9 @@ initModule()
   csv->addRow("m_census (Proc)");
   csv->addRow("m_num_segments (Proc)");
   csv->addRow("m_end (Proc)");
-  csv->addRow("sum_scalar_flux_tally (Proc)");
   csv->addRow("m_incoming (Proc)");
   csv->addRow("m_outgoing (Proc)");
+  csv->addRow("sum_scalar_flux_tally (Proc)");
 }
 
 /**
@@ -58,7 +58,8 @@ void QSModule::
 cycleFinalize()
 {
   info() << "End iteration #" << m_global_iteration();
-  info() << "  Informations:";
+  if(parallelMng()->commSize() == 1) info() << "  Informations:";
+  else                               info() << "  Informations:                                            (variable name): ReduceSum, [ReduceMin, ReduceMax]";
 
   if (m_global_iteration() == options()->getNSteps())
     subDomain()->timeLoopMng()->stopComputeLoop(true);
