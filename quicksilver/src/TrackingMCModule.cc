@@ -42,8 +42,6 @@ initModule()
 
   m_scalar_flux_tally.resize(m_n_groups());
   m_scalar_flux_tally.fill(0.0);
-
-  m_l_loop_lb = m_loop_lb();
 }
 
 /**
@@ -54,6 +52,10 @@ cycleTracking()
 {
   {
     Timer::Sentry ts(m_timer);
+
+    // Doit-on calculer le cout d'une cellule pour l'équilibrage de charge ?
+    m_do_loop_lb = (m_loop_lb() != 0 && m_global_iteration() % m_loop_lb() == 0);
+
     computeCrossSection();
     tracking();
     
@@ -381,6 +383,7 @@ initNuclearData()
     Real nuBar = options()->cross_section[crossSection.at(fissionCrossSection)].getNuBar();
 
 
+    // Calcul de la "difficulté" du matériau.
     Integer nbAFS = nReactions/3;
     Real absCost = nbAFS * absorptionCrossSectionRatio;
     Real fisCost = nbAFS * fissionCrossSectionRatio * nuBar;
@@ -398,6 +401,7 @@ initNuclearData()
       m_source_rate[icell] = sourceRate;
       if(pre_lb) {
         Real faceCost = 1.0;
+        // Un escape est plus facile qu'un reflexion.
         ENUMERATE_FACE(iface, (*icell).globalCell().faces()) {
           if(m_boundary_cond[iface] == ParticleEvent::reflection){
             faceCost += 0.10;
@@ -409,9 +413,6 @@ initNuclearData()
         m_criterion_lb[(*icell).globalCell()] = mat_difficult * faceCost;
       }
     }
-
-
-
 
     m_iso_gid.resize(nIsotopes);
     m_atom_fraction.resize(nIsotopes);
@@ -624,7 +625,8 @@ isInGeometry(const Integer& pos, Cell cell)
 void TrackingMCModule::
 cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 {
-  if (m_particle_status[particle] == ParticleState::exitedParticle || m_particle_status[particle] == ParticleState::censusParticle) {
+  if (m_particle_status[particle] == ParticleState::exitedParticle 
+  || m_particle_status[particle] == ParticleState::censusParticle) {
     ARCANE_FATAL("Particule déjà traitée.");
   }
 
@@ -641,7 +643,13 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
   // loop over this particle until we cannot do anything more with it on this processor
   cycleTrackingFunction(particle, node_coord);
 
-
+  // Si on a à faire un équilibrage de charge, on calcul le poids de chaque cellule.
+  if(m_do_loop_lb)
+  {
+    GlobalMutex::ScopedLock(m_mutex_lb);
+    m_criterion_lb[particle.cell()] += m_particle_num_seg[particle];
+  }
+  m_particle_num_seg[particle] = 0;
 }
 
 /**
@@ -667,12 +675,6 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
     computeNextEvent(particle, node_coord);
     m_num_segments_a++;
 
-    if(m_l_loop_lb != 0 && m_global_iteration() % m_l_loop_lb == 0)
-    {
-      GlobalMutex::ScopedLock(m_mutex_flux);
-      m_criterion_lb[particle.cell()] += 1;
-    }
-
     m_particle_num_seg[particle] += 1; /* Track the number of segments this particle has
                                           undergone this cycle on all processes. */
     switch (m_particle_last_event[particle]) {
@@ -680,7 +682,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
 
       switch (collisionEvent(particle)) {
       case 0: // La particule est absorbée.
-        done = false;
+        done = true;
         m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
@@ -689,12 +691,12 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
         break;
 
       case 1: // La particule a juste changée de trajectoire.
-        done = true;
+        done = false;
         break;
 
       default: // La particule splitte.
         // On arrete pour pouvoir cloner la particle source.
-        done = false;
+        done = true;
         break;
       }
     } break;
@@ -705,11 +707,11 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
 
       switch (m_particle_last_event[particle]) {
       case ParticleEvent::cellChange:
-        done = true;
+        done = false;
         break;
 
       case ParticleEvent::escape:
-        done = false;
+        done = true;
         m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
@@ -720,12 +722,12 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
 
       case ParticleEvent::reflection:
         reflectParticle(particle, node_coord);
-        done = true;
+        done = false;
         break;
 
       default:
         // Enters an adjacent cell in an off-processor domain.
-        done = false;
+        done = true;
         // Pas de m_exited_particles_local_ids car la particle sera retirée de la famille par ExchangeParticles.
         break;
       }
@@ -738,7 +740,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
       //   m_local_ids_processed.add(particle.localId());
       // }
       m_census_a++;
-      done = false;
+      done = true;
       m_particle_status[particle] = ParticleState::censusParticle;
       break;
     }
@@ -748,7 +750,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
       break;
     }
 
-  } while (done);
+  } while (!done);
 }
 
 /**
