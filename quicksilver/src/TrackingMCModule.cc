@@ -15,8 +15,6 @@
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
 #include <arcane/Concurrency.h>
-#include <arcane/ILoadBalanceMng.h>
-#include <arcane/IMeshPartitionerBase.h>
 #include <map>
 #include <set>
 
@@ -44,6 +42,8 @@ initModule()
 
   m_scalar_flux_tally.resize(m_n_groups());
   m_scalar_flux_tally.fill(0.0);
+
+  m_l_loop_lb = m_loop_lb();
 }
 
 /**
@@ -54,7 +54,6 @@ cycleTracking()
 {
   {
     Timer::Sentry ts(m_timer);
-    m_criterion_lb.fill(0);
     computeCrossSection();
     tracking();
     
@@ -274,10 +273,6 @@ cycleFinalize()
   m_end = 0;
   m_incoming = 0;
   m_outgoing = 0;
-  
-  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
-  lb->addCriterion(m_criterion_lb);
-  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
 }
 
 /**
@@ -361,6 +356,11 @@ initNuclearData()
       }
     }
   }
+  bool pre_lb = m_pre_lb();
+  if(pre_lb) m_criterion_lb.fill(0.);
+
+  Real min_difficulty = 100.;
+  Real max_difficulty = 0.;
 
   for (Integer i = 0; i < num_materials; i++) {
     String mat_name = options()->material[i].getName();
@@ -380,11 +380,39 @@ initNuclearData()
 
     Real nuBar = options()->cross_section[crossSection.at(fissionCrossSection)].getNuBar();
 
-    ENUMERATE_MATCELL(icell, materials[i])
-    {
+
+    Integer nbAFS = nReactions/3;
+    Real absCost = nbAFS * absorptionCrossSectionRatio;
+    Real fisCost = nbAFS * fissionCrossSectionRatio * nuBar;
+    Real scaCost = nbAFS * scatteringCrossSectionRatio;
+    Real mat_difficult = absCost + fisCost + scaCost + total_cross_section;
+
+    if(mat_difficult > max_difficulty) max_difficulty = mat_difficult;
+    if(mat_difficult < min_difficulty) min_difficulty = mat_difficult;
+
+    info() << "--- Difficulté matériau " << mat_name << " = " << mat_difficult << " ---";
+
+
+    ENUMERATE_MATCELL(icell, materials[i]) {
       m_mass[icell] = mass;
       m_source_rate[icell] = sourceRate;
+      if(pre_lb) {
+        Real faceCost = 1.0;
+        ENUMERATE_FACE(iface, (*icell).globalCell().faces()) {
+          if(m_boundary_cond[iface] == ParticleEvent::reflection){
+            faceCost += 0.10;
+          }
+          else if(m_boundary_cond[iface] == ParticleEvent::escape){
+            faceCost -= 0.10;
+          }
+        }
+        m_criterion_lb[(*icell).globalCell()] = mat_difficult * faceCost;
+      }
     }
+
+
+
+
     m_iso_gid.resize(nIsotopes);
     m_atom_fraction.resize(nIsotopes);
 
@@ -402,13 +430,13 @@ initNuclearData()
 
       // atom_fraction for each isotope is 1/nIsotopes.  Treats all
       // isotopes as equally prevalent.
-      ENUMERATE_MATCELL(icell, materials[i])
-      {
+      ENUMERATE_MATCELL(icell, materials[i]) {
         m_iso_gid[icell][iIso] = isotope_gid;
         m_atom_fraction[icell][iIso] = 1.0 / nIsotopes;
       }
     }
   }
+  if(max_difficulty / min_difficulty > 1.5) warning() << "Activation du prééquilibrage de charge conseillé";
 }
 
 /**
@@ -639,6 +667,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
     computeNextEvent(particle, node_coord);
     m_num_segments_a++;
 
+    if(m_global_iteration() % m_l_loop_lb == 0)
     {
       GlobalMutex::ScopedLock(m_mutex_flux);
       m_criterion_lb[particle.cell()] += 1;

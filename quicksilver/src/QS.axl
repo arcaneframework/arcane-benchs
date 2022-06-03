@@ -134,15 +134,44 @@
         dump="true"
         need-sync="true" />
 
+    <variable 
+        field-name="criterion_lb"
+        name="CriterionLb"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        need-sync="true" />
+
+    <variable 
+        field-name="pre_lb"
+        name="PreLb"
+        data-type="bool"
+        item-kind="none"
+        dim="0" />
+
+    <variable 
+        field-name="loop_lb"
+        name="LoopLb"
+        data-type="integer"
+        item-kind="none"
+        dim="0" />
+
   </variables>
 
   <entry-points>
     <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
+    <entry-point method-name="preLoadBalancing" name="PreLoadBalancing" where="start-init" property="none" />
     <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
+    <entry-point method-name="loadBalancing" name="LoadBalancing" where="compute-loop" property="none" />
     <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
   </entry-points>
 
   <options>
+    <service-instance 
+      name    = "partitioner"
+      type    = "Arcane::IMeshPartitioner"
+      default = "DefaultPartitioner"
+    />
 
     <simple name="dt" type="real" default="1e-8">
       <description>
@@ -184,6 +213,18 @@
     <simple name="csvFile" type="string" default="">
       <description>
         Path and name for csv file (example: ./example.csv ).
+      </description>
+    </simple>
+
+    <simple name="preLoadBalancing" type="bool" default="false">
+      <description>
+        Enable load balancing before compute loop (materials properties based).
+      </description>
+    </simple>
+
+    <simple name="loadBalancing" type="integer" default="0">
+      <description>
+        Enable load balancing after 'value' compute loops (based on the number of tracking loop/cell).
       </description>
     </simple>
 

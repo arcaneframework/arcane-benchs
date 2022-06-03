@@ -43,6 +43,8 @@
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
     <csvFile>./Unbal4_1_n4_P@proc_id@.csv</csvFile>
+    <preLoadBalancing>true</preLoadBalancing>
+    <loadBalancing>2</loadBalancing>
   </q-s>
 
   <sampling-m-c>

@@ -25,6 +25,7 @@ void QSModule::
 initModule()
 {
   mesh()->modifier()->setDynamic(true);
+  if(options()->getPreLoadBalancing() || options()->getLoadBalancing()) m_criterion_lb.fill(0.);
   initMesh();
 
   // Initialisation de la sortie CSV.
@@ -53,6 +54,23 @@ initModule()
 }
 
 /**
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge pré-boucle
+ * (si l'option preLoadBalancing == true).
+ */
+void QSModule::
+preLoadBalancing()
+{
+  if(!options()->getPreLoadBalancing()) return;
+
+  info() << "PreLoadBalancing";
+  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
+  lb->addCriterion(m_criterion_lb);
+  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
+
+  m_criterion_lb.fill(0.);
+}
+
+/**
  * @brief Méthode permettant d'afficher les informations de fin d'itération.
  */
 void QSModule::
@@ -64,6 +82,23 @@ cycleFinalize()
 
   if (m_global_iteration() == options()->getNSteps())
     subDomain()->timeLoopMng()->stopComputeLoop(true);
+}
+
+/**
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge post-boucle
+ * (si itération % option loadBalancing == 0).
+ */
+void QSModule::
+loadBalancing()
+{
+  if(options()->getLoadBalancing() == 0 || m_global_iteration() % options()->getLoadBalancing() != 0) return;
+
+  info() << "loadBalancing";
+  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
+  lb->addCriterion(m_criterion_lb);
+  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
+
+  m_criterion_lb.fill(0.);
 }
 
 /**
@@ -123,6 +158,9 @@ initMesh()
   m_e_min = options()->getEMin();
   m_e_max = options()->getEMax();
   m_n_groups = options()->getNGroups();
+
+  m_pre_lb = options()->getPreLoadBalancing();
+  m_loop_lb = options()->getLoadBalancing();
 
   // Voir si la parallélisation ici sert à quelque chose
   // sachant qu'il faut gérer la répartition des faces par threads.

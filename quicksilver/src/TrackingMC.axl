@@ -351,10 +351,24 @@
     <variable 
         field-name="criterion_lb"
         name="CriterionLb"
-        data-type="int32"
+        data-type="real"
         item-kind="cell"
         dim="0"
         need-sync="true" />
+
+    <variable 
+        field-name="pre_lb"
+        name="PreLb"
+        data-type="bool"
+        item-kind="none"
+        dim="0" />
+
+    <variable 
+        field-name="loop_lb"
+        name="LoopLb"
+        data-type="integer"
+        item-kind="none"
+        dim="0" />
 
   </variables>
 
@@ -370,12 +384,6 @@
       <name lang="fr">echangeur-particule</name>
       <description>Service utilisé pour échanger les particules.</description>
 	  </service-instance>
-
-    <service-instance 
-      name    = "partitioner"
-      type    = "Arcane::IMeshPartitioner"
-      default = "DefaultPartitioner"
-    />
 
     <simple name="max_production_size" type="integer" default="4">
       <description>Nombre de particules max généré par une fission</description>

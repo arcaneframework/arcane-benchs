@@ -133,6 +133,8 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   GlobalMutex m_mutex_out;
   GlobalMutex m_mutex_flux;
 
+  Integer m_l_loop_lb;
+
  protected:
   void tracking();
   void updateTallies();

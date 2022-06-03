@@ -19,6 +19,8 @@
 #include <arcane/ICartesianMeshGenerationInfo.h>
 #include <arcane/IMeshModifier.h>
 #include <arcane/ServiceBuilder.h>
+#include <arcane/ILoadBalanceMng.h>
+#include <arcane/IMeshPartitionerBase.h>
 #include "ISimpleOutput.hh"
 
 #include "structEnum.hh"
@@ -43,7 +45,9 @@ public ArcaneQSObject
 
  public:
   void initModule() override;
+  void preLoadBalancing() override;
   void cycleFinalize() override;
+  void loadBalancing() override;
   void endModule() override;
 
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
