@@ -17,6 +17,7 @@
 #include <arcane/cartesianmesh/CellDirectionMng.h>
 #include <arcane/cartesianmesh/ICartesianMesh.h>
 #include <arcane/ICartesianMeshGenerationInfo.h>
+#include <arcane/IMeshModifier.h>
 #include <arcane/ServiceBuilder.h>
 #include "ISimpleOutput.hh"
 

@@ -15,6 +15,8 @@
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
 #include <arcane/Concurrency.h>
+#include <arcane/ILoadBalanceMng.h>
+#include <arcane/IMeshPartitionerBase.h>
 #include <map>
 #include <set>
 
@@ -52,6 +54,7 @@ cycleTracking()
 {
   {
     Timer::Sentry ts(m_timer);
+    m_criterion_lb.fill(0);
     computeCrossSection();
     tracking();
     
@@ -158,9 +161,9 @@ cycleFinalize()
     parallelMng()->reduce(Parallel::ReduceMin, min_int64);
     parallelMng()->reduce(Parallel::ReduceMax, max_int64);
 
-    parallelMng()->reduce(Parallel::ReduceSum, sum_real);
-    parallelMng()->reduce(Parallel::ReduceMin, min_real);
-    parallelMng()->reduce(Parallel::ReduceMax, max_real);
+    sum_real = parallelMng()->reduce(Parallel::ReduceSum, sum_real);
+    min_real = parallelMng()->reduce(Parallel::ReduceMin, min_real);
+    max_real = parallelMng()->reduce(Parallel::ReduceMax, max_real);
 
     if(mesh()->parallelMng()->commRank() == 0) {
 
@@ -271,6 +274,10 @@ cycleFinalize()
   m_end = 0;
   m_incoming = 0;
   m_outgoing = 0;
+  
+  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
+  lb->addCriterion(m_criterion_lb);
+  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
 }
 
 /**
@@ -605,6 +612,8 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 
   // loop over this particle until we cannot do anything more with it on this processor
   cycleTrackingFunction(particle, node_coord);
+
+
 }
 
 /**
@@ -630,7 +639,12 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
     computeNextEvent(particle, node_coord);
     m_num_segments_a++;
 
-    m_particle_num_seg[particle] += 1.; /* Track the number of segments this particle has
+    {
+      GlobalMutex::ScopedLock(m_mutex_flux);
+      m_criterion_lb[particle.cell()] += 1;
+    }
+
+    m_particle_num_seg[particle] += 1; /* Track the number of segments this particle has
                                           undergone this cycle on all processes. */
     switch (m_particle_last_event[particle]) {
     case ParticleEvent::collision: {

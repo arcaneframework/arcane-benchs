@@ -24,6 +24,7 @@
 void QSModule::
 initModule()
 {
+  mesh()->modifier()->setDynamic(true);
   initMesh();
 
   // Initialisation de la sortie CSV.

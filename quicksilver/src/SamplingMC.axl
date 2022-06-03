@@ -260,7 +260,7 @@
         field-name="particle_num_seg"
         name="ParticleNumSeg"
         family-name="ArcaneParticles"
-        data-type="real"
+        data-type="int32"
         item-kind="particle"
         dim="0"
         dump="true"
@@ -274,15 +274,6 @@
         dim="0"
         need-sync="true"
         material="true"/>
-
-    <variable 
-        field-name="num_particles"
-        name="NumParticles"
-        data-type="int32"
-        item-kind="cell"
-        dim="0"
-        dump="true"
-        need-sync="true" />
 
   </variables>
 

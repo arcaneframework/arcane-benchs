@@ -13,8 +13,6 @@
 
 #include "SamplingMCModule.hh"
 #include <arcane/Concurrency.h>
-// #include <arcane/ILoadBalanceMng.h>
-// #include <arcane/IMeshPartitionerBase.h>
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
 #include <map>
@@ -80,13 +78,6 @@ cycleSampling()
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
       m_particle_family->prepareForDump();
     }
-
-    // ENUMERATE_PARTICLE (ipartic, m_processingView) {
-    //   m_num_particles[(*ipartic).cell()]++;
-    // }
-    // ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
-    // lb->addCriterion(m_num_particles);
-    // subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
   }
 
   Real time = m_timer->lastActivationTime();
@@ -200,8 +191,6 @@ void SamplingMCModule::
 clearCrossSectionCache()
 {
   ENUMERATE_CELL (icell, ownCells()) {
-    m_num_particles[icell] = 0;
-
     RealArrayView total_icell = m_total[icell];
     for (Integer i = 0; i < m_n_groups(); i++) {
       total_icell[i] = 0.0;
@@ -498,7 +487,7 @@ initParticle(ParticleEnumerator p, const Int64& rns)
   m_particle_seg_path_length[p] = 0.0;
   m_particle_last_event[p] = ParticleEvent::census;
   m_particle_num_coll[p] = 0;
-  m_particle_num_seg[p] = 0.0;
+  m_particle_num_seg[p] = 0;
   m_particle_status[p] = ParticleState::newParticle;
   m_particle_ene_grp[p] = 0;
   m_particle_face[p] = 0;
