@@ -667,7 +667,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
     computeNextEvent(particle, node_coord);
     m_num_segments_a++;
 
-    if(m_global_iteration() % m_l_loop_lb == 0)
+    if(m_l_loop_lb != 0 && m_global_iteration() % m_l_loop_lb == 0)
     {
       GlobalMutex::ScopedLock(m_mutex_flux);
       m_criterion_lb[particle.cell()] += 1;

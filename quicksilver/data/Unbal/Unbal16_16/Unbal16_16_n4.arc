@@ -44,11 +44,11 @@
     <nGroups>230</nGroups>
     <csvFile>./Unbal16_16_n4_P@proc_id@.csv</csvFile>
     <preLoadBalancing>true</preLoadBalancing>
-    <loadBalancing>2</loadBalancing>
+    <loadBalancing>0</loadBalancing>
   </q-s>
 
   <sampling-m-c>
-    <nParticles>6400</nParticles>
+    <nParticles>64000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 
