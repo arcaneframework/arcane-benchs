@@ -102,9 +102,9 @@ cycleFinalize()
   Integer commSize = parallelMng()->commSize();
 
   csv->addElemRow("m_start (Proc)", m_start);
-  csv->addElemSameColumn(m_source_a); // "m_source (Proc)"
-  csv->addElemSameColumn(m_rr);       // "m_rr (Proc)"
-  csv->addElemSameColumn(m_split);    // "m_split (Proc)"
+  csv->addElemRow("m_source (Proc)", m_source_a);
+  csv->addElemRow("m_rr (Proc)", m_rr);
+  csv->addElemRow("m_split (Proc)", m_split);
 
   if(commSize == 1){
     info() << "    Number of particles at beginning of cycle                    "
@@ -136,28 +136,25 @@ cycleFinalize()
       Int64UniqueArray avg_int64 = sum_int64.clone();
       for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
 
-      // L'ordre des lignes est donné dans QSModule.cc.
-      // Les addElemSameColumn() au lieu de addElemRow()
-      //  permettent d'accélerer cette partie.
       csv->addElemRow("m_start (ReduceSum)", sum_int64[0]);
-      csv->addElemSameColumn(min_int64[0]); // "m_start (ReduceMin)"
-      csv->addElemSameColumn(max_int64[0]); // "m_start (ReduceMax)"
-      csv->addElemSameColumn(avg_int64[0]); // "m_start (ReduceAvg)"
+      csv->addElemRow("m_start (ReduceMin)", min_int64[0]);
+      csv->addElemRow("m_start (ReduceMax)", max_int64[0]);
+      csv->addElemRow("m_start (ReduceAvg)", avg_int64[0]);
 
       csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
-      csv->addElemSameColumn(min_int64[1]); // "m_source (ReduceMin)"
-      csv->addElemSameColumn(max_int64[1]); // "m_source (ReduceMax)"
-      csv->addElemSameColumn(avg_int64[1]); // "m_source (ReduceAvg)"
+      csv->addElemRow("m_source (ReduceMin)", min_int64[1]);
+      csv->addElemRow("m_source (ReduceMax)", max_int64[1]);
+      csv->addElemRow("m_source (ReduceAvg)", avg_int64[1]);
 
       csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
-      csv->addElemSameColumn(min_int64[2]); // "m_rr (ReduceMin)"
-      csv->addElemSameColumn(max_int64[2]); // "m_rr (ReduceMax)"
-      csv->addElemSameColumn(avg_int64[2]); // "m_rr (ReduceAvg)"
+      csv->addElemRow("m_rr (ReduceMin)", min_int64[2]);
+      csv->addElemRow("m_rr (ReduceMax)", max_int64[2]);
+      csv->addElemRow("m_rr (ReduceAvg)", avg_int64[2]);
       
       csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
-      csv->addElemSameColumn(min_int64[3]); // "m_split (ReduceMin)"
-      csv->addElemSameColumn(max_int64[3]); // "m_split (ReduceMax)"
-      csv->addElemSameColumn(avg_int64[3]); // "m_split (ReduceAvg)"
+      csv->addElemRow("m_split (ReduceMin)", min_int64[3]);
+      csv->addElemRow("m_split (ReduceMax)", max_int64[3]);
+      csv->addElemRow("m_split (ReduceAvg)", avg_int64[3]);
 
       #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
 
