@@ -42,7 +42,8 @@
     <eMax>20</eMax>
     <eMin>1e-08</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./CTS2_n131072.csv</csvFile>
+    <csvDir>./CTS2_n131072/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>

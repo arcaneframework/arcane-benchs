@@ -24,29 +24,77 @@
 void QSModule::
 initModule()
 {
+  mesh()->modifier()->setDynamic(true);
+  if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop()) m_criterion_lb.fill(0.);
   initMesh();
 
   // Initialisation de la sortie CSV.
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-  csv->init("QAMA", ";");
+  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+  if(options()->getCsvName() != "")
+    csv->init(options()->getCsvName(), ";");
+  else
+    csv->init("QAMA_P@proc_id@", ";");
 
-  // On crée les lignes "Proc" ici pour les avoir en haut du csv du proc0.
-  csv->addRow("Sampling duration (Proc)");
-  csv->addRow("Tracking duration (Proc)");
-  csv->addRow("m_start (Proc)");
-  csv->addRow("m_source (Proc)");
-  csv->addRow("m_rr (Proc)");
-  csv->addRow("m_split (Proc)");
-  csv->addRow("m_absorb (Proc)");
-  csv->addRow("m_scatter (Proc)");
-  csv->addRow("m_fission (Proc)");
-  csv->addRow("m_produce (Proc)");
-  csv->addRow("m_collision (Proc)");
-  csv->addRow("m_escape (Proc)");
-  csv->addRow("m_census (Proc)");
-  csv->addRow("m_num_segments (Proc)");
-  csv->addRow("m_end (Proc)");
-  csv->addRow("sum_scalar_flux_tally (Proc)");
+  // On organise les lignes.
+  csv->addRows(StringUniqueArray {
+    "Sampling duration (Proc)",
+    "Tracking duration (Proc)",
+    "m_start (Proc)",
+    "m_source (Proc)",
+    "m_rr (Proc)", 
+    "m_split (Proc)",
+    "m_absorb (Proc)",
+    "m_scatter (Proc)",
+    "m_fission (Proc)",
+    "m_produce (Proc)",
+    "m_collision (Proc)", 
+    "m_escape (Proc)",
+    "m_census (Proc)",
+    "m_num_segments (Proc)", 
+    "m_end (Proc)", 
+    "m_incoming (Proc)",
+    "m_outgoing (Proc)",
+    "sum_scalar_flux_tally (Proc)",
+  });
+  if(parallelMng()->commSize() != 1 && parallelMng()->commRank() == 0) {
+    csv->addRows(StringUniqueArray {
+      "Sampling duration (ReduceSum)",
+      "Tracking duration (ReduceSum)",
+      "m_start (ReduceSum)","m_start (ReduceMin)","m_start (ReduceMax)","m_start (ReduceAvg)",
+      "m_source (ReduceSum)","m_source (ReduceMin)","m_source (ReduceMax)","m_source (ReduceAvg)",
+      "m_rr (ReduceSum)","m_rr (ReduceMin)","m_rr (ReduceMax)","m_rr (ReduceAvg)",
+      "m_split (ReduceSum)","m_split (ReduceMin)","m_split (ReduceMax)","m_split (ReduceAvg)",
+      "m_absorb (ReduceSum)","m_absorb (ReduceMin)","m_absorb (ReduceMax)","m_absorb (ReduceAvg)",
+      "m_scatter (ReduceSum)","m_scatter (ReduceMin)","m_scatter (ReduceMax)","m_scatter (ReduceAvg)",
+      "m_fission (ReduceSum)","m_fission (ReduceMin)","m_fission (ReduceMax)","m_fission (ReduceAvg)",
+      "m_produce (ReduceSum)","m_produce (ReduceMin)","m_produce (ReduceMax)","m_produce (ReduceAvg)",
+      "m_collision (ReduceSum)","m_collision (ReduceMin)","m_collision (ReduceMax)","m_collision (ReduceAvg)",
+      "m_escape (ReduceSum)","m_escape (ReduceMin)","m_escape (ReduceMax)","m_escape (ReduceAvg)",
+      "m_census (ReduceSum)","m_census (ReduceMin)","m_census (ReduceMax)","m_census (ReduceAvg)",
+      "m_num_segments (ReduceSum)","m_num_segments (ReduceMin)","m_num_segments (ReduceMax)","m_num_segments (ReduceAvg)",
+      "m_end (ReduceSum)","m_end (ReduceMin)","m_end (ReduceMax)","m_end (ReduceAvg)",
+      "m_incoming (ReduceSum)","m_incoming (ReduceMin)","m_incoming (ReduceMax)","m_incoming (ReduceAvg)",
+      "m_outgoing (ReduceSum)","m_outgoing (ReduceMin)","m_outgoing (ReduceMax)","m_outgoing (ReduceAvg)",
+      "sum_scalar_flux_tally (ReduceSum)","sum_scalar_flux_tally (ReduceMin)","sum_scalar_flux_tally (ReduceMax)","sum_scalar_flux_tally (ReduceAvg)"
+    });
+  }
+}
+
+/**
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge pré-boucle
+ * (si l'option preLoadBalancing == true).
+ */
+void QSModule::
+preLoadBalancing()
+{
+  if(!options()->getLoadBalancingMat()) return;
+
+  info() << "PreLoadBalancing";
+  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
+  lb->addCriterion(m_criterion_lb);
+  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
+
+  m_criterion_lb.fill(0.);
 }
 
 /**
@@ -56,10 +104,28 @@ void QSModule::
 cycleFinalize()
 {
   info() << "End iteration #" << m_global_iteration();
-  info() << "  Informations:";
+  if(parallelMng()->commSize() == 1) info() << "  Informations:";
+  else  info() << "  Informations:                                            (variable name): Sum, [Min, Max, Avg]";
 
   if (m_global_iteration() == options()->getNSteps())
     subDomain()->timeLoopMng()->stopComputeLoop(true);
+}
+
+/**
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge post-boucle
+ * (si itération % option loadBalancing == 0).
+ */
+void QSModule::
+loadBalancing()
+{
+  if(options()->getLoadBalancingLoop() == 0 || m_global_iteration() % options()->getLoadBalancingLoop() != 0) return;
+
+  info() << "loadBalancing";
+  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
+  lb->addCriterion(m_criterion_lb);
+  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
+
+  m_criterion_lb.fill(0.);
 }
 
 /**
@@ -68,10 +134,17 @@ cycleFinalize()
 void QSModule::
 endModule()
 {
-  if(options()->getCsvFile() != "") {
-    ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  if(options()->getCsvName() != "" || options()->getCsvDir() != "") {
+    String path;
+    if(options()->getCsvDir() != "")
+      path = options()->getCsvDir();
+    else
+      path = "./csv_output/";
+
+    ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
     //csv->print();
-    csv->writeFile(options()->getCsvFile());
+    csv->writeFile(path);
+    
   }
 }
 
@@ -119,6 +192,9 @@ initMesh()
   m_e_min = options()->getEMin();
   m_e_max = options()->getEMax();
   m_n_groups = options()->getNGroups();
+
+  m_pre_lb = options()->getLoadBalancingMat();
+  m_loop_lb = options()->getLoadBalancingLoop();
 
   // Voir si la parallélisation ici sert à quelque chose
   // sachant qu'il faut gérer la répartition des faces par threads.

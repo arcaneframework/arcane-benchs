@@ -57,3 +57,6 @@ Debug*
 .vscode
 .vs
 /build
+
+# [AL] personal build notes
+perso_build_install.txt

@@ -37,6 +37,8 @@ mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 All arc input files examples:
 
 ```sh
+(for unbalanced tests, see data/Unbal/Unbal_README.md)
+
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleDefault.arc
 QS_ARC=${QS_SOURCE_DIR}/data/tests/TestSmall.arc

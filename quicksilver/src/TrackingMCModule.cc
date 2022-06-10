@@ -52,6 +52,10 @@ cycleTracking()
 {
   {
     Timer::Sentry ts(m_timer);
+
+    // Doit-on calculer le cout d'une cellule pour l'équilibrage de charge ?
+    m_do_loop_lb = (m_loop_lb() != 0 && m_global_iteration() % m_loop_lb() == 0);
+
     computeCrossSection();
     tracking();
     
@@ -63,12 +67,17 @@ cycleTracking()
     }
   }
 
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+  
   Real time = m_timer->lastActivationTime();
-
   csv->addElemRow("Tracking duration (Proc)", time);
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, time);
-  if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Tracking duration (ReduceMax)", time);
+
+  if(parallelMng()->commSize() != 1) {
+    time = parallelMng()->reduce(Parallel::ReduceMax, time);
+    if(parallelMng()->commRank() == 0) {
+      csv->addElemRow("Tracking duration (ReduceMax)", time);
+    }
+  }
 
   info() << "--- Tracking duration: " << time << " s ---";
 }
@@ -88,93 +97,191 @@ cycleFinalize()
     }
   }
 
-  Int64 m_absorb = m_absorb_a;
-  Int64 m_scatter = m_scatter_a;
-  Int64 m_fission = m_fission_a;
-  Int64 m_produce = m_produce_a;
-  Int64 m_collision = m_collision_a;
-  Int64 m_census = m_census_a;
-  Int64 m_num_segments = m_num_segments_a;
+  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+  Integer commSize = parallelMng()->commSize();
 
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  csv->addElemRow("m_absorb (Proc)", m_absorb);
-  csv->addElemRow("m_scatter (Proc)", m_scatter);
-  csv->addElemRow("m_fission (Proc)", m_fission);
-  csv->addElemRow("m_produce (Proc)", m_produce);
-  csv->addElemRow("m_collision (Proc)", m_collision);
+  csv->addElemRow("m_absorb (Proc)", m_absorb_a);
+  csv->addElemRow("m_scatter (Proc)", m_scatter_a);
+  csv->addElemRow("m_fission (Proc)", m_fission_a);
+  csv->addElemRow("m_produce (Proc)", m_produce_a);
+  csv->addElemRow("m_collision (Proc)", m_collision_a);
   csv->addElemRow("m_escape (Proc)", m_escape);
-  csv->addElemRow("m_census (Proc)", m_census);
-  csv->addElemRow("m_num_segments (Proc)", m_num_segments);
+  csv->addElemRow("m_census (Proc)", m_census_a);
+  csv->addElemRow("m_num_segments (Proc)", m_num_segments_a);
   csv->addElemRow("m_end (Proc)", m_end);
-
+  csv->addElemRow("m_incoming (Proc)", m_incoming);
+  csv->addElemRow("m_outgoing (Proc)", m_outgoing);
   csv->addElemRow("sum_scalar_flux_tally (Proc)", sum_scalar_flux_tally);
 
-  m_absorb = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_absorb);
-  m_scatter = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_scatter);
-  m_fission = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_fission);
-  m_produce = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_produce);
-  m_collision = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_collision);
-  m_escape = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_escape);
-  m_census = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_census);
-  m_num_segments = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_num_segments);
-  m_end = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_end);
+  if(commSize == 1){
+    info() << "    Number of particles absorbed                                "
+              "(m_absorb): "
+          << m_absorb_a;
+    info() << "    Number of scatters                                         "
+              "(m_scatter): "
+          << m_scatter_a;
+    info() << "    Number of fission events                                   "
+              "(m_fission): "
+          << m_fission_a;
+    info() << "    Number of particles created by collisions                  "
+              "(m_produce): "
+          << m_produce_a;
+    info() << "    Number of collisions                                     "
+              "(m_collision): "
+          << m_collision_a;
+    info() << "    Number of particles that escape                             "
+              "(m_escape): "
+          << m_escape;
+    info() << "    Number of particles that enter census                       "
+              "(m_census): "
+          << m_census_a;
+    info() << "    Number of segements                                   "
+              "(m_num_segments): "
+          << m_num_segments_a;
+    info() << "    Number of particles at end of cycle                           "
+              " (m_end): "
+          << m_end;
+    info() << "    Number of particles incoming from other sub-domain        "
+              "(m_incoming): "
+          << m_incoming;
+    info() << "    Number of particles outgoing to other sub-domain          "
+              "(m_outgoing): "
+          << m_outgoing;
+    info() << "    Particles contribution to the scalar flux     "
+              " (sum_scalar_flux_tally): "
+          << sum_scalar_flux_tally;
+  }
+  else {
+    Int64UniqueArray sum_int64 = 
+      {m_absorb_a, m_scatter_a, m_fission_a, m_produce_a, m_collision_a, m_escape, m_census_a,
+      m_num_segments_a, m_end, m_incoming, m_outgoing};
 
-  sum_scalar_flux_tally = mesh()->parallelMng()->reduce(Parallel::ReduceSum, sum_scalar_flux_tally);
+    Int64UniqueArray min_int64 = sum_int64.clone();
+    Int64UniqueArray max_int64 = sum_int64.clone();
 
-  if(mesh()->parallelMng()->commRank() == 0){
-    csv->addElemRow("m_absorb (ReduceSum)", m_absorb);
-    csv->addElemRow("m_scatter (ReduceSum)", m_scatter);
-    csv->addElemRow("m_fission (ReduceSum)", m_fission);
-    csv->addElemRow("m_produce (ReduceSum)", m_produce);
-    csv->addElemRow("m_collision (ReduceSum)", m_collision);
-    csv->addElemRow("m_escape (ReduceSum)", m_escape);
-    csv->addElemRow("m_census (ReduceSum)", m_census);
-    csv->addElemRow("m_num_segments (ReduceSum)", m_num_segments);
-    csv->addElemRow("m_end (ReduceSum)", m_end);
-    csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_scalar_flux_tally);
+    Real sum_real = sum_scalar_flux_tally;
+    Real min_real = sum_scalar_flux_tally;
+    Real max_real = sum_scalar_flux_tally;
+
+    parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
+    parallelMng()->reduce(Parallel::ReduceMin, min_int64);
+    parallelMng()->reduce(Parallel::ReduceMax, max_int64);
+
+    sum_real = parallelMng()->reduce(Parallel::ReduceSum, sum_real);
+    min_real = parallelMng()->reduce(Parallel::ReduceMin, min_real);
+    max_real = parallelMng()->reduce(Parallel::ReduceMax, max_real);
+
+    if(mesh()->parallelMng()->commRank() == 0) {
+
+      // TODO : Real ou Int64 ?
+      Int64UniqueArray avg_int64 = sum_int64.clone();
+      for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
+
+      // L'ordre des lignes est donné dans QSModule.cc.
+      // Les addElemSameColumn() au lieu de addElemRow()
+      //  permettent d'accélerer cette partie.
+      csv->addElemRow("m_absorb (ReduceSum)", sum_int64[0]);
+      csv->addElemSameColumn(min_int64[0]); // "m_absorb (ReduceMin)"
+      csv->addElemSameColumn(max_int64[0]); // "m_absorb (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[0]); // "m_absorb (ReduceAvg)"
+
+      csv->addElemRow("m_scatter (ReduceSum)", sum_int64[1]);
+      csv->addElemSameColumn(min_int64[1]); // "m_scatter (ReduceMin)"
+      csv->addElemSameColumn(max_int64[1]); // "m_scatter (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[1]); // "m_scatter (ReduceAvg)"
+
+      csv->addElemRow("m_fission (ReduceSum)", sum_int64[2]);
+      csv->addElemSameColumn(min_int64[2]); // "m_fission (ReduceMin)"
+      csv->addElemSameColumn(max_int64[2]); // "m_fission (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[2]); // "m_fission (ReduceAvg)"
+
+      csv->addElemRow("m_produce (ReduceSum)", sum_int64[3]);
+      csv->addElemSameColumn(min_int64[3]); // "m_produce (ReduceMin)"
+      csv->addElemSameColumn(max_int64[3]); // "m_produce (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[3]); // "m_produce (ReduceAvg)"
+
+      csv->addElemRow("m_collision (ReduceSum)", sum_int64[4]);
+      csv->addElemSameColumn(min_int64[4]); // "m_collision (ReduceMin)"
+      csv->addElemSameColumn(max_int64[4]); // "m_collision (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[4]); // "m_collision (ReduceAvg)"
+
+      csv->addElemRow("m_escape (ReduceSum)", sum_int64[5]);
+      csv->addElemSameColumn(min_int64[5]); // "m_escape (ReduceMin)"
+      csv->addElemSameColumn(max_int64[5]); // "m_escape (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[5]); // "m_escape (ReduceAvg)"
+
+      csv->addElemRow("m_census (ReduceSum)", sum_int64[6]);
+      csv->addElemSameColumn(min_int64[6]); // "m_census (ReduceMin)"
+      csv->addElemSameColumn(max_int64[6]); // "m_census (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[6]); // "m_census (ReduceAvg)"
+
+      csv->addElemRow("m_num_segments (ReduceSum)", sum_int64[7]);
+      csv->addElemSameColumn(min_int64[7]); // "m_num_segments (ReduceMin)"
+      csv->addElemSameColumn(max_int64[7]); // "m_num_segments (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[7]); // "m_num_segments (ReduceAvg)"
+
+      csv->addElemRow("m_end (ReduceSum)", sum_int64[8]);
+      csv->addElemSameColumn(min_int64[8]); // "m_end (ReduceMin)"
+      csv->addElemSameColumn(max_int64[8]); // "m_end (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[8]); // "m_end (ReduceAvg)"
+
+      csv->addElemRow("m_incoming (ReduceSum)", sum_int64[9]);
+      csv->addElemSameColumn(min_int64[9]); // "m_incoming (ReduceMin)"
+      csv->addElemSameColumn(max_int64[9]); // "m_incoming (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[9]); // "m_incoming (ReduceAvg)"
+
+      csv->addElemRow("m_outgoing (ReduceSum)", sum_int64[10]);
+      csv->addElemSameColumn(min_int64[10]); // "m_outgoing (ReduceMin)"
+      csv->addElemSameColumn(max_int64[10]); // "m_outgoing (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[10]); // "m_outgoing (ReduceAvg)"
+
+      csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
+      csv->addElemSameColumn(min_real); // "sum_scalar_flux_tally (ReduceMin)"
+      csv->addElemSameColumn(max_real); // "sum_scalar_flux_tally (ReduceMax)"
+      csv->addElemSameColumn(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
+
+
+      #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
+
+      info() << "    Number of particles absorbed                                "
+                "(m_absorb): " << infos(0);
+      info() << "    Number of scatters                                         "
+                "(m_scatter): " << infos(1);
+      info() << "    Number of fission events                                   "
+                "(m_fission): " << infos(2);
+      info() << "    Number of particles created by collisions                  "
+                "(m_produce): " << infos(3);
+      info() << "    Number of collisions                                     "
+                "(m_collision): " << infos(4);
+      info() << "    Number of particles that escape                             "
+                "(m_escape): " << infos(5);
+      info() << "    Number of particles that enter census                       "
+                "(m_census): " << infos(6);
+      info() << "    Number of segements                                   "
+                "(m_num_segments): " << infos(7);
+      info() << "    Number of particles at end of cycle                           "
+                " (m_end): " << infos(8);
+      info() << "    Number of particles incoming from other sub-domain        "
+                "(m_incoming): " << infos(9);
+      info() << "    Number of particles outgoing to other sub-domain          "
+                "(m_outgoing): " << infos(10);
+      info() << "    Particles contribution to the scalar flux     "
+                " (sum_scalar_flux_tally): "
+            << sum_real << ", [" << min_real << ", " << max_real << ", " << sum_real/commSize << "]";
+    }
   }
 
-  info() << "    Number of particles absorbed                                "
-            "(m_absorb): "
-         << m_absorb;
-  info() << "    Number of scatters                                         "
-            "(m_scatter): "
-         << m_scatter;
-  info() << "    Number of fission events                                   "
-            "(m_fission): "
-         << m_fission;
-  info() << "    Number of particles created by collisions                  "
-            "(m_produce): "
-         << m_produce;
-  info() << "    Number of collisions                                     "
-            "(m_collision): "
-         << m_collision;
-  info() << "    Number of particles that escape                             "
-            "(m_escape): "
-         << m_escape;
-  info() << "    Number of particles that enter census                       "
-            "(m_census): "
-         << m_census;
-  info() << "    Number of segements                                   "
-            "(m_num_segments): "
-         << m_num_segments;
-  info() << "    Number of particles at end of cycle                           "
-            " (m_end): "
-         << m_end;
-  info() << "    Particles contribution to the scalar flux     "
-            " (sum_scalar_flux_tally): "
-         << sum_scalar_flux_tally;
-
   m_absorb_a = 0;
-  m_census_a = 0;
-  m_escape = 0;
-  m_collision_a = 0;
+  m_scatter_a = 0;
   m_fission_a = 0;
   m_produce_a = 0;
-  m_scatter_a = 0;
+  m_collision_a = 0;
+  m_escape = 0;
+  m_census_a = 0;
   m_num_segments_a = 0;
   m_end = 0;
+  m_incoming = 0;
+  m_outgoing = 0;
 }
 
 /**
@@ -258,6 +365,11 @@ initNuclearData()
       }
     }
   }
+  bool pre_lb = m_pre_lb();
+  if(pre_lb) m_criterion_lb.fill(0.);
+
+  Real min_difficulty = 100.;
+  Real max_difficulty = 0.;
 
   for (Integer i = 0; i < num_materials; i++) {
     String mat_name = options()->material[i].getName();
@@ -277,11 +389,38 @@ initNuclearData()
 
     Real nuBar = options()->cross_section[crossSection.at(fissionCrossSection)].getNuBar();
 
-    ENUMERATE_MATCELL(icell, materials[i])
-    {
+
+    // Calcul de la "difficulté" du matériau.
+    Integer nbAFS = nReactions/3;
+    Real absCost = nbAFS * absorptionCrossSectionRatio;
+    Real fisCost = nbAFS * fissionCrossSectionRatio * nuBar;
+    Real scaCost = nbAFS * scatteringCrossSectionRatio;
+    Real mat_difficult = absCost + fisCost + scaCost + total_cross_section;
+
+    if(mat_difficult > max_difficulty) max_difficulty = mat_difficult;
+    if(mat_difficult < min_difficulty) min_difficulty = mat_difficult;
+
+    info() << "--- Difficulté matériau " << mat_name << " = " << mat_difficult << " ---";
+
+
+    ENUMERATE_MATCELL(icell, materials[i]) {
       m_mass[icell] = mass;
       m_source_rate[icell] = sourceRate;
+      if(pre_lb) {
+        Real faceCost = 1.0;
+        // Un escape est plus facile qu'un reflexion.
+        ENUMERATE_FACE(iface, (*icell).globalCell().faces()) {
+          if(m_boundary_cond[iface] == ParticleEvent::reflection){
+            faceCost += 0.10;
+          }
+          else if(m_boundary_cond[iface] == ParticleEvent::escape){
+            faceCost -= 0.10;
+          }
+        }
+        m_criterion_lb[(*icell).globalCell()] = mat_difficult * faceCost;
+      }
     }
+
     m_iso_gid.resize(nIsotopes);
     m_atom_fraction.resize(nIsotopes);
 
@@ -299,13 +438,13 @@ initNuclearData()
 
       // atom_fraction for each isotope is 1/nIsotopes.  Treats all
       // isotopes as equally prevalent.
-      ENUMERATE_MATCELL(icell, materials[i])
-      {
+      ENUMERATE_MATCELL(icell, materials[i]) {
         m_iso_gid[icell][iIso] = isotope_gid;
         m_atom_fraction[icell][iIso] = 1.0 / nIsotopes;
       }
     }
   }
+  if(max_difficulty / min_difficulty > 1.5) info() << "Activation du prééquilibrage de charge conseillé";
 }
 
 /**
@@ -395,6 +534,7 @@ tracking()
 
     if (mesh()->parallelMng()->commSize() > 1) {
       incoming_particles_local_ids.clear();
+      m_outgoing += m_outgoing_particles_local_ids.size();
 
       // On essaye de recevoir tant que quelqu'un bosse encore.
       do {
@@ -416,6 +556,7 @@ tracking()
       } while (incoming_particles_local_ids.size() == 0 && m_extra_particles_local_ids.size() == 0 && !done);
 
       incoming_particles_view = m_particle_family->view(incoming_particles_local_ids);
+      m_incoming += incoming_particles_local_ids.size();
     }
 
     else if (m_extra_particles_local_ids.size() == 0) {
@@ -491,7 +632,8 @@ isInGeometry(const Integer& pos, Cell cell)
 void TrackingMCModule::
 cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 {
-  if (m_particle_status[particle] == ParticleState::exitedParticle || m_particle_status[particle] == ParticleState::censusParticle) {
+  if (m_particle_status[particle] == ParticleState::exitedParticle 
+  || m_particle_status[particle] == ParticleState::censusParticle) {
     ARCANE_FATAL("Particule déjà traitée.");
   }
 
@@ -507,6 +649,14 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 
   // loop over this particle until we cannot do anything more with it on this processor
   cycleTrackingFunction(particle, node_coord);
+
+  // Si on a à faire un équilibrage de charge, on calcul le poids de chaque cellule.
+  if(m_do_loop_lb)
+  {
+    GlobalMutex::ScopedLock(m_mutex_lb);
+    m_criterion_lb[particle.cell()] += m_particle_num_seg[particle];
+  }
+  m_particle_num_seg[particle] = 0;
 }
 
 /**
@@ -532,14 +682,14 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
     computeNextEvent(particle, node_coord);
     m_num_segments_a++;
 
-    m_particle_num_seg[particle] += 1.; /* Track the number of segments this particle has
+    m_particle_num_seg[particle] += 1; /* Track the number of segments this particle has
                                           undergone this cycle on all processes. */
     switch (m_particle_last_event[particle]) {
     case ParticleEvent::collision: {
 
       switch (collisionEvent(particle)) {
       case 0: // La particule est absorbée.
-        done = false;
+        done = true;
         m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
@@ -548,12 +698,12 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
         break;
 
       case 1: // La particule a juste changée de trajectoire.
-        done = true;
+        done = false;
         break;
 
       default: // La particule splitte.
         // On arrete pour pouvoir cloner la particle source.
-        done = false;
+        done = true;
         break;
       }
     } break;
@@ -564,11 +714,11 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
 
       switch (m_particle_last_event[particle]) {
       case ParticleEvent::cellChange:
-        done = true;
+        done = false;
         break;
 
       case ParticleEvent::escape:
-        done = false;
+        done = true;
         m_particle_status[particle] = ParticleState::exitedParticle;
         {
           GlobalMutex::ScopedLock(m_mutex_exit);
@@ -579,12 +729,12 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
 
       case ParticleEvent::reflection:
         reflectParticle(particle, node_coord);
-        done = true;
+        done = false;
         break;
 
       default:
         // Enters an adjacent cell in an off-processor domain.
-        done = false;
+        done = true;
         // Pas de m_exited_particles_local_ids car la particle sera retirée de la famille par ExchangeParticles.
         break;
       }
@@ -597,7 +747,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
       //   m_local_ids_processed.add(particle.localId());
       // }
       m_census_a++;
-      done = false;
+      done = true;
       m_particle_status[particle] = ParticleState::censusParticle;
       break;
     }
@@ -607,7 +757,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
       break;
     }
 
-  } while (done);
+  } while (!done);
 }
 
 /**

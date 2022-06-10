@@ -20,7 +20,7 @@
 #include <arcane/ModuleBuildInfo.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleOutput.hh"
+#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
 #include "SamplingMC_axl.h"
@@ -49,7 +49,7 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 1, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 7, 0); }
 
  protected:
   IItemFamily* m_particle_family;

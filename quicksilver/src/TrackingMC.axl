@@ -288,7 +288,7 @@
         field-name="particle_num_seg"
         name="ParticleNumSeg"
         family-name="ArcaneParticles"
-        data-type="real"
+        data-type="int32"
         item-kind="particle"
         dim="0"
         dump="true"
@@ -347,6 +347,28 @@
         dim="1"
         dump="true"
         need-sync="true" />
+
+    <variable 
+        field-name="criterion_lb"
+        name="CriterionLb"
+        data-type="real"
+        item-kind="cell"
+        dim="0"
+        need-sync="true" />
+
+    <variable 
+        field-name="pre_lb"
+        name="PreLb"
+        data-type="bool"
+        item-kind="none"
+        dim="0" />
+
+    <variable 
+        field-name="loop_lb"
+        name="LoopLb"
+        data-type="integer"
+        item-kind="none"
+        dim="0" />
 
   </variables>
 

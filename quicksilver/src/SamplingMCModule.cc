@@ -13,8 +13,6 @@
 
 #include "SamplingMCModule.hh"
 #include <arcane/Concurrency.h>
-// #include <arcane/ILoadBalanceMng.h>
-// #include <arcane/IMeshPartitionerBase.h>
 #include "MC_RNG_State.hh"
 #include "PhysicalConstants.hh"
 #include <map>
@@ -42,7 +40,7 @@ void SamplingMCModule::
 cycleSampling()
 {
   // On ajoute une colonne dans le csv.
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
+  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   csv->addColumn("Iteration " + String::fromNumber(m_global_iteration()));
 
   {
@@ -80,21 +78,17 @@ cycleSampling()
       // TODO : A retirer lors de la correction du compactItems() dans Arcane.
       m_particle_family->prepareForDump();
     }
-
-    // ENUMERATE_PARTICLE (ipartic, m_processingView) {
-    //   m_num_particles[(*ipartic).cell()]++;
-    // }
-    // ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
-    // lb->addCriterion(m_num_particles);
-    // subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
   }
 
   Real time = m_timer->lastActivationTime();
-
   csv->addElemRow("Sampling duration (Proc)", time);
-  time = mesh()->parallelMng()->reduce(Parallel::ReduceMax, time);
-  if(mesh()->parallelMng()->commRank() == 0) csv->addElemRow("Sampling duration (ReduceMax)", time);
 
+  if(parallelMng()->commSize() != 1) {
+    time = parallelMng()->reduce(Parallel::ReduceMax, time);
+    if(parallelMng()->commRank() == 0) {
+      csv->addElemRow("Sampling duration (ReduceMax)", time);
+    }
+  }
   info() << "--- Sampling duration: " << time << " s ---";
 }
 
@@ -104,41 +98,79 @@ cycleSampling()
 void SamplingMCModule::
 cycleFinalize()
 {
-  ISimpleOutput* csv = ServiceBuilder<ISimpleOutput>(subDomain()).getSingleton();
-
-  Int64 m_source = m_source_a;
+  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+  Integer commSize = parallelMng()->commSize();
 
   csv->addElemRow("m_start (Proc)", m_start);
-  csv->addElemRow("m_source (Proc)", m_source);
-  csv->addElemRow("m_rr (Proc)", m_rr);
-  csv->addElemRow("m_split (Proc)", m_split);
+  csv->addElemSameColumn(m_source_a); // "m_source (Proc)"
+  csv->addElemSameColumn(m_rr);       // "m_rr (Proc)"
+  csv->addElemSameColumn(m_split);    // "m_split (Proc)"
 
-
-  m_start = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_start);
-  m_source = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_source);
-  m_rr = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_rr);
-  m_split = mesh()->parallelMng()->reduce(Parallel::ReduceSum, m_split);
-
-
-  if(mesh()->parallelMng()->commRank() == 0){
-    csv->addElemRow("m_start (ReduceSum)", m_start);
-    csv->addElemRow("m_source (ReduceSum)", m_source);
-    csv->addElemRow("m_rr (ReduceSum)", m_rr);
-    csv->addElemRow("m_split (ReduceSum)", m_split);
+  if(commSize == 1){
+    info() << "    Number of particles at beginning of cycle                    "
+              "(m_start): "
+          << m_start;
+    info() << "    Number of particles sourced in population control           "
+              "(m_source): "
+          << m_source_a;
+    info() << "    Number of particles Russian Rouletted in population control   "
+              "  (m_rr): "
+          << m_rr;
+    info() << "    Number of particles split in population control              "
+              "(m_split): "
+          << m_split;
   }
+  else {
+    Int64UniqueArray sum_int64 = {m_start, m_source_a, m_rr, m_split};
 
-  info() << "    Number of particles at beginning of cycle                    "
-            "(m_start): "
-         << m_start;
-  info() << "    Number of particles sourced in                              "
-            "(m_source): "
-         << m_source;
-  info() << "    Number of particles Russian Rouletted in population control   "
-            "  (m_rr): "
-         << m_rr;
-  info() << "    Number of particles split in population control              "
-            "(m_split): "
-         << m_split;
+    Int64UniqueArray min_int64 = sum_int64.clone();
+    Int64UniqueArray max_int64 = sum_int64.clone();
+
+    parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
+    parallelMng()->reduce(Parallel::ReduceMin, min_int64);
+    parallelMng()->reduce(Parallel::ReduceMax, max_int64);
+
+    if(parallelMng()->commRank() == 0) {
+
+      // TODO : Real ou Int64 ?
+      Int64UniqueArray avg_int64 = sum_int64.clone();
+      for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
+
+      // L'ordre des lignes est donné dans QSModule.cc.
+      // Les addElemSameColumn() au lieu de addElemRow()
+      //  permettent d'accélerer cette partie.
+      csv->addElemRow("m_start (ReduceSum)", sum_int64[0]);
+      csv->addElemSameColumn(min_int64[0]); // "m_start (ReduceMin)"
+      csv->addElemSameColumn(max_int64[0]); // "m_start (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[0]); // "m_start (ReduceAvg)"
+
+      csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
+      csv->addElemSameColumn(min_int64[1]); // "m_source (ReduceMin)"
+      csv->addElemSameColumn(max_int64[1]); // "m_source (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[1]); // "m_source (ReduceAvg)"
+
+      csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
+      csv->addElemSameColumn(min_int64[2]); // "m_rr (ReduceMin)"
+      csv->addElemSameColumn(max_int64[2]); // "m_rr (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[2]); // "m_rr (ReduceAvg)"
+      
+      csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
+      csv->addElemSameColumn(min_int64[3]); // "m_split (ReduceMin)"
+      csv->addElemSameColumn(max_int64[3]); // "m_split (ReduceMax)"
+      csv->addElemSameColumn(avg_int64[3]); // "m_split (ReduceAvg)"
+
+      #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
+
+      info() << "    Number of particles at beginning of cycle                    "
+                "(m_start): " << infos(0);
+      info() << "    Number of particles sourced in population control           "
+                "(m_source): " << infos(1);
+      info() << "    Number of particles Russian Rouletted in population control   "
+                "  (m_rr): " << infos(2);
+      info() << "    Number of particles split in population control              "
+                "(m_split): " << infos(3);
+    }
+  }
 
   m_start = 0;
   m_source_a = 0;
@@ -165,8 +197,6 @@ void SamplingMCModule::
 clearCrossSectionCache()
 {
   ENUMERATE_CELL (icell, ownCells()) {
-    m_num_particles[icell] = 0;
-
     RealArrayView total_icell = m_total[icell];
     for (Integer i = 0; i < m_n_groups(); i++) {
       total_icell[i] = 0.0;
@@ -361,7 +391,7 @@ populationControl()
   mesh()->parallelMng()->reduce(Parallel::ReduceSum, localNumParticles);
 
   if (globalNumParticles == 0)
-    ARCANE_FATAL("Nombre de particule global == 0");
+    ARCANE_FATAL("Nombre de particule global == 0 (cela arrive quand il n'y a assez de particules par maille)");
 
   // Soit on augmente la population (>1), soit on l'a diminue (<1), soit on n'y
   // touche pas (=1).
@@ -463,7 +493,7 @@ initParticle(ParticleEnumerator p, const Int64& rns)
   m_particle_seg_path_length[p] = 0.0;
   m_particle_last_event[p] = ParticleEvent::census;
   m_particle_num_coll[p] = 0;
-  m_particle_num_seg[p] = 0.0;
+  m_particle_num_seg[p] = 0;
   m_particle_status[p] = ParticleState::newParticle;
   m_particle_ene_grp[p] = 0;
   m_particle_face[p] = 0;

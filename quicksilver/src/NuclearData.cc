@@ -104,8 +104,6 @@ addReaction(NuclearDataReaction::Enum type, Real nuBar,
 NuclearData::
 NuclearData(Integer numGroups, Real energyLow, Real energyHigh)
 : _energies(numGroups + 1)
-, m_totalCrossSection(0)
-, m_totalCrossSectionAC(false)
 {
   ARCANE_ASSERT(energyLow < energyHigh, "energyLow >= energyHigh");
   _energies[0] = energyLow;
@@ -223,16 +221,13 @@ getEnergyGroup(Real energy)
 Real NuclearData::
 getTotalCrossSection(Integer isotopeIndex, Integer group)
 {
-  //if (m_totalCrossSectionAC)
-  //  return m_totalCrossSection;
-  //m_totalCrossSectionAC = true;
   ARCANE_ASSERT(isotopeIndex < _isotopes.size(), "isotopeIndex >= _isotopes.size()");
   Integer numReacts = _isotopes[isotopeIndex]._species[0]._reactions.size();
-  m_totalCrossSection = 0.0;
+  Real totalCrossSection = 0.0;
   for (Integer reactIndex = 0; reactIndex < numReacts; reactIndex++) {
-    m_totalCrossSection += getReactionCrossSection(reactIndex, isotopeIndex, group);
+    totalCrossSection += getReactionCrossSection(reactIndex, isotopeIndex, group);
   }
-  return m_totalCrossSection;
+  return totalCrossSection;
 }
 
 // Return the total cross section for this energy group

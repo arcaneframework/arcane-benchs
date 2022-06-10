@@ -27,7 +27,7 @@
 #include <arcane/materials/MeshMaterialModifier.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleOutput.hh"
+#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
 #include "TrackingMC_axl.h"
@@ -79,6 +79,8 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   , m_outgoing_particles_rank_to(0)
   , m_escape(0)
   , m_end(0)
+  , m_incoming(0)
+  , m_outgoing(0)
   {}
 
  public:
@@ -87,7 +89,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 3, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 7, 0); }
 
  protected:
   IItemFamily* m_particle_family;
@@ -123,10 +125,16 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   std::atomic<Int64> m_produce_a{ 0 };
   Int64 m_end;
 
+  Int64 m_incoming;
+  Int64 m_outgoing;
+
   GlobalMutex m_mutex_exit;
   GlobalMutex m_mutex_extra;
   GlobalMutex m_mutex_out;
   GlobalMutex m_mutex_flux;
+  GlobalMutex m_mutex_lb;
+
+  bool m_do_loop_lb;
 
  protected:
   void tracking();

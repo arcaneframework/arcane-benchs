@@ -42,7 +42,8 @@
     <eMax>20</eMax>
     <eMin>1e-9</eMin>
     <nGroups>230</nGroups>
-
+    <csvDir>./noFission/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>
