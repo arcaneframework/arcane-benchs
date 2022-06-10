@@ -43,7 +43,10 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./ExampleFull_P@proc_id@.csv</csvFile>
+    <csvDir>./ExampleFull/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
+    <loadBalancingMat>true</loadBalancingMat>
+    <loadBalancingLoop>0</loadBalancingLoop>
   </q-s>
 
   <sampling-m-c>

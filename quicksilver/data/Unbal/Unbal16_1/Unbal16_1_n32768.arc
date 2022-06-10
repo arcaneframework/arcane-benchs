@@ -42,7 +42,10 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./Unbal16_1_n32768_P@proc_id@.csv</csvFile>
+    <csvDir>./Unbal16_1_n32768/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
+    <loadBalancingMat>true</loadBalancingMat>
+    <loadBalancingLoop>0</loadBalancingLoop>
   </q-s>
 
   <sampling-m-c>

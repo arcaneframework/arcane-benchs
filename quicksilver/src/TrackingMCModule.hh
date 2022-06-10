@@ -27,7 +27,7 @@
 #include <arcane/materials/MeshMaterialModifier.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleOutput.hh"
+#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
 #include "TrackingMC_axl.h"

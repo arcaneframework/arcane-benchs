@@ -42,7 +42,8 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./TestSmall_P0.csv</csvFile>
+    <csvDir>./TestSmall/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>

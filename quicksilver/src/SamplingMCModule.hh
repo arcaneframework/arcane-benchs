@@ -20,7 +20,7 @@
 #include <arcane/ModuleBuildInfo.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleOutput.hh"
+#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
 #include "SamplingMC_axl.h"

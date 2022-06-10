@@ -42,7 +42,8 @@
     <eMax>20</eMax>
     <eMin>1e-08</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./Coral2_P2_n1024.csv</csvFile>
+    <csvDir>./Coral2_P2_n1024/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>

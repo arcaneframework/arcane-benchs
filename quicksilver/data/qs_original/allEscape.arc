@@ -42,7 +42,8 @@
     <eMax>1</eMax>
     <eMin>0.99999</eMin>
     <nGroups>1</nGroups>
-
+    <csvDir>./allEscape/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>

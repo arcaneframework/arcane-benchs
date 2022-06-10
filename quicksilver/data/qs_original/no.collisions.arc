@@ -41,7 +41,8 @@
     <eMax>1.000001</eMax>
     <eMin>1.000000</eMin>
     <nGroups>230</nGroups>
-
+    <csvDir>./nocollisions/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>

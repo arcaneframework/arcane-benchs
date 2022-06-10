@@ -42,9 +42,10 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvFile>./Unbal4_1_n4_P@proc_id@.csv</csvFile>
-    <preLoadBalancing>true</preLoadBalancing>
-    <loadBalancing>0</loadBalancing>
+    <csvDir>./Unbal4_1_n4/</csvDir>
+    <csvName>Results_P@proc_id@</csvName>
+    <loadBalancingMat>true</loadBalancingMat>
+    <loadBalancingLoop>0</loadBalancingLoop>
   </q-s>
 
   <sampling-m-c>

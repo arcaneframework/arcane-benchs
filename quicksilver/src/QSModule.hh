@@ -21,7 +21,7 @@
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ILoadBalanceMng.h>
 #include <arcane/IMeshPartitionerBase.h>
-#include "ISimpleOutput.hh"
+#include "ISimpleTableOutput.hh"
 
 #include "structEnum.hh"
 
