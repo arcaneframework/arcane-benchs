@@ -89,7 +89,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 3, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 7, 0); }
 
  protected:
   IItemFamily* m_particle_family;

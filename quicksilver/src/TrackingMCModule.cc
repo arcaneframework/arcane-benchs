@@ -444,7 +444,7 @@ initNuclearData()
       }
     }
   }
-  if(max_difficulty / min_difficulty > 1.5) warning() << "Activation du prééquilibrage de charge conseillé";
+  if(max_difficulty / min_difficulty > 1.5) info() << "Activation du prééquilibrage de charge conseillé";
 }
 
 /**
