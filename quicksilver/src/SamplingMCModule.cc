@@ -74,9 +74,6 @@ cycleSampling()
 
     if(m_rr != 0){
       m_particle_family->compactItems(false);
-
-      // TODO : A retirer lors de la correction du compactItems() dans Arcane.
-      m_particle_family->prepareForDump();
     }
   }
 
