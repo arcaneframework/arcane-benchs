@@ -220,6 +220,38 @@ public:
    */
   virtual bool addElemsSameColumn(ConstArrayView<Real> elems) = 0;
 
+  /**
+   * @brief Méthode permettant d'éditer un élément au-dessus du dernier élement dernièrement manipulé (ligne du dessus/même colonne).
+   * 
+   * @param elem L'élement à modifier.
+   * @return true Si l'élément a été modifié.
+   * @return false Si l'élément n'a pas pu être modifié.
+   */
+  virtual bool editElemUp(Real elem) = 0;
+    /**
+   * @brief Méthode permettant d'éditer un élément en-dessous du dernier élement dernièrement manipulé (ligne du dessous/même colonne).
+   * 
+   * @param elem L'élement à modifier.
+   * @return true Si l'élément a été modifié.
+   * @return false Si l'élément n'a pas pu être modifié.
+   */
+  virtual bool editElemDown(Real elem) = 0;
+    /**
+   * @brief Méthode permettant d'éditer un élément à gauche du dernier élement dernièrement manipulé (même ligne/colonne à gauche).
+   * 
+   * @param elem L'élement à modifier.
+   * @return true Si l'élément a été modifié.
+   * @return false Si l'élément n'a pas pu être modifié.
+   */
+  virtual bool editElemLeft(Real elem) = 0;
+    /**
+   * @brief Méthode permettant d'éditer un élément à droite du dernier élement dernièrement manipulé (même ligne/colonne à droite).
+   * 
+   * @param elem L'élement à modifier.
+   * @return true Si l'élément a été modifié.
+   * @return false Si l'élément n'a pas pu être modifié.
+   */
+  virtual bool editElemRight(Real elem) = 0;
 
   /**
    * @brief Méthode permettant de modifier un élement dans le tableau.
@@ -384,7 +416,7 @@ public:
   virtual bool writeFile(bool only_P0 = false) = 0;
   /**
    * @brief Méthode permettant d'écrire le tableau dans un fichier.
-   * Si only_P0 == true, return indéfini.
+   * Si only_P0 != true, return indéfini.
    * 
    * @param path Le répertoire où sera écrit le fichier.
    * @param only_P0 S'il y a uniquement le P0 qui doit l'écrire.
