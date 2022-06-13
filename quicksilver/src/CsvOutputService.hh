@@ -84,6 +84,12 @@ public:
   bool addElemsSameColumn(ConstArrayView<Real> elems) override;
 
 
+  bool editElemUp(Real elem) override;
+  bool editElemDown(Real elem) override;
+  bool editElemLeft(Real elem) override;
+  bool editElemRight(Real elem) override;
+
+
   bool editElem(Integer pos_x, Integer pos_y, Real elem) override;
   bool editElem(String name_column, String name_row, Real elem) override;
 

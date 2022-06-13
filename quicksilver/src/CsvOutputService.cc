@@ -355,6 +355,61 @@ addElemsSameColumn(ConstArrayView<Real> elems)
 /*---------------------------------------------------------------------------*/
 
 bool CsvOutputService::
+editElemUp(Real elem)
+{
+  if(m_last_row == -1 || m_last_column == -1 || m_last_row - 1 < 0) return false;
+  m_last_row--;
+
+  // Pas besoin d'ajuster la taille de la colonne car on est sûr que m_size_columns[m_last_column] >= m_last_row.
+  if(m_size_rows[m_last_row] <= m_last_column) m_size_rows[m_last_row] = m_last_column+1;
+
+  m_values_csv[m_last_row][m_last_column] = elem;
+  return true;
+}
+
+bool CsvOutputService::
+editElemDown(Real elem)
+{
+  if(m_last_row == -1 || m_last_column == -1 || m_last_row + 1 >= m_values_csv.dim1Size()) return false;
+  m_last_row++;
+  
+  if(m_size_rows[m_last_row] <= m_last_column) m_size_rows[m_last_row] = m_last_column+1;
+  if(m_size_columns[m_last_column] <= m_last_row) m_size_columns[m_last_column] = m_last_row+1;
+
+  m_values_csv[m_last_row][m_last_column] = elem;
+  return true;
+}
+
+bool CsvOutputService::
+editElemLeft(Real elem)
+{
+  if(m_last_row == -1 || m_last_column == -1 || m_last_column - 1 < 0) return false;
+  m_last_column--;
+
+  // Pas besoin d'ajuster la taille de la ligne car on est sûr que m_size_rows[m_last_row] >= m_last_column.
+  if(m_size_columns[m_last_column] <= m_last_row) m_size_columns[m_last_column] = m_last_row+1;
+
+  m_values_csv[m_last_row][m_last_column] = elem;
+  return true;
+}
+
+bool CsvOutputService::
+editElemRight(Real elem)
+{
+  if(m_last_row == -1 || m_last_column == -1 || m_last_column + 1 >= m_values_csv.dim2Size()) return false;
+  m_last_column++;
+
+  if(m_size_rows[m_last_row] <= m_last_column) m_size_rows[m_last_row] = m_last_column+1;
+  if(m_size_columns[m_last_column] <= m_last_row) m_size_columns[m_last_column] = m_last_row+1;
+
+  m_values_csv[m_last_row][m_last_column] = elem;
+  return true;
+}
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+
+bool CsvOutputService::
 editElem(Integer pos_x, Integer pos_y, Real elem)
 {
   if(pos_x < 0 || pos_x >= m_values_csv.dim2Size() 
@@ -367,6 +422,10 @@ editElem(Integer pos_x, Integer pos_y, Real elem)
 
 
   m_values_csv[pos_y][pos_x] = elem;
+
+  m_last_row = pos_y;
+  m_last_column = pos_x;
+
   return true;
 }
 
