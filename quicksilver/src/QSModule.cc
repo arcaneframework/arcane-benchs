@@ -25,7 +25,7 @@ void QSModule::
 initModule()
 {
   mesh()->modifier()->setDynamic(true);
-  if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop()) m_criterion_lb.fill(0.);
+  if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop() > 0) m_criterion_lb.fill(0.);
   initMesh();
 
   // Initialisation de la sortie CSV.

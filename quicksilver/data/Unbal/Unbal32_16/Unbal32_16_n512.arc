@@ -18,16 +18,16 @@
 
         <x>
           <length>128.0</length>
-          <n>32</n> <!-- nMin: 32  nMax: 128 -->
+          <n>32</n>
         </x>
 
         <y>
-          <length>1024.0</length>
+          <length>256.0</length>
           <n>16</n>
         </y>
 
         <z>
-          <length>1024.0</length>
+          <length>256.0</length>
           <n>16</n>
         </z>
 

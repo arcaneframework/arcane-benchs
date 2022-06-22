@@ -366,7 +366,7 @@ initNuclearData()
     }
   }
   bool pre_lb = m_pre_lb();
-  if(pre_lb) m_criterion_lb.fill(0.);
+  if(pre_lb) info() << "--- Equilibrage de charge niveau materiau activé ---";
 
   Real min_difficulty = 100.;
   Real max_difficulty = 0.;
@@ -444,7 +444,8 @@ initNuclearData()
       }
     }
   }
-  if(max_difficulty / min_difficulty > 1.5) info() << "Activation du prééquilibrage de charge conseillé";
+  if(!pre_lb && max_difficulty / min_difficulty > 1.5) 
+    info() << "--- Activation de l'équilibrage de charge niveau materiau conseillé ---";
 }
 
 /**
