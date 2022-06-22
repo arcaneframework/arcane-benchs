@@ -61,9 +61,6 @@ cycleTracking()
     
     if(m_absorb_a != 0 || m_escape != 0){
       m_particle_family->compactItems(false);
-
-      // TODO : A retirer lors de la correction du compactItems() dans Arcane.
-      m_particle_family->prepareForDump();
     }
   }
 

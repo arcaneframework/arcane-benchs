@@ -3,7 +3,7 @@
 
 ### How to use it?
 
-Build and Install Arcane (version 3.6.4+).
+Build and Install Arcane (version 3.6.6+).
 
 And:
 
@@ -37,7 +37,7 @@ mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 All arc input files examples:
 
 ```sh
-(for unbalanced tests, see data/Unbal/Unbal_README.md)
+(for unbalanced tests, see data/Unbal/README.md)
 
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleDefault.arc
