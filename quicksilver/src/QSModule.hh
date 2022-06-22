@@ -48,6 +48,7 @@ public ArcaneQSObject
   void preLoadBalancing() override;
   void cycleFinalize() override;
   void loadBalancing() override;
+  void afterLoadBalancing() override;
   void endModule() override;
 
   VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }

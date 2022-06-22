@@ -90,11 +90,18 @@ preLoadBalancing()
   if(!options()->getLoadBalancingMat()) return;
 
   info() << "PreLoadBalancing";
+
+  Real sum = 0;
+
+  ENUMERATE_CELL(icell, ownCells()){
+    sum += m_criterion_lb[icell];
+  }
+
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Difficulté SD avant LB : " << sum;
+
   ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
   lb->addCriterion(m_criterion_lb);
   subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
-
-  m_criterion_lb.fill(0.);
 }
 
 /**
@@ -121,9 +128,40 @@ loadBalancing()
   if(options()->getLoadBalancingLoop() == 0 || m_global_iteration() % options()->getLoadBalancingLoop() != 0) return;
 
   info() << "loadBalancing";
+
+  Real sum = 0;
+
+  ENUMERATE_CELL(icell, ownCells()){
+    sum += m_criterion_lb[icell];
+  }
+
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Difficulté SD avant LB : " << sum;
+
   ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
   lb->addCriterion(m_criterion_lb);
   subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
+}
+
+/**
+ * @brief Méthode permettant d'effectuer l'après équilibrage de charge.
+ */
+void QSModule::
+afterLoadBalancing()
+{
+  if(
+    (options()->getLoadBalancingLoop() == 0 || m_global_iteration() % options()->getLoadBalancingLoop() != 0)
+    && !options()->getLoadBalancingMat()
+    ) return;
+
+  info() << "AfterLoadBalancing";
+
+  Real sum = 0;
+
+  ENUMERATE_CELL(icell, ownCells()){
+    sum += m_criterion_lb[icell];
+  }
+
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Difficulté SD après LB : " << sum;
 
   m_criterion_lb.fill(0.);
 }
