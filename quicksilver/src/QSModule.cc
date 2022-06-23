@@ -118,7 +118,8 @@ startLoadBalancing()
 void QSModule::
 loopLoadBalancing()
 {
-  if(options()->getLoadBalancingLoop() == 0 || m_global_iteration() % options()->getLoadBalancingLoop() != 0) return;
+  if(options()->getLoadBalancingLoop() == 0 
+    || (m_global_iteration() % options()->getLoadBalancingLoop() != 0 && m_global_iteration() != 1)) return;
   info() << "loopLoadBalancing";
   loadBalancing();
 }

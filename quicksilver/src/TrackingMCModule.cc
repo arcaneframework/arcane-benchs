@@ -687,8 +687,8 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
                                           undergone this cycle on all processes. */
     switch (m_particle_last_event[particle]) {
     case ParticleEvent::collision: {
-
-      switch (collisionEvent(particle)) {
+      Integer nOut = collisionEvent(particle);
+      switch (nOut) {
       case 0: // La particule est absorbée.
         done = true;
         m_particle_status[particle] = ParticleState::exitedParticle;
@@ -705,6 +705,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
       default: // La particule splitte.
         // On arrete pour pouvoir cloner la particle source.
         done = true;
+        //m_particle_num_seg[particle] += nOut;
         break;
       }
     } break;
@@ -1630,16 +1631,14 @@ findNearestFacet(Particle particle,
 {
   DistanceToFacet nearest_facet = nearestFacet(distance_to_facet);
 
-  const Integer max_allowed_segments = 10000000;
-
   retry = 0;
 
   if ((nearest_facet.distance == PhysicalConstants::_hugeDouble && move_factor > 0) ||
-      (m_particle_num_seg[particle] > max_allowed_segments && nearest_facet.distance <= 0.0)) {
+      (nearest_facet.distance <= 0.0)) {
 
     error() << "Attention, peut-être problème de facet.";
     error() << (nearest_facet.distance == PhysicalConstants::_hugeDouble) << " && " << (move_factor > 0)
-            << " || " << (m_particle_num_seg[particle] > max_allowed_segments) << " && " << (nearest_facet.distance <= 0.0);
+            << " || " << (nearest_facet.distance <= 0.0);
 
     // Could not find a solution, so move the particle towards the center of the cell
     // and try again.
