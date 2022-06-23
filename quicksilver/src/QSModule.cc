@@ -25,7 +25,12 @@ void QSModule::
 initModule()
 {
   mesh()->modifier()->setDynamic(true);
-  if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop() > 0) m_criterion_lb.fill(0.);
+
+  if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop() > 0) {
+    m_criterion_lb_cell.fill(1.);
+    m_criterion_lb_face.fill(1.);
+  }
+
   initMesh();
 
   // Initialisation de la sortie CSV.
@@ -81,30 +86,6 @@ initModule()
 }
 
 /**
- * @brief Méthode permettant d'effectuer l'équilibrage de charge pré-boucle
- * (si l'option preLoadBalancing == true).
- */
-void QSModule::
-preLoadBalancing()
-{
-  if(!options()->getLoadBalancingMat()) return;
-
-  info() << "PreLoadBalancing";
-
-  Real sum = 0;
-
-  ENUMERATE_CELL(icell, ownCells()){
-    sum += m_criterion_lb[icell];
-  }
-
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Difficulté SD avant LB : " << sum;
-
-  ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
-  lb->addCriterion(m_criterion_lb);
-  subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
-}
-
-/**
  * @brief Méthode permettant d'afficher les informations de fin d'itération.
  */
 void QSModule::
@@ -119,26 +100,51 @@ cycleFinalize()
 }
 
 /**
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge pré-boucle
+ * (si l'option loadBalancingMat == true).
+ */
+void QSModule::
+startLoadBalancing()
+{
+  if(!options()->getLoadBalancingMat()) return;
+  info() << "startLoadBalancing";
+  loadBalancing();
+}
+
+/**
  * @brief Méthode permettant d'effectuer l'équilibrage de charge post-boucle
- * (si itération % option loadBalancing == 0).
+ * (si itération % option loadBalancingLoop == 0).
+ */
+void QSModule::
+loopLoadBalancing()
+{
+  if(options()->getLoadBalancingLoop() == 0 || m_global_iteration() % options()->getLoadBalancingLoop() != 0) return;
+  info() << "loopLoadBalancing";
+  loadBalancing();
+}
+
+/**
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge.
  */
 void QSModule::
 loadBalancing()
 {
-  if(options()->getLoadBalancingLoop() == 0 || m_global_iteration() % options()->getLoadBalancingLoop() != 0) return;
-
-  info() << "loadBalancing";
-
-  Real sum = 0;
+  Real sum_cell = 0, sum_face = 0;
 
   ENUMERATE_CELL(icell, ownCells()){
-    sum += m_criterion_lb[icell];
+    sum_cell += m_criterion_lb_cell[icell];
   }
 
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Difficulté SD avant LB : " << sum;
+  ENUMERATE_FACE(iface, ownFaces()){
+    sum_face += m_criterion_lb_face[iface];
+  }
+
+  parallelMng()->barrier();
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD avant LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
   ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
-  lb->addCriterion(m_criterion_lb);
+  lb->addCriterion(m_criterion_lb_cell);
+  lb->addCommCost(m_criterion_lb_face);
   subDomain()->timeLoopMng()->registerActionMeshPartition((IMeshPartitionerBase*)options()->partitioner());
 }
 
@@ -155,15 +161,20 @@ afterLoadBalancing()
 
   info() << "AfterLoadBalancing";
 
-  Real sum = 0;
+  Real sum_cell = 0, sum_face = 0;
 
   ENUMERATE_CELL(icell, ownCells()){
-    sum += m_criterion_lb[icell];
+    sum_cell += m_criterion_lb_cell[icell];
   }
 
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Difficulté SD après LB : " << sum;
+  ENUMERATE_FACE(iface, ownFaces()){
+    sum_face += m_criterion_lb_face[iface];
+  }
 
-  m_criterion_lb.fill(0.);
+  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD après LB - Cell : " << sum_cell << " - Face : " << sum_face;
+
+  m_criterion_lb_cell.fill(1.);
+  m_criterion_lb_face.fill(1.);
 }
 
 /**

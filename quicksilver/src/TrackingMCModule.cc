@@ -417,7 +417,7 @@ initNuclearData()
             faceCost -= 0.10;
           }
         }
-        m_criterion_lb[(*icell).globalCell()] = mat_difficult * faceCost;
+        m_criterion_lb_cell[(*icell).globalCell()] = mat_difficult * faceCost;
       }
     }
 
@@ -655,7 +655,7 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
   if(m_do_loop_lb)
   {
     GlobalMutex::ScopedLock(m_mutex_lb);
-    m_criterion_lb[particle.cell()] += m_particle_num_seg[particle];
+    m_criterion_lb_cell[particle.cell()] += m_particle_num_seg[particle];
   }
   m_particle_num_seg[particle] = 0;
 }
@@ -1134,7 +1134,6 @@ collisionEvent(Particle particle)
 void TrackingMCModule::
 facetCrossingEvent(Particle particle)
 {
-  GlobalMutex::ScopedLock(m_mutex_out);
   Face face = particle.cell().face(m_particle_face[particle]);
   m_particle_last_event[particle] = m_boundary_cond[face];
 
@@ -1152,8 +1151,10 @@ facetCrossingEvent(Particle particle)
     if (face.frontCell().owner() != face.backCell().owner()) {
       // The particle will enter into an adjacent cell on a spatial neighbor.
       m_particle_last_event[particle] = ParticleEvent::subDChange;
+      GlobalMutex::ScopedLock(m_mutex_out);
       m_outgoing_particles_local_ids.add(particle.localId());
       m_outgoing_particles_rank_to.add(cell.owner());
+      m_criterion_lb_face[face]++;
     }
   }
 }

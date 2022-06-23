@@ -45,9 +45,9 @@ public ArcaneQSObject
 
  public:
   void initModule() override;
-  void preLoadBalancing() override;
+  void startLoadBalancing() override;
   void cycleFinalize() override;
-  void loadBalancing() override;
+  void loopLoadBalancing() override;
   void afterLoadBalancing() override;
   void endModule() override;
 
@@ -55,6 +55,7 @@ public ArcaneQSObject
 
  protected:
   void initMesh();
+  void loadBalancing();
   ParticleEvent getBoundaryCondition(const Integer& pos);
 };
 

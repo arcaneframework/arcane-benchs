@@ -135,10 +135,18 @@
         need-sync="true" />
 
     <variable 
-        field-name="criterion_lb"
-        name="CriterionLb"
+        field-name="criterion_lb_cell"
+        name="CriterionLbCell"
         data-type="real"
         item-kind="cell"
+        dim="0"
+        need-sync="true" />
+
+    <variable 
+        field-name="criterion_lb_face"
+        name="CriterionLbFace"
+        data-type="int32"
+        item-kind="face"
         dim="0"
         need-sync="true" />
 
@@ -160,9 +168,9 @@
 
   <entry-points>
     <entry-point method-name="initModule" name="InitModule" where="start-init" property="none" />
-    <entry-point method-name="preLoadBalancing" name="PreLoadBalancing" where="start-init" property="none" />
+    <entry-point method-name="startLoadBalancing" name="StartLoadBalancing" where="start-init" property="none" />
     <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
-    <entry-point method-name="loadBalancing" name="LoadBalancing" where="compute-loop" property="none" />
+    <entry-point method-name="loopLoadBalancing" name="LoopLoadBalancing" where="compute-loop" property="none" />
     <entry-point method-name="afterLoadBalancing" name="AfterLoadBalancing" where="on-mesh-changed" property="none" />
     <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
   </entry-points>
