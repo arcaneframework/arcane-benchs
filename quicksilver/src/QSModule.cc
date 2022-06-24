@@ -230,11 +230,15 @@ endModule()
 
     Real fOm = sum_segs / sum_times;
 
-    info() << "----------------------------------------";
-    info() << " --- Figure Of Merit : "
-           << fOm
-           << " [Num Segments / Cycle Tracking Time] ---";
-    info() << "----------------------------------------";
+    info() << "----------------------------------------------";
+    info() << "----------------Figure Of Merit---------------";
+    info() << "-----[Num Segments / Cycle Tracking Time]-----";
+    info() << "----------------------------------------------";
+    info() << "--- Num Segments        : " << sum_segs;
+    info() << "--- Cycle Tracking Time : " << sum_times;
+    info() << "----------------------------------------------";
+    info() << "--- Figure Of Merit     : " << fOm;
+    info() << "----------------------------------------------";
 
     m_csv->addRow("---------------");
     m_csv->addElemRow("Figure Of Merit", fOm);
