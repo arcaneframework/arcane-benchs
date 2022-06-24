@@ -57,6 +57,9 @@ public ArcaneQSObject
   void initMesh();
   void loadBalancing();
   ParticleEvent getBoundaryCondition(const Integer& pos);
+
+protected:
+  ISimpleTableOutput* m_csv;
 };
 
 /*---------------------------------------------------------------------------*/

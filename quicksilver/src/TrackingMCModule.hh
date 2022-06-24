@@ -97,6 +97,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   IMeshMaterialMng* m_material_mng;
   NuclearData* m_nuclearData;
   Timer* m_timer;
+  ISimpleTableOutput* m_csv;
 
   Int32UniqueArray m_exited_particles_local_ids;
 

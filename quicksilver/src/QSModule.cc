@@ -32,16 +32,23 @@ initModule()
   }
 
   initMesh();
+  m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
 
   // Initialisation de la sortie CSV.
-  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   if(options()->getCsvName() != "")
-    csv->init(options()->getCsvName(), ";");
+    m_csv->init(options()->getCsvName(), ";");
   else
-    csv->init("QAMA_P@proc_id@", ";");
+    m_csv->init("QAMA_P@proc_id@", ";");
+
+  // On ajoute les colonnes.
+  StringUniqueArray columns_name(options()->getNSteps());
+  for(Integer i = 0; i < options()->getNSteps(); i++){
+    columns_name[i] = "Iteration " + String::fromNumber(i+1);
+  }
+  m_csv->addColumns(columns_name);
 
   // On organise les lignes dans le tableau de résultat.
-  csv->addRows(StringUniqueArray {
+  m_csv->addRows(StringUniqueArray {
     "Sampling duration (Proc)",
     "Tracking duration (Proc)",
     "m_start (Proc)",
@@ -61,8 +68,18 @@ initModule()
     "m_outgoing (Proc)",
     "sum_scalar_flux_tally (Proc)",
   });
+
+  if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop() > 0){
+    m_csv->addRows(StringUniqueArray {
+    "LB Sum Criterion Cell Before (Proc)",
+    "LB Sum Criterion Cell After (Proc)",
+    "LB Sum Criterion Face Before (Proc)",
+    "LB Sum Criterion Face After (Proc)",
+    });
+  }
+
   if(parallelMng()->commSize() != 1 && parallelMng()->commRank() == 0) {
-    csv->addRows(StringUniqueArray {
+    m_csv->addRows(StringUniqueArray {
       "Sampling duration (ReduceMax)",
       "Tracking duration (ReduceMax)",
       "m_start (ReduceSum)","m_start (ReduceMin)","m_start (ReduceMax)","m_start (ReduceAvg)",
@@ -83,6 +100,11 @@ initModule()
       "sum_scalar_flux_tally (ReduceSum)","sum_scalar_flux_tally (ReduceMin)","sum_scalar_flux_tally (ReduceMax)","sum_scalar_flux_tally (ReduceAvg)"
     });
   }
+  StringUniqueArray columns_name(options()->getNSteps());
+  for(Integer i = 0; i < options()->getNSteps(); i++){
+    columns_name[i] = "Iteration " + String::fromNumber(i+1);
+  }
+  m_csv->addColumns(columns_name);
 }
 
 /**
@@ -119,7 +141,8 @@ void QSModule::
 loopLoadBalancing()
 {
   if(options()->getLoadBalancingLoop() == 0 
-    || (m_global_iteration() % options()->getLoadBalancingLoop() != 0 && m_global_iteration() != 1)) return;
+    || (m_global_iteration() % options()->getLoadBalancingLoop() != 0 && m_global_iteration() != 1)
+    || m_global_iteration() == options()->getNSteps()) return;
   info() << "loopLoadBalancing";
   loadBalancing();
 }
@@ -142,6 +165,9 @@ loadBalancing()
 
   parallelMng()->barrier();
   pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD avant LB - Cell : " << sum_cell << " - Face : " << sum_face;
+
+  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Cell Before (Proc)", sum_cell);
+  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Face Before (Proc)", sum_face);
 
   ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
   lb->addCriterion(m_criterion_lb_cell);
@@ -174,6 +200,9 @@ afterLoadBalancing()
 
   pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD après LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
+  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Cell After (Proc)", sum_cell);
+  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Face After (Proc)", sum_face);
+
   m_criterion_lb_cell.fill(1.);
   m_criterion_lb_face.fill(1.);
 }
@@ -191,9 +220,8 @@ endModule()
     else
       path = "./csv_output/";
 
-    ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
-    //csv->print();
-    csv->writeFile(path);
+    //m_csv->print();
+    m_csv->writeFile(path);
     
   }
 }

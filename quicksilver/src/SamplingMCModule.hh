@@ -64,6 +64,7 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   GlobalMutex m_mutex;
 
   Timer* m_timer;
+  ISimpleTableOutput* m_csv;
 
  protected:
   void clearCrossSectionCache();

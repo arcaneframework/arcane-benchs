@@ -31,6 +31,8 @@ initModule()
   m_particle_family->setHasUniqueIdMap(false);
 
   m_timer = new Timer(subDomain(), "SamplingMC", Timer::TimerReal);
+  m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+
 }
 
 /**
@@ -39,10 +41,6 @@ initModule()
 void SamplingMCModule::
 cycleSampling()
 {
-  // On ajoute une colonne dans le csv.
-  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
-  csv->addColumn("Iteration " + String::fromNumber(m_global_iteration()));
-
   {
     Timer::Sentry ts(m_timer);
 
@@ -78,12 +76,12 @@ cycleSampling()
   }
 
   Real time = m_timer->lastActivationTime();
-  csv->addElemRow("Sampling duration (Proc)", time);
+  m_csv->addElemRow("Sampling duration (Proc)", time);
 
   if(parallelMng()->commSize() != 1) {
     time = parallelMng()->reduce(Parallel::ReduceMax, time);
     if(parallelMng()->commRank() == 0) {
-      csv->addElemRow("Sampling duration (ReduceMax)", time);
+      m_csv->addElemRow("Sampling duration (ReduceMax)", time);
     }
   }
   info() << "--- Sampling duration: " << time << " s ---";
@@ -95,13 +93,12 @@ cycleSampling()
 void SamplingMCModule::
 cycleFinalize()
 {
-  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   Integer commSize = parallelMng()->commSize();
 
-  csv->addElemRow("m_start (Proc)", m_start);
-  csv->editElemDown(m_source_a); // "m_source (Proc)"
-  csv->editElemDown(m_rr);       // "m_rr (Proc)"
-  csv->editElemDown(m_split);    // "m_split (Proc)"
+  m_csv->addElemRow("m_start (Proc)", m_start);
+  m_csv->editElemDown(m_source_a); // "m_source (Proc)"
+  m_csv->editElemDown(m_rr);       // "m_rr (Proc)"
+  m_csv->editElemDown(m_split);    // "m_split (Proc)"
 
   if(commSize == 1){
     info() << "    Number of particles at beginning of cycle                    "
@@ -136,25 +133,25 @@ cycleFinalize()
       // L'ordre des lignes est donné dans QSModule.cc.
       // Les editElemDown() au lieu de addElemRow()
       //  permettent d'accélerer cette partie.
-      csv->addElemRow("m_start (ReduceSum)", sum_int64[0]);
-      csv->editElemDown(min_int64[0]); // "m_start (ReduceMin)"
-      csv->editElemDown(max_int64[0]); // "m_start (ReduceMax)"
-      csv->editElemDown(avg_int64[0]); // "m_start (ReduceAvg)"
+      m_csv->addElemRow("m_start (ReduceSum)", sum_int64[0]);
+      m_csv->editElemDown(min_int64[0]); // "m_start (ReduceMin)"
+      m_csv->editElemDown(max_int64[0]); // "m_start (ReduceMax)"
+      m_csv->editElemDown(avg_int64[0]); // "m_start (ReduceAvg)"
 
-      csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
-      csv->editElemDown(min_int64[1]); // "m_source (ReduceMin)"
-      csv->editElemDown(max_int64[1]); // "m_source (ReduceMax)"
-      csv->editElemDown(avg_int64[1]); // "m_source (ReduceAvg)"
+      m_csv->addElemRow("m_source (ReduceSum)", sum_int64[1]);
+      m_csv->editElemDown(min_int64[1]); // "m_source (ReduceMin)"
+      m_csv->editElemDown(max_int64[1]); // "m_source (ReduceMax)"
+      m_csv->editElemDown(avg_int64[1]); // "m_source (ReduceAvg)"
 
-      csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
-      csv->editElemDown(min_int64[2]); // "m_rr (ReduceMin)"
-      csv->editElemDown(max_int64[2]); // "m_rr (ReduceMax)"
-      csv->editElemDown(avg_int64[2]); // "m_rr (ReduceAvg)"
+      m_csv->addElemRow("m_rr (ReduceSum)", sum_int64[2]);
+      m_csv->editElemDown(min_int64[2]); // "m_rr (ReduceMin)"
+      m_csv->editElemDown(max_int64[2]); // "m_rr (ReduceMax)"
+      m_csv->editElemDown(avg_int64[2]); // "m_rr (ReduceAvg)"
       
-      csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
-      csv->editElemDown(min_int64[3]); // "m_split (ReduceMin)"
-      csv->editElemDown(max_int64[3]); // "m_split (ReduceMax)"
-      csv->editElemDown(avg_int64[3]); // "m_split (ReduceAvg)"
+      m_csv->addElemRow("m_split (ReduceSum)", sum_int64[3]);
+      m_csv->editElemDown(min_int64[3]); // "m_split (ReduceMin)"
+      m_csv->editElemDown(max_int64[3]); // "m_split (ReduceMax)"
+      m_csv->editElemDown(avg_int64[3]); // "m_split (ReduceAvg)"
 
       #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
 
