@@ -208,6 +208,33 @@ afterLoadBalancing()
 void QSModule::
 endModule()
 {
+  if(parallelMng()->commRank() == 0) {
+    RealUniqueArray max_tracking_times(m_csv->getRow("Tracking duration (ReduceMax)"));
+    RealUniqueArray num_segments(m_csv->getRow(
+      (parallelMng()->commSize() != 1) ?
+      "m_num_segments (ReduceSum)" :
+      "m_num_segments (Proc)"
+    ));
+
+    Real sum_times = 0;
+    Int64 sum_segs = 0;
+
+    for(Integer i = 0; i < max_tracking_times.size(); i++) {
+      sum_times += max_tracking_times[i];
+      sum_segs += num_segments[i];
+    }
+
+    Real fOm = sum_segs / sum_times;
+
+    info() << "----------------------------------------";
+    info() << " --- Figure Of Merit : "
+           << fOm
+           << " [Num Segments / Cycle Tracking Time] ---";
+    info() << "----------------------------------------";
+
+    m_csv->addElemRow("Figure Of Merit", fOm);
+  }
+  
   if(options()->getCsvName() != "" || options()->getCsvDir() != "") {
     String path;
     if(options()->getCsvDir() != "")
