@@ -100,11 +100,6 @@ initModule()
       "sum_scalar_flux_tally (ReduceSum)","sum_scalar_flux_tally (ReduceMin)","sum_scalar_flux_tally (ReduceMax)","sum_scalar_flux_tally (ReduceAvg)"
     });
   }
-  StringUniqueArray columns_name(options()->getNSteps());
-  for(Integer i = 0; i < options()->getNSteps(); i++){
-    columns_name[i] = "Iteration " + String::fromNumber(i+1);
-  }
-  m_csv->addColumns(columns_name);
 }
 
 /**
@@ -163,8 +158,8 @@ loadBalancing()
     sum_face += m_criterion_lb_face[iface];
   }
 
-  parallelMng()->barrier();
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD avant LB - Cell : " << sum_cell << " - Face : " << sum_face;
+  //parallelMng()->barrier();
+  //pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD avant LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Cell Before (Proc)", sum_cell);
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Face Before (Proc)", sum_face);
@@ -198,7 +193,7 @@ afterLoadBalancing()
     sum_face += m_criterion_lb_face[iface];
   }
 
-  pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD après LB - Cell : " << sum_cell << " - Face : " << sum_face;
+  //pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD après LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Cell After (Proc)", sum_cell);
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Face After (Proc)", sum_face);
