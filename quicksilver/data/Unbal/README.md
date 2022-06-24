@@ -6,15 +6,16 @@ X = Resolution
 Y = num of cellules / sub-domain (csd)
 Z = num of procs
 
-1000 particles/cell
 
 4csd =
+  1000 particles/cell
   4 cell/sd (1x2x2)
   4000 particles/sd
 
 16csd =
+  500 particles/cell
   16 cells/sd (4x2x2)
-  16000 particles/sd
+  8000 particles/sd
 
 (
   Example: Unbal32_16_n32768:
@@ -95,14 +96,14 @@ Unbal16_4_n2048.arc:   nSub-domains: 16x16x8   nCells: 16x32x16   nParticles: 81
 Unbal16_4_n16384.arc:  nSub-domains: 16x32x32  nCells: 16x64x64   nParticles: 65536000
 Unbal16_4_n32768.arc:  nSub-domains: 16x64x32  nCells: 16x128x64  nParticles: 131072000
 
-Unbal16_16_n4.arc:     nSub-domains: 4x1x1     nCells: 16x2x2      nParticles: 64000
-Unbal16_16_n16.arc:    nSub-domains: 4x2x2     nCells: 16x4x4      nParticles: 256000
-Unbal16_16_n32.arc:    nSub-domains: 4x4x2     nCells: 16x8x4      nParticles: 512000
-Unbal16_16_n128.arc:   nSub-domains: 4x8x2     nCells: 16x16x8     nParticles: 2048000
-Unbal16_16_n512.arc:   nSub-domains: 4x16x8    nCells: 16x32x16    nParticles: 8192000
-Unbal16_16_n2048.arc:  nSub-domains: 4x32x16   nCells: 16x64x32    nParticles: 32768000
-Unbal16_16_n16384.arc: nSub-domains: 4x64x64   nCells: 16x128x128  nParticles: 262144000
-Unbal16_16_n32768.arc: nSub-domains: 4x128x64  nCells: 16x256x128  nParticles: 524288000
+Unbal16_16_n4.arc:     nSub-domains: 4x1x1     nCells: 16x2x2      nParticles: 32000
+Unbal16_16_n16.arc:    nSub-domains: 4x2x2     nCells: 16x4x4      nParticles: 128000
+Unbal16_16_n32.arc:    nSub-domains: 4x4x2     nCells: 16x8x4      nParticles: 256000
+Unbal16_16_n128.arc:   nSub-domains: 4x8x2     nCells: 16x16x8     nParticles: 1024000
+Unbal16_16_n512.arc:   nSub-domains: 4x16x8    nCells: 16x32x16    nParticles: 4096000
+Unbal16_16_n2048.arc:  nSub-domains: 4x32x16   nCells: 16x64x32    nParticles: 16384000
+Unbal16_16_n16384.arc: nSub-domains: 4x64x64   nCells: 16x128x128  nParticles: 131072000
+Unbal16_16_n32768.arc: nSub-domains: 4x128x64  nCells: 16x256x128  nParticles: 262144000
 
 ----
 
@@ -124,13 +125,13 @@ Unbal32_4_n2048.arc:   nSub-domains: 32x8x8    nCells: 32x16x16  nParticles: 819
 Unbal32_4_n16384.arc:  nSub-domains: 32x32x16  nCells: 32x64x32  nParticles: 65536000
 Unbal32_4_n32768.arc:  nSub-domains: 32x32x32  nCells: 32x64x64  nParticles: 131072000
 
-Unbal32_16_n8.arc:     nSub-domains: 8x1x1    nCells: 32x2x2      nParticles: 128000
-Unbal32_16_n32.arc:    nSub-domains: 8x2x2    nCells: 32x4x4      nParticles: 512000
-Unbal32_16_n128.arc:   nSub-domains: 8x4x4    nCells: 32x8x8      nParticles: 2048000
-Unbal32_16_n512.arc:   nSub-domains: 8x8x8    nCells: 32x16x16    nParticles: 8192000
-Unbal32_16_n2048.arc:  nSub-domains: 8x16x16  nCells: 32x32x32    nParticles: 32768000
-Unbal32_16_n16384.arc: nSub-domains: 8x64x32  nCells: 32x128x64   nParticles: 262144000
-Unbal32_16_n32768.arc: nSub-domains: 8x64x64  nCells: 32x128x128  nParticles: 524288000
+Unbal32_16_n8.arc:     nSub-domains: 8x1x1    nCells: 32x2x2      nParticles: 64000
+Unbal32_16_n32.arc:    nSub-domains: 8x2x2    nCells: 32x4x4      nParticles: 256000
+Unbal32_16_n128.arc:   nSub-domains: 8x4x4    nCells: 32x8x8      nParticles: 1024000
+Unbal32_16_n512.arc:   nSub-domains: 8x8x8    nCells: 32x16x16    nParticles: 4096000
+Unbal32_16_n2048.arc:  nSub-domains: 8x16x16  nCells: 32x32x32    nParticles: 16384000
+Unbal32_16_n16384.arc: nSub-domains: 8x64x32  nCells: 32x128x64   nParticles: 131072000
+Unbal32_16_n32768.arc: nSub-domains: 8x64x64  nCells: 32x128x128  nParticles: 262144000
 
 ----
 

@@ -49,7 +49,7 @@
   </q-s>
 
   <sampling-m-c>
-    <nParticles>2048000</nParticles>
+    <nParticles>1024000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 
