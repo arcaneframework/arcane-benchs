@@ -17,17 +17,17 @@
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>64.0</length>
-          <n>16</n> <!-- nMin: 16  nMax: 64 -->
+          <length>128.0</length>
+          <n>16</n>
         </x>
 
         <y>
-          <length>512.0</length>
+          <length>256.0</length>
           <n>64</n>
         </y>
 
         <z>
-          <length>512.0</length>
+          <length>256.0</length>
           <n>32</n>
         </z>
 
@@ -49,7 +49,7 @@
   </q-s>
 
   <sampling-m-c>
-    <nParticles>32768000</nParticles>
+    <nParticles>16384000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 

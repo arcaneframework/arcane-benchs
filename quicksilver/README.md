@@ -34,10 +34,19 @@ ${QS_EXE} -A,T=2 ${QS_ARC}
 mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 ```
 
+In .arc, you have:
+- For CSV:
+  - 'csvDir'  : path for results
+  - 'csvName' : name of csv files
+
+In these names, you can put '@proc_id@' (replaced by rank of process) and/or '@n_proc@' (replaced by number of processes).
+
+You can change 'loadBalancingMat' (possibles values: 'true' / 'false') and 'loadBalancingLoop' (possibles values: integer >= 0).
+
 All arc input files examples:
 
 ```sh
-(for unbalanced tests, see data/Unbal/README.md)
+# (for unbalanced tests, see data/Unbal/README.md)
 
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleDefault.arc

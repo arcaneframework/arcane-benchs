@@ -36,6 +36,7 @@ initModule()
   pe->initialize(m_particle_family);
 
   m_timer = new Timer(subDomain(), "TrackingMC", Timer::TimerReal);
+  m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
 
   // Configuration des materiaux.
   initNuclearData();
@@ -64,15 +65,14 @@ cycleTracking()
     }
   }
 
-  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   
   Real time = m_timer->lastActivationTime();
-  csv->addElemRow("Tracking duration (Proc)", time);
+  m_csv->addElemRow("Tracking duration (Proc)", time);
 
   if(parallelMng()->commSize() != 1) {
     time = parallelMng()->reduce(Parallel::ReduceMax, time);
     if(parallelMng()->commRank() == 0) {
-      csv->addElemRow("Tracking duration (ReduceMax)", time);
+      m_csv->addElemRow("Tracking duration (ReduceMax)", time);
     }
   }
 
@@ -94,21 +94,20 @@ cycleFinalize()
     }
   }
 
-  ISimpleTableOutput* csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   Integer commSize = parallelMng()->commSize();
 
-  csv->addElemRow("m_absorb (Proc)", m_absorb_a);
-  csv->editElemDown(m_scatter_a); // "m_scatter (Proc)"
-  csv->editElemDown(m_fission_a); // "m_fission (Proc)"
-  csv->editElemDown(m_produce_a); // "m_produce (Proc)"
-  csv->editElemDown(m_collision_a); // "m_collision (Proc)"
-  csv->editElemDown(m_escape); // "m_escape (Proc)"
-  csv->editElemDown(m_census_a); // "m_census (Proc)"
-  csv->editElemDown(m_num_segments_a); // "m_num_segments (Proc)"
-  csv->editElemDown(m_end); // "m_end (Proc)"
-  csv->editElemDown(m_incoming); // "m_incoming (Proc)"
-  csv->editElemDown(m_outgoing); // "m_outgoing (Proc)"
-  csv->editElemDown(sum_scalar_flux_tally); // "sum_scalar_flux_tally (Proc)"
+  m_csv->addElemRow("m_absorb (Proc)", m_absorb_a);
+  m_csv->editElemDown(m_scatter_a); // "m_scatter (Proc)"
+  m_csv->editElemDown(m_fission_a); // "m_fission (Proc)"
+  m_csv->editElemDown(m_produce_a); // "m_produce (Proc)"
+  m_csv->editElemDown(m_collision_a); // "m_collision (Proc)"
+  m_csv->editElemDown(m_escape); // "m_escape (Proc)"
+  m_csv->editElemDown(m_census_a); // "m_census (Proc)"
+  m_csv->editElemDown(m_num_segments_a); // "m_num_segments (Proc)"
+  m_csv->editElemDown(m_end); // "m_end (Proc)"
+  m_csv->editElemDown(m_incoming); // "m_incoming (Proc)"
+  m_csv->editElemDown(m_outgoing); // "m_outgoing (Proc)"
+  m_csv->editElemDown(sum_scalar_flux_tally); // "sum_scalar_flux_tally (Proc)"
 
   if(commSize == 1){
     info() << "    Number of particles absorbed                                "
@@ -180,65 +179,65 @@ cycleFinalize()
       // On peut mettre des addElemRow() à chaque fois
       // mais chaque addElemRow() effectue une recherche de 
       // string dans un tableau...
-      csv->addElemRow("m_absorb (ReduceSum)", sum_int64[0]);
-      csv->editElemDown(min_int64[0]); // "m_absorb (ReduceMin)"
-      csv->editElemDown(max_int64[0]); // "m_absorb (ReduceMax)"
-      csv->editElemDown(avg_int64[0]); // "m_absorb (ReduceAvg)"
+      m_csv->addElemRow("m_absorb (ReduceSum)", sum_int64[0]);
+      m_csv->editElemDown(min_int64[0]); // "m_absorb (ReduceMin)"
+      m_csv->editElemDown(max_int64[0]); // "m_absorb (ReduceMax)"
+      m_csv->editElemDown(avg_int64[0]); // "m_absorb (ReduceAvg)"
 
-      csv->addElemRow("m_scatter (ReduceSum)", sum_int64[1]);
-      csv->editElemDown(min_int64[1]); // "m_scatter (ReduceMin)"
-      csv->editElemDown(max_int64[1]); // "m_scatter (ReduceMax)"
-      csv->editElemDown(avg_int64[1]); // "m_scatter (ReduceAvg)"
+      m_csv->addElemRow("m_scatter (ReduceSum)", sum_int64[1]);
+      m_csv->editElemDown(min_int64[1]); // "m_scatter (ReduceMin)"
+      m_csv->editElemDown(max_int64[1]); // "m_scatter (ReduceMax)"
+      m_csv->editElemDown(avg_int64[1]); // "m_scatter (ReduceAvg)"
 
-      csv->addElemRow("m_fission (ReduceSum)", sum_int64[2]);
-      csv->editElemDown(min_int64[2]); // "m_fission (ReduceMin)"
-      csv->editElemDown(max_int64[2]); // "m_fission (ReduceMax)"
-      csv->editElemDown(avg_int64[2]); // "m_fission (ReduceAvg)"
+      m_csv->addElemRow("m_fission (ReduceSum)", sum_int64[2]);
+      m_csv->editElemDown(min_int64[2]); // "m_fission (ReduceMin)"
+      m_csv->editElemDown(max_int64[2]); // "m_fission (ReduceMax)"
+      m_csv->editElemDown(avg_int64[2]); // "m_fission (ReduceAvg)"
 
-      csv->addElemRow("m_produce (ReduceSum)", sum_int64[3]);
-      csv->editElemDown(min_int64[3]); // "m_produce (ReduceMin)"
-      csv->editElemDown(max_int64[3]); // "m_produce (ReduceMax)"
-      csv->editElemDown(avg_int64[3]); // "m_produce (ReduceAvg)"
+      m_csv->addElemRow("m_produce (ReduceSum)", sum_int64[3]);
+      m_csv->editElemDown(min_int64[3]); // "m_produce (ReduceMin)"
+      m_csv->editElemDown(max_int64[3]); // "m_produce (ReduceMax)"
+      m_csv->editElemDown(avg_int64[3]); // "m_produce (ReduceAvg)"
 
-      csv->addElemRow("m_collision (ReduceSum)", sum_int64[4]);
-      csv->editElemDown(min_int64[4]); // "m_collision (ReduceMin)"
-      csv->editElemDown(max_int64[4]); // "m_collision (ReduceMax)"
-      csv->editElemDown(avg_int64[4]); // "m_collision (ReduceAvg)"
+      m_csv->addElemRow("m_collision (ReduceSum)", sum_int64[4]);
+      m_csv->editElemDown(min_int64[4]); // "m_collision (ReduceMin)"
+      m_csv->editElemDown(max_int64[4]); // "m_collision (ReduceMax)"
+      m_csv->editElemDown(avg_int64[4]); // "m_collision (ReduceAvg)"
 
-      csv->addElemRow("m_escape (ReduceSum)", sum_int64[5]);
-      csv->editElemDown(min_int64[5]); // "m_escape (ReduceMin)"
-      csv->editElemDown(max_int64[5]); // "m_escape (ReduceMax)"
-      csv->editElemDown(avg_int64[5]); // "m_escape (ReduceAvg)"
+      m_csv->addElemRow("m_escape (ReduceSum)", sum_int64[5]);
+      m_csv->editElemDown(min_int64[5]); // "m_escape (ReduceMin)"
+      m_csv->editElemDown(max_int64[5]); // "m_escape (ReduceMax)"
+      m_csv->editElemDown(avg_int64[5]); // "m_escape (ReduceAvg)"
 
-      csv->addElemRow("m_census (ReduceSum)", sum_int64[6]);
-      csv->editElemDown(min_int64[6]); // "m_census (ReduceMin)"
-      csv->editElemDown(max_int64[6]); // "m_census (ReduceMax)"
-      csv->editElemDown(avg_int64[6]); // "m_census (ReduceAvg)"
+      m_csv->addElemRow("m_census (ReduceSum)", sum_int64[6]);
+      m_csv->editElemDown(min_int64[6]); // "m_census (ReduceMin)"
+      m_csv->editElemDown(max_int64[6]); // "m_census (ReduceMax)"
+      m_csv->editElemDown(avg_int64[6]); // "m_census (ReduceAvg)"
 
-      csv->addElemRow("m_num_segments (ReduceSum)", sum_int64[7]);
-      csv->editElemDown(min_int64[7]); // "m_num_segments (ReduceMin)"
-      csv->editElemDown(max_int64[7]); // "m_num_segments (ReduceMax)"
-      csv->editElemDown(avg_int64[7]); // "m_num_segments (ReduceAvg)"
+      m_csv->addElemRow("m_num_segments (ReduceSum)", sum_int64[7]);
+      m_csv->editElemDown(min_int64[7]); // "m_num_segments (ReduceMin)"
+      m_csv->editElemDown(max_int64[7]); // "m_num_segments (ReduceMax)"
+      m_csv->editElemDown(avg_int64[7]); // "m_num_segments (ReduceAvg)"
 
-      csv->addElemRow("m_end (ReduceSum)", sum_int64[8]);
-      csv->editElemDown(min_int64[8]); // "m_end (ReduceMin)"
-      csv->editElemDown(max_int64[8]); // "m_end (ReduceMax)"
-      csv->editElemDown(avg_int64[8]); // "m_end (ReduceAvg)"
+      m_csv->addElemRow("m_end (ReduceSum)", sum_int64[8]);
+      m_csv->editElemDown(min_int64[8]); // "m_end (ReduceMin)"
+      m_csv->editElemDown(max_int64[8]); // "m_end (ReduceMax)"
+      m_csv->editElemDown(avg_int64[8]); // "m_end (ReduceAvg)"
 
-      csv->addElemRow("m_incoming (ReduceSum)", sum_int64[9]);
-      csv->editElemDown(min_int64[9]); // "m_incoming (ReduceMin)"
-      csv->editElemDown(max_int64[9]); // "m_incoming (ReduceMax)"
-      csv->editElemDown(avg_int64[9]); // "m_incoming (ReduceAvg)"
+      m_csv->addElemRow("m_incoming (ReduceSum)", sum_int64[9]);
+      m_csv->editElemDown(min_int64[9]); // "m_incoming (ReduceMin)"
+      m_csv->editElemDown(max_int64[9]); // "m_incoming (ReduceMax)"
+      m_csv->editElemDown(avg_int64[9]); // "m_incoming (ReduceAvg)"
 
-      csv->addElemRow("m_outgoing (ReduceSum)", sum_int64[10]);
-      csv->editElemDown(min_int64[10]); // "m_outgoing (ReduceMin)"
-      csv->editElemDown(max_int64[10]); // "m_outgoing (ReduceMax)"
-      csv->editElemDown(avg_int64[10]); // "m_outgoing (ReduceAvg)"
+      m_csv->addElemRow("m_outgoing (ReduceSum)", sum_int64[10]);
+      m_csv->editElemDown(min_int64[10]); // "m_outgoing (ReduceMin)"
+      m_csv->editElemDown(max_int64[10]); // "m_outgoing (ReduceMax)"
+      m_csv->editElemDown(avg_int64[10]); // "m_outgoing (ReduceAvg)"
 
-      csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
-      csv->editElemDown(min_real); // "sum_scalar_flux_tally (ReduceMin)"
-      csv->editElemDown(max_real); // "sum_scalar_flux_tally (ReduceMax)"
-      csv->editElemDown(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
+      m_csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
+      m_csv->editElemDown(min_real); // "sum_scalar_flux_tally (ReduceMin)"
+      m_csv->editElemDown(max_real); // "sum_scalar_flux_tally (ReduceMax)"
+      m_csv->editElemDown(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
 
 
       #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
@@ -366,7 +365,7 @@ initNuclearData()
     }
   }
   bool pre_lb = m_pre_lb();
-  if(pre_lb) m_criterion_lb.fill(0.);
+  if(pre_lb) info() << "--- Equilibrage de charge niveau materiau activé ---";
 
   Real min_difficulty = 100.;
   Real max_difficulty = 0.;
@@ -417,7 +416,7 @@ initNuclearData()
             faceCost -= 0.10;
           }
         }
-        m_criterion_lb[(*icell).globalCell()] = mat_difficult * faceCost;
+        m_criterion_lb_cell[(*icell).globalCell()] = mat_difficult * faceCost;
       }
     }
 
@@ -444,7 +443,8 @@ initNuclearData()
       }
     }
   }
-  if(max_difficulty / min_difficulty > 1.5) info() << "Activation du prééquilibrage de charge conseillé";
+  if(!pre_lb && max_difficulty / min_difficulty > 1.5) 
+    info() << "--- Activation de l'équilibrage de charge niveau materiau conseillé ---";
 }
 
 /**
@@ -654,7 +654,7 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
   if(m_do_loop_lb)
   {
     GlobalMutex::ScopedLock(m_mutex_lb);
-    m_criterion_lb[particle.cell()] += m_particle_num_seg[particle];
+    m_criterion_lb_cell[particle.cell()] += m_particle_num_seg[particle];
   }
   m_particle_num_seg[particle] = 0;
 }
@@ -686,8 +686,8 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
                                           undergone this cycle on all processes. */
     switch (m_particle_last_event[particle]) {
     case ParticleEvent::collision: {
-
-      switch (collisionEvent(particle)) {
+      Integer nOut = collisionEvent(particle);
+      switch (nOut) {
       case 0: // La particule est absorbée.
         done = true;
         m_particle_status[particle] = ParticleState::exitedParticle;
@@ -704,6 +704,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
       default: // La particule splitte.
         // On arrete pour pouvoir cloner la particle source.
         done = true;
+        //m_particle_num_seg[particle] += nOut;
         break;
       }
     } break;
@@ -1001,7 +1002,6 @@ collisionEvent(Particle particle)
   const Real total_cross_section = m_particle_total_cross_section[particle];
   Real current_cross_section = total_cross_section * random_number;
   const Integer particle_ene_grp_particle = m_particle_ene_grp[particle];
-  const Real particle_kin_ene_particle = m_particle_kin_ene[particle];
 
   Integer selected_iso = -1;
   Integer selected_unique_number = -1;
@@ -1039,7 +1039,7 @@ collisionEvent(Particle particle)
   const Real mat_mass = m_mass[cell];
 
   m_nuclearData->_isotopes[selected_unique_number]._species[0]._reactions[selected_react].sampleCollision(
-  particle_kin_ene_particle, mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size);
+  m_particle_kin_ene[particle], mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size);
 
   m_collision_a++;
 
@@ -1082,7 +1082,7 @@ collisionEvent(Particle particle)
     m_scatter_a++;
 #endif
     updateTrajectory(energyOut[0], angleOut[0], particle);
-    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(particle_kin_ene_particle);
+    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
   // Si nOut > 1, la particule se "multiplie" et change de trajectoire.
@@ -1133,7 +1133,6 @@ collisionEvent(Particle particle)
 void TrackingMCModule::
 facetCrossingEvent(Particle particle)
 {
-  GlobalMutex::ScopedLock(m_mutex_out);
   Face face = particle.cell().face(m_particle_face[particle]);
   m_particle_last_event[particle] = m_boundary_cond[face];
 
@@ -1151,8 +1150,10 @@ facetCrossingEvent(Particle particle)
     if (face.frontCell().owner() != face.backCell().owner()) {
       // The particle will enter into an adjacent cell on a spatial neighbor.
       m_particle_last_event[particle] = ParticleEvent::subDChange;
+      GlobalMutex::ScopedLock(m_mutex_out);
       m_outgoing_particles_local_ids.add(particle.localId());
       m_outgoing_particles_rank_to.add(cell.owner());
+      m_criterion_lb_face[face]++;
     }
   }
 }
@@ -1628,16 +1629,14 @@ findNearestFacet(Particle particle,
 {
   DistanceToFacet nearest_facet = nearestFacet(distance_to_facet);
 
-  const Integer max_allowed_segments = 10000000;
-
   retry = 0;
 
   if ((nearest_facet.distance == PhysicalConstants::_hugeDouble && move_factor > 0) ||
-      (m_particle_num_seg[particle] > max_allowed_segments && nearest_facet.distance <= 0.0)) {
+      (nearest_facet.distance <= 0.0)) {
 
     error() << "Attention, peut-être problème de facet.";
     error() << (nearest_facet.distance == PhysicalConstants::_hugeDouble) << " && " << (move_factor > 0)
-            << " || " << (m_particle_num_seg[particle] > max_allowed_segments) << " && " << (nearest_facet.distance <= 0.0);
+            << " || " << (nearest_facet.distance <= 0.0);
 
     // Could not find a solution, so move the particle towards the center of the cell
     // and try again.

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <case codename="Quicksilver" xml:lang="en" codeversion="1.0">
   <arcane>
-    <title>Unbal4_1_n16</title>
+    <title>Unbal4_4_n32</title>
     <timeloop>QAMALoop</timeloop>
   </arcane>
 
@@ -11,24 +11,24 @@
         <face-numbering-version>1</face-numbering-version>
 
         <nb-part-x>4</nb-part-x> 
-        <nb-part-y>2</nb-part-y>
+        <nb-part-y>4</nb-part-y>
         <nb-part-z>2</nb-part-z>
 
         <origin>0.0 0.0 0.0</origin>
 
         <x>
-          <length>16.0</length>
-          <n>4</n> <!-- nMin: 4  nMax: 16 -->
+          <length>128.0</length>
+          <n>4</n>
         </x>
 
         <y>
-          <length>128.0</length>
-          <n>2</n>
+          <length>256.0</length>
+          <n>8</n>
         </y>
 
         <z>
-          <length>128.0</length>
-          <n>2</n>
+          <length>256.0</length>
+          <n>4</n>
         </z>
 
       </generator>
@@ -42,14 +42,14 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvDir>./Unbal4_1_n16/</csvDir>
+    <csvDir>./Unbal4_4_n32/</csvDir>
     <csvName>Results_P@proc_id@</csvName>
     <loadBalancingMat>true</loadBalancingMat>
     <loadBalancingLoop>0</loadBalancingLoop>
   </q-s>
 
   <sampling-m-c>
-    <nParticles>16000</nParticles>
+    <nParticles>128000</nParticles>
     <lowWeightCutoff>0.001</lowWeightCutoff>
   </sampling-m-c>
 
