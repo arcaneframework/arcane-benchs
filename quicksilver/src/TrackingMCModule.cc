@@ -1002,7 +1002,6 @@ collisionEvent(Particle particle)
   const Real total_cross_section = m_particle_total_cross_section[particle];
   Real current_cross_section = total_cross_section * random_number;
   const Integer particle_ene_grp_particle = m_particle_ene_grp[particle];
-  const Real particle_kin_ene_particle = m_particle_kin_ene[particle];
 
   Integer selected_iso = -1;
   Integer selected_unique_number = -1;
@@ -1040,7 +1039,7 @@ collisionEvent(Particle particle)
   const Real mat_mass = m_mass[cell];
 
   m_nuclearData->_isotopes[selected_unique_number]._species[0]._reactions[selected_react].sampleCollision(
-  particle_kin_ene_particle, mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size);
+  m_particle_kin_ene[particle], mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size);
 
   m_collision_a++;
 
@@ -1083,7 +1082,7 @@ collisionEvent(Particle particle)
     m_scatter_a++;
 #endif
     updateTrajectory(energyOut[0], angleOut[0], particle);
-    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(particle_kin_ene_particle);
+    m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
   }
 
   // Si nOut > 1, la particule se "multiplie" et change de trajectoire.
