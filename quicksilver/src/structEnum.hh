@@ -20,19 +20,6 @@ using namespace Arcane;
 
 #define QS_LEGACY_COMPATIBILITY
 
-enum eBoundaryCondition
-{
-  REFLECT,
-  ESCAPE,
-  OCTANT
-};
-enum eShape
-{
-  UNDEFINED,
-  BRICK,
-  SPHERE
-};
-
 enum CosDir
 {
   MD_DirA = 0, // Alpha

@@ -25,7 +25,15 @@
 #include "simple_table_output/ISimpleTableOutput.hh"
 #include "structEnum.hh"
 
+enum eBoundaryCondition
+{
+  REFLECT,
+  ESCAPE,
+  OCTANT
+};
+
 #include "qs/QS_axl.h"
+
 
 using namespace Arcane;
 

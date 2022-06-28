@@ -43,8 +43,8 @@ getSeed()
   return m_seed;
 }
 
-//  This routine spawns a "child" random number seed from a "parent" random
-//  number seed.
+// This routine spawns a "child" random number seed from a "parent" random
+// number seed.
 Int64 RNGService::
 randomSeedGenerator()
 {
@@ -63,14 +63,13 @@ randomSeedGenerator(Int64* parent_seed)
   return spawned_seed;
 }
 
-//  Sample returns the pseudo-random number produced by a call to a random
-//  number generator.
+// Sample returns the pseudo-random number produced by a call to a random
+// number generator.
 Real RNGService::
 randomNumberGenerator()
 {
   // Reset the state from the previous value.
   m_seed = 2862933555777941757ULL * (uint64_t)(m_seed) + 3037000493ULL;
-  //*seed &= ~(1UL << 63);
   // Map the int state in (0,2**64) to double (0,1)
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.
@@ -84,7 +83,6 @@ randomNumberGenerator(Int64* seed)
 {
   // Reset the state from the previous value.
   *seed = 2862933555777941757ULL * (uint64_t)(*seed) + 3037000493ULL;
-  //*seed &= ~(1UL << 63);
   // Map the int state in (0,2**64) to double (0,1)
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.

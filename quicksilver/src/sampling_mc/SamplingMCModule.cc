@@ -22,7 +22,7 @@
 /*---------------------------------------------------------------------------*/
 
 /**
- * @brief Méthode permettant d'initialiser les grandeurs aux particules.
+ * @brief Méthode permettant de récupérer la famille de particule et de récupérer les singletons.
  */
 void SamplingMCModule::
 initModule()
@@ -127,7 +127,6 @@ cycleFinalize()
 
     if(parallelMng()->commRank() == 0) {
 
-      // TODO : Real ou Int64 ?
       Int64UniqueArray avg_int64 = sum_int64.clone();
       for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
 
@@ -186,7 +185,7 @@ endModule()
 /*---------------------------------------------------------------------------*/
 
 /**
- * @brief Méthode permettant de remettre à zéro m_total et m_num_particles.
+ * @brief Méthode permettant de remettre à zéro m_total.
  */
 void SamplingMCModule::
 clearCrossSectionCache()
@@ -230,7 +229,7 @@ sourceParticles()
   Int64 num_particles = options()->getNParticles();
   Int64 particle_count = 0;
 
-  #if 1 //def QS_LEGACY_COMPATIBILITY
+  #if 1
 
   // On regarde le nombre de particule que chaque cellule générera.
   ENUMERATE_CELL (icell, ownCells()) {
@@ -262,6 +261,7 @@ sourceParticles()
     // num_particles_cells_decal[icell.localId()] = particle_count;
   }
 
+  // Préprocesseur permettant d'activer un traitement expérimental (permet de "surcharger" sampling).
   #else
 
   // On regarde le nombre de particule que chaque cellule générera.
@@ -289,7 +289,7 @@ sourceParticles()
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.
   ENUMERATE_CELL (icell, ownCells()) {
-  #if 1 //def QS_LEGACY_COMPATIBILITY
+  #if 1
     Real cell_weight_particles = m_volume[icell] * m_source_rate[icell] * m_global_deltat();
   #else
     Real cell_weight_particles = m_volume[icell] * m_source_rate[icell];

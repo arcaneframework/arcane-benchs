@@ -717,7 +717,7 @@ _computeAt(String name, bool& only_P0)
 void CsvOutputService::
 _print(std::ostream& stream)
 {
-  stream << m_name_tab << m_separator;
+  stream << std::fixed << m_name_tab << m_separator;
 
   for(Integer j = 0; j < m_name_columns.size(); j++) {
     stream << m_name_columns[j] << m_separator;

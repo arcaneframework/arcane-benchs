@@ -22,8 +22,8 @@
 /*---------------------------------------------------------------------------*/
 
 /**
- * @brief Méthode permettant d'initialiser le ParticleExchanger
- * et les materiaux du maillage.
+ * @brief Méthode permettant d'initialiser le ParticleExchanger,
+ * les materiaux du maillage et les singletons.
  */
 void TrackingMCModule::
 initModule()
@@ -82,6 +82,7 @@ cycleTracking()
 
 /**
  * @brief Méthode permettant d'afficher les infos du Tracking (et de remplir le csv).
+ * (Méthode assez répétitive)
  */
 void TrackingMCModule::
 cycleFinalize()
@@ -445,11 +446,11 @@ initNuclearData()
     }
   }
   if(!pre_lb && max_difficulty / min_difficulty > 1.5) 
-    info() << "--- Activation de l'équilibrage de charge niveau materiau conseillé ---";
+    info() << "--- Activation de l'équilibrage de charge niveau materiau conseillée ---";
 }
 
 /**
- * @brief Méthode permettant de suivre les particules jusqu'a que leur temps
+ * @brief Méthode permettant de suivre les particules jusqu'à que leur temps
  * de census soit atteint.
  * Cette méthode effectue une itération et plusieurs sous-itérations.
  */
@@ -662,9 +663,9 @@ cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 
 /**
  * @brief Méthode permettant de suivre la particule p.
- * Suivi de la particule jusqu'a que son temps de suivi (census) soit fini ou
- * jusqu'a qu'elle sorte du maillage ou
- * jusqu'a qu'elle se split (dans ce cas, elle sera resuivi à la prochaine sous-itération).
+ * Suivi de la particule jusqu'à que son temps de suivi (census) soit fini ou
+ * jusqu'à qu'elle sorte du maillage ou
+ * jusqu'à qu'elle se split (dans ce cas, elle sera resuivi à la prochaine sous-itération).
  * 
  * @param particle La particule à suivre.
  * @param node_coord Les coordonnées des nodes.
@@ -755,7 +756,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
     }
 
     default:
-      ARCANE_ASSERT(false, "Evenement particle inconnu");
+      ARCANE_FATAL("Evenement particle inconnu");
       break;
     }
 
@@ -766,7 +767,7 @@ cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord)
  * @brief Méthode permettant de finir une collision.
  * Une collision peut aboutir en un dédoublement de particule.
  * Dans ce cas, la particule doit être dédoublé en dehors de l'ENUMERATE_PARTICLE
- * pour que la vue ne soit pas modifié 'en vol' (et donc que le ENUMERATE reste valide).
+ * pour que la vue ne soit pas modifié 'en vol' (et donc que l'ENUMERATE reste valide).
  */
 void TrackingMCModule::
 collisionEventSuite()
@@ -1280,7 +1281,7 @@ updateTrajectory(const Real& energy, const Real& angle, Particle particle)
 
   rotate3DVector(particle, sinTheta, cosTheta, sinPhi, cosPhi);
 
-  Real speed = (PhysicalConstants::_speedOfLight *
+  const Real speed = (PhysicalConstants::_speedOfLight *
                 sqrt((1.0 - ((PhysicalConstants::_neutronRestMassEnergy * PhysicalConstants::_neutronRestMassEnergy) / ((energy + PhysicalConstants::_neutronRestMassEnergy) * (energy + PhysicalConstants::_neutronRestMassEnergy))))));
 
   particle_velocity_particle[MD_DirX] = speed * particle_dir_cos_particle[MD_DirA];
@@ -1324,11 +1325,11 @@ computeCrossSection()
 }
 
 /**
- * @brief Méthode permettant de déterminer la distance entre la particule p et la prochaine collision.
+ * @brief Méthode permettant de déterminer la distance entre une particule et la prochaine collision
+ * dans chaque maille.
  * 
  * @param cell La cellule où se trouve la particule
  * @param energyGroup Le groupe d'energie.
- * @return Real La distance entre la particule et la prochaine collision.
  */
 void TrackingMCModule::
 weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
@@ -1401,7 +1402,6 @@ macroscopicCrossSection(const Integer& reactionIndex,
 DistanceToFacet TrackingMCModule::
 getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
 {
-  const Real3 particle_coord_particle = m_particle_coord[particle];
   const Real3 particle_dir_cos_particle = m_particle_dir_cos[particle];
   Cell cell = particle.cell();
   Integer iteration = 0;
@@ -1409,9 +1409,7 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
   DistanceToFacet nearest_facet;
   Integer retry = 1;
 
-  Real plane_tolerance = 1e-16 * (particle_coord_particle[MD_DirX] * particle_coord_particle[MD_DirX] 
-                                + particle_coord_particle[MD_DirY] * particle_coord_particle[MD_DirY] 
-                                + particle_coord_particle[MD_DirZ] * particle_coord_particle[MD_DirZ]);
+  Real plane_tolerance = 1e-16 * m_particle_coord[particle].squareNormL2();
 
   while (retry) // will break out when distance is found
   {

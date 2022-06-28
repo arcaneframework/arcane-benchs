@@ -20,7 +20,7 @@
 
 /**
  * @brief Méthode permettant de lancer l'initialisation des grandeurs
- * au maillage.
+ * au maillage et le service CSV.
  */
 void QSModule::
 initModule()
@@ -33,6 +33,8 @@ initModule()
   }
 
   initMesh();
+
+  // On récupère un pointeur vers le singleton csv.
   m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
 
   // Initialisation de la sortie CSV.
@@ -41,7 +43,7 @@ initModule()
   else
     m_csv->init("QAMA_P@proc_id@", ";");
 
-  // On ajoute les colonnes.
+  // On ajoute les colonnes (une par itération).
   StringUniqueArray columns_name(options()->getNSteps());
   for(Integer i = 0; i < options()->getNSteps(); i++){
     columns_name[i] = "Iteration " + String::fromNumber(i+1);
@@ -49,6 +51,7 @@ initModule()
   m_csv->addColumns(columns_name);
 
   // On organise les lignes dans le tableau de résultat.
+  // On commence par les infos au niveau du proc.
   m_csv->addRows(StringUniqueArray {
     "Sampling duration (Proc)",
     "Tracking duration (Proc)",
@@ -70,15 +73,17 @@ initModule()
     "sum_scalar_flux_tally (Proc)",
   });
 
+  // Si on a activé l'équilibrage, on ajoute des lignes dédiées.
   if(options()->getLoadBalancingMat() || options()->getLoadBalancingLoop() > 0){
     m_csv->addRows(StringUniqueArray {
-    "LB Sum Criterion Cell Before (Proc)",
-    "LB Sum Criterion Cell After (Proc)",
-    "LB Sum Criterion Face Before (Proc)",
-    "LB Sum Criterion Face After (Proc)",
+      "LB Sum Criterion Cell Before (Proc)",
+      "LB Sum Criterion Cell After (Proc)",
+      "LB Sum Criterion Face Before (Proc)",
+      "LB Sum Criterion Face After (Proc)",
     });
   }
 
+  // Si on a une execution parallèle, on ajoute aussi les min, max et arg des infos.
   if(parallelMng()->commSize() != 1 && parallelMng()->commRank() == 0) {
     m_csv->addRows(StringUniqueArray {
       "Sampling duration (ReduceMax)",
@@ -104,7 +109,8 @@ initModule()
 }
 
 /**
- * @brief Méthode permettant d'afficher les informations de fin d'itération.
+ * @brief Méthode permettant d'afficher les informations de fin d'itération et de voir
+ * si l'on a atteint la dernière itération.
  */
 void QSModule::
 cycleFinalize()
@@ -144,7 +150,7 @@ loopLoadBalancing()
 }
 
 /**
- * @brief Méthode permettant d'effectuer l'équilibrage de charge.
+ * @brief Méthode permettant d'effectuer l'équilibrage de charge (à la fin de l'itération actuelle).
  */
 void QSModule::
 loadBalancing()
@@ -162,6 +168,7 @@ loadBalancing()
   //parallelMng()->barrier();
   //pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD avant LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
+  // Pour les infos d'équilibrage, on affiche l'équilibrage effectuée avant l'itération (il y a donc un décallage ici).
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Cell Before (Proc)", sum_cell);
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Face Before (Proc)", sum_face);
 
@@ -172,7 +179,7 @@ loadBalancing()
 }
 
 /**
- * @brief Méthode permettant d'effectuer l'après équilibrage de charge.
+ * @brief Méthode permettant d'effectuer l'après équilibrage de charge (au début de l'itération suivante).
  */
 void QSModule::
 afterLoadBalancing()
@@ -196,6 +203,8 @@ afterLoadBalancing()
 
   //pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD après LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
+  // Pour les infos d'équilibrage, on affiche l'équilibrage effectuée avant le début de l'itération.
+  // (ici en revanche, pas de décallages car cette méthode est appelée au début de l'itération d'après).
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Cell After (Proc)", sum_cell);
   m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Face After (Proc)", sum_face);
 
@@ -209,7 +218,9 @@ afterLoadBalancing()
 void QSModule::
 endModule()
 {
+  // On calcule la valeur "Figure Of Merit". Le calcul est le même que dans QS originale.
   if(parallelMng()->commRank() == 0) {
+    // On utilise les valeurs enregistrées dans le csv.
     RealUniqueArray max_tracking_times(m_csv->getRow(
       (parallelMng()->commSize() == 1) ?
       "Tracking duration (Proc)" :
@@ -224,6 +235,7 @@ endModule()
     Real sum_times = 0;
     Int64 sum_segs = 0;
 
+    // On fait la somme des temps et des segments (1 segment = 1 tour de tracking).
     for(Integer i = 0; i < max_tracking_times.size(); i++) {
       sum_times += max_tracking_times[i];
       sum_segs += num_segments[i];
@@ -231,6 +243,7 @@ endModule()
 
     Real fOm = sum_segs / sum_times;
 
+    // On fait un joli affichage.
     info() << "----------------------------------------------";
     info() << "----------------Figure Of Merit---------------";
     info() << "-----[Num Segments / Cycle Tracking Time]-----";
@@ -241,11 +254,16 @@ endModule()
     info() << "--- Figure Of Merit     : " << fOm;
     info() << "----------------------------------------------";
 
+    // On ajoute une ligne "de séparation" dans le csv, puis le "Figure Of Merit".
     m_csv->addRow("---------------");
     m_csv->addElemRow("Figure Of Merit", fOm);
   }
 
+  // Si une des options est édité dans le .arc.
+  // À noter que le nom du fichier .csv est le nom du tableau (initialisé dans initModule()).
   if(options()->getCsvName() != "" || options()->getCsvDir() != "") {
+    // On regarde si on a le nom du répertoire.
+    // Sinon, on donne une emplacement par défaut.
     String path;
     if(options()->getCsvDir() != "")
       path = options()->getCsvDir();
@@ -292,6 +310,7 @@ initMesh()
 
   ICartesianMeshGenerationInfo* aaa = ICartesianMeshGenerationInfo::getReference(mesh(), false);
 
+  // Largeur totale du maillage.
   Real3 lenght = aaa->globalLength();
   m_lx = lenght[MD_DirX];
   m_ly = lenght[MD_DirY];
@@ -311,35 +330,22 @@ initMesh()
   ENUMERATE_CELL (icell, ownCells()) {
     Cell cell = *icell;
 
-    m_cell_center_coord[icell][MD_DirX] = 0.0;
-    m_cell_center_coord[icell][MD_DirY] = 0.0;
-    m_cell_center_coord[icell][MD_DirZ] = 0.0;
+    m_cell_center_coord[icell] = 0.0;
 
     ENUMERATE_FACE (iface, cell.faces()) {
       Face face = *iface;
 
-      m_face_center_coord[iface][MD_DirX] = 0.0;
-      m_face_center_coord[iface][MD_DirY] = 0.0;
-      m_face_center_coord[iface][MD_DirZ] = 0.0;
+      m_face_center_coord[iface] = 0.0;
 
       ENUMERATE_NODE (inode, face.nodes()) {
-        m_face_center_coord[iface][MD_DirX] += node_coord[inode][MD_DirX];
-        m_face_center_coord[iface][MD_DirY] += node_coord[inode][MD_DirY];
-        m_face_center_coord[iface][MD_DirZ] += node_coord[inode][MD_DirZ];
+        m_face_center_coord[iface] += node_coord[inode];
       }
 
-      m_face_center_coord[iface][MD_DirX] /= 4;
-      m_face_center_coord[iface][MD_DirY] /= 4;
-      m_face_center_coord[iface][MD_DirZ] /= 4;
-
-      m_cell_center_coord[icell][MD_DirX] += m_face_center_coord[iface][MD_DirX];
-      m_cell_center_coord[icell][MD_DirY] += m_face_center_coord[iface][MD_DirY];
-      m_cell_center_coord[icell][MD_DirZ] += m_face_center_coord[iface][MD_DirZ];
+      m_face_center_coord[iface] /= 4;
+      m_cell_center_coord[icell] += m_face_center_coord[iface];
     }
 
-    m_cell_center_coord[icell][MD_DirX] /= 6;
-    m_cell_center_coord[icell][MD_DirY] /= 6;
-    m_cell_center_coord[icell][MD_DirZ] /= 6;
+    m_cell_center_coord[icell] /= 6;
 
     Real volume = 0;
     ENUMERATE_FACE (iface, cell.faces()) {

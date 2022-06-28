@@ -33,6 +33,13 @@
 #include "simple_table_output/ISimpleTableOutput.hh"
 #include "rng/IRandomNumberGenerator.hh"
 
+enum eShape
+{
+  UNDEFINED,
+  BRICK,
+  SPHERE
+};
+
 #include "tracking_mc/TrackingMC_axl.h"
 
 
