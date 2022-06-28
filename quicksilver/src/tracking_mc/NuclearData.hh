@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <string>
 
+#include "rng/IRandomNumberGenerator.hh"
+
 using namespace Arcane;
 
 class Polynomial
@@ -53,7 +55,7 @@ class NuclearDataReaction
 
   void sampleCollision(Real incidentEnergy, Real material_mass, RealUniqueArray& energyOut,
                        RealUniqueArray& angleOut, Integer& nOut, Int64* seed,
-                       Integer max_production_size);
+                       Integer max_production_size, IRandomNumberGenerator* rng);
 
   RealUniqueArray _crossSection; //!< tabular data for microscopic cross section
   Enum _reactionType; //!< What type of reaction is this

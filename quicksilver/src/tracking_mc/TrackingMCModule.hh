@@ -31,6 +31,7 @@
 #include "structEnum.hh"
 #include "NuclearData.hh"
 #include "simple_table_output/ISimpleTableOutput.hh"
+#include "rng/IRandomNumberGenerator.hh"
 
 #include "tracking_mc/TrackingMC_axl.h"
 
@@ -141,6 +142,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   NuclearData* m_nuclearData;
   Timer* m_timer;
   ISimpleTableOutput* m_csv;
+  IRandomNumberGenerator* m_rng;
 
   Int32UniqueArray m_exited_particles_local_ids;
 

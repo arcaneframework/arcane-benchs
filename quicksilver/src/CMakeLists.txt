@@ -5,36 +5,54 @@ set(BUILD_SHARED_LIBS TRUE)
 
 find_package(Arcane REQUIRED)
 
+
+# add_executable(Quicksilver
+#   main.cc
+#   tracking_mc/NuclearData.cc)
+
+# add_library(QS qs/QSModule.cc)
+# target_include_directories(QS PUBLIC .)
+# target_link_libraries(QS PUBLIC arcane_core)
+
+# add_library(SamplingMC sampling_mc/SamplingMCModule.cc)
+# target_include_directories(SamplingMC PUBLIC .)
+# target_link_libraries(SamplingMC PUBLIC arcane_core)
+
+# add_library(TrackingMC tracking_mc/TrackingMCModule.cc)
+# target_include_directories(TrackingMC PUBLIC .)
+# target_link_libraries(TrackingMC PUBLIC arcane_core)
+
+# add_library(CsvOutput simple_table_output/CsvOutputService.cc)
+# target_include_directories(CsvOutput PUBLIC .)
+# target_link_libraries(CsvOutput PUBLIC arcane_core)
+
+# add_library(RNG rng/RNGService.cc)
+# target_include_directories(RNG PUBLIC .)
+# target_link_libraries(RNG PUBLIC arcane_core)
+
+# target_link_libraries(Quicksilver PRIVATE QS SamplingMC TrackingMC CsvOutput RNG)
+
+# arcane_target_add_axl(QS qs/QS)
+# arcane_target_add_axl(SamplingMC sampling_mc/SamplingMC)
+# arcane_target_add_axl(TrackingMC tracking_mc/TrackingMC)
+# arcane_target_add_axl(CsvOutput simple_table_output/CsvOutput)
+# arcane_target_add_axl(RNG rng/RNG)
+
+
 add_executable(Quicksilver
   main.cc
-  MC_RNG_State.cc
+  qs/QSModule.cc qs/QS_axl.h
+  sampling_mc/SamplingMCModule.cc sampling_mc/SamplingMC_axl.h
+  tracking_mc/TrackingMCModule.cc tracking_mc/TrackingMC_axl.h
+  simple_table_output/CsvOutputService.cc simple_table_output/CsvOutput_axl.h
+  rng/RNGService.cc rng/RNG_axl.h
   tracking_mc/NuclearData.cc)
 
-
-add_library(QS qs/QSModule.cc)
-target_include_directories(QS PUBLIC .)
-target_link_libraries(QS PUBLIC arcane_core)
-
-add_library(SamplingMC sampling_mc/SamplingMCModule.cc)
-target_include_directories(SamplingMC PUBLIC .)
-target_link_libraries(SamplingMC PUBLIC arcane_core)
-
-add_library(TrackingMC tracking_mc/TrackingMCModule.cc)
-target_include_directories(TrackingMC PUBLIC .)
-target_link_libraries(TrackingMC PUBLIC arcane_core)
-
-add_library(CsvOutput simple_table_output/CsvOutputService.cc)
-target_include_directories(CsvOutput PUBLIC .)
-target_link_libraries(CsvOutput PUBLIC arcane_core)
-
-
-target_link_libraries(Quicksilver PRIVATE QS SamplingMC TrackingMC CsvOutput)
-
-
-arcane_target_add_axl(QS qs/QS)
-arcane_target_add_axl(SamplingMC sampling_mc/SamplingMC)
-arcane_target_add_axl(TrackingMC tracking_mc/TrackingMC)
-arcane_target_add_axl(CsvOutput simple_table_output/CsvOutput)
+arcane_generate_axl(QS)
+arcane_generate_axl(SamplingMC)
+arcane_generate_axl(TrackingMC)
+arcane_generate_axl(CsvOutput)
+arcane_generate_axl(RNG)
 
 
 arcane_add_arcane_libraries_to_target(Quicksilver)

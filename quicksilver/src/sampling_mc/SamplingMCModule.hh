@@ -23,6 +23,7 @@
 
 #include "structEnum.hh"
 #include "simple_table_output/ISimpleTableOutput.hh"
+#include "rng/IRandomNumberGenerator.hh"
 #include "sampling_mc/SamplingMC_axl.h"
 
 using namespace Arcane;
@@ -79,6 +80,7 @@ class SamplingMCModule : public ArcaneSamplingMCObject
 
   Timer* m_timer;
   ISimpleTableOutput* m_csv;
+  IRandomNumberGenerator* m_rng;
 };
 
 /*---------------------------------------------------------------------------*/

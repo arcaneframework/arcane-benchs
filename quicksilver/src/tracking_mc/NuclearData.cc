@@ -1,6 +1,5 @@
 ﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 #include "NuclearData.hh"
-#include "MC_RNG_State.hh"
 #include <cmath>
 
 using std::log10;
@@ -47,32 +46,33 @@ sampleCollision(Real incidentEnergy,
                 Real material_mass, RealUniqueArray& energyOut,
                 RealUniqueArray& angleOut, Integer& nOut,
                 Int64* seed,
-                Integer max_production_size)
+                Integer max_production_size,
+                IRandomNumberGenerator* rng)
 {
   Real randomNumber;
   switch (_reactionType) {
   case Scatter:
     nOut = 1;
-    randomNumber = rngSample(seed);
+    randomNumber = rng->randomNumberGenerator(seed);
     energyOut[0] =
     incidentEnergy * (1.0 - (randomNumber * (1.0 / material_mass)));
-    randomNumber = rngSample(seed) * 2.0 - 1.0;
+    randomNumber = rng->randomNumberGenerator(seed) * 2.0 - 1.0;
     angleOut[0] = randomNumber;
     break;
   case Absorption:
     break;
   case Fission: {
 #ifdef QS_LEGACY_COMPATIBILITY
-    Integer numParticleOut = (Integer)(_nuBar + rngSample(seed));
+    Integer numParticleOut = (Integer)(_nuBar + rng->randomNumberGenerator(seed));
     ARCANE_ASSERT(numParticleOut <= max_production_size, "numParticleOut > max_production_size");
 #else
-    Integer numParticleOut = ((Integer)(_nuBar * rngSample(seed) * max_production_size) % max_production_size);
+    Integer numParticleOut = ((Integer)(_nuBar * rng->randomNumberGenerator(seed) * max_production_size) % max_production_size);
 #endif
     nOut = numParticleOut;
     for (Integer outIndex = 0; outIndex < numParticleOut; outIndex++) {
-      randomNumber = rngSample(seed) / 2.0 + 0.5;
+      randomNumber = rng->randomNumberGenerator(seed) / 2.0 + 0.5;
       energyOut[outIndex] = (20 * randomNumber * randomNumber);
-      randomNumber = rngSample(seed) * 2.0 - 1.0;
+      randomNumber = rng->randomNumberGenerator(seed) * 2.0 - 1.0;
       angleOut[outIndex] = randomNumber;
     }
   } break;
