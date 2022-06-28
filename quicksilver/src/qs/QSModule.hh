@@ -21,11 +21,11 @@
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ILoadBalanceMng.h>
 #include <arcane/IMeshPartitionerBase.h>
-#include "ISimpleTableOutput.hh"
 
+#include "simple_table_output/ISimpleTableOutput.hh"
 #include "structEnum.hh"
 
-#include "QS_axl.h"
+#include "qs/QS_axl.h"
 
 using namespace Arcane;
 
@@ -51,7 +51,7 @@ public ArcaneQSObject
   void afterLoadBalancing() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 0, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 4, 0); }
 
  protected:
   void initMesh();

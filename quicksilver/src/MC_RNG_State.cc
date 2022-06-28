@@ -97,7 +97,6 @@ hash_state(uint64_t initial_number)
 
   // put the hashed parts together into 1 64 bit int
   uint64_t fin = reconstruct_uint64(front_bits, back_bits);
-  // fin &= ~(1UL << 63);
   return fin;
 }
 

@@ -11,7 +11,6 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-#include "structEnum.hh"
 #include <arcane/IAsyncParticleExchanger.h>
 #include <arcane/IItemFamily.h>
 #include <arcane/IMesh.h>
@@ -27,12 +26,14 @@
 #include <arcane/materials/MeshMaterialModifier.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
-#include "TrackingMC_axl.h"
-
+#include "structEnum.hh"
 #include "NuclearData.hh"
+#include "simple_table_output/ISimpleTableOutput.hh"
+
+#include "tracking_mc/TrackingMC_axl.h"
+
 
 using namespace Arcane;
 using namespace Arcane::Materials;
@@ -89,7 +90,49 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 7, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 0); }
+
+ protected:
+  void tracking();
+  void updateTallies();
+  void initNuclearData();
+  bool isInGeometry(const Integer& pos, Cell cell);
+  void cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord);
+  void cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord);
+  void collisionEventSuite();
+  void computeNextEvent(Particle particle, VariableNodeReal3& node_coord);
+  Integer collisionEvent(Particle particle);
+  void facetCrossingEvent(Particle particle);
+  void reflectParticle(Particle particle, VariableNodeReal3& node_coord);
+  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
+  void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
+  void updateTrajectory(const Real& energy, const Real& angle, Particle particle);
+  void computeCrossSection();
+  void weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
+  Real macroscopicCrossSection(const Integer& reactionIndex,
+                               const Real& cell_number_density,
+                               const Real& atom_fraction,
+                               const Integer& isotopeGid,
+                               const Integer& isoIndex,
+                               const Integer& energyGroup);
+  DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord);
+  Real distanceToSegmentFacet(const Real& plane_tolerance,
+                              const Real& facet_normal_dot_direction_cosine,
+                              const Real& A, const Real& B, const Real& C, const Real& D,
+                              const Real3& facet_coords0,
+                              const Real3& facet_coords1,
+                              const Real3& facet_coords2,
+                              Particle particle,
+                              bool allow_enter);
+  DistanceToFacet findNearestFacet(Particle particle,
+                                   Integer& iteration,
+                                   Real& move_factor,
+                                   DistanceToFacet* distance_to_facet,
+                                   Integer& retry);
+  DistanceToFacet nearestFacet(DistanceToFacet* distance_to_facet);
+  template <typename T>
+  Integer findMin(UniqueArray<T> array);
+  void rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi);
 
  protected:
   IItemFamily* m_particle_family;
@@ -136,48 +179,6 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   GlobalMutex m_mutex_lb;
 
   bool m_do_loop_lb;
-
- protected:
-  void tracking();
-  void updateTallies();
-  void initNuclearData();
-  bool isInGeometry(const Integer& pos, Cell cell);
-  void cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord);
-  void cycleTrackingFunction(Particle particle, VariableNodeReal3& node_coord);
-  void collisionEventSuite();
-  void computeNextEvent(Particle particle, VariableNodeReal3& node_coord);
-  Integer collisionEvent(Particle particle);
-  void facetCrossingEvent(Particle particle);
-  void reflectParticle(Particle particle, VariableNodeReal3& node_coord);
-  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
-  void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
-  void updateTrajectory(const Real& energy, const Real& angle, Particle particle);
-  void computeCrossSection();
-  void weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
-  Real macroscopicCrossSection(const Integer& reactionIndex,
-                               const Real& cell_number_density,
-                               const Real& atom_fraction,
-                               const Integer& isotopeGid,
-                               const Integer& isoIndex,
-                               const Integer& energyGroup);
-  DistanceToFacet getNearestFacet(Particle particle, VariableNodeReal3& node_coord);
-  Real distanceToSegmentFacet(const Real& plane_tolerance,
-                              const Real& facet_normal_dot_direction_cosine,
-                              const Real& A, const Real& B, const Real& C, const Real& D,
-                              const Real3& facet_coords0,
-                              const Real3& facet_coords1,
-                              const Real3& facet_coords2,
-                              Particle particle,
-                              bool allow_enter);
-  DistanceToFacet findNearestFacet(Particle particle,
-                                   Integer& iteration,
-                                   Real& move_factor,
-                                   DistanceToFacet* distance_to_facet,
-                                   Integer& retry);
-  DistanceToFacet nearestFacet(DistanceToFacet* distance_to_facet);
-  template <typename T>
-  Integer findMin(UniqueArray<T> array);
-  void rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi);
 };
 
 /*---------------------------------------------------------------------------*/

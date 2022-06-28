@@ -12,11 +12,13 @@
 /*---------------------------------------------------------------------------*/
 
 #include "SamplingMCModule.hh"
+
 #include <arcane/Concurrency.h>
-#include "MC_RNG_State.hh"
-#include "PhysicalConstants.hh"
+
 #include <map>
 #include <set>
+
+#include "MC_RNG_State.hh"
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
