@@ -28,28 +28,30 @@ using namespace Arcane;
 void CsvOutputService::
 init()
 {
-  init("Table_@proc_id@", ";");
+  if(m_with_option && options()->getTableName() != "") {
+    init(options()->getTableName());
+  }
+  else {
+    init("Table_@proc_id@");
+  }
+
 }
 
 void CsvOutputService::
 init(String name_table)
 {
-  init(name_table, ";");
-}
-
-void CsvOutputService::
-init(String name_table, String separator_csv)
-{
-  m_separator = separator_csv;
   m_name_tab = _computeAt(name_table, m_name_tab_only_P0);
   m_name_tab_computed = true;
 
-  if(m_with_option) {
-    m_path = _computeAt(options()->getPath(), m_path_only_P0);
+  m_separator = ";";
+
+  if(m_with_option && options()->getTableDir() != "") {
+    m_path = _computeAt(options()->getTableDir(), m_path_only_P0);
   }
   else {
-    m_path = _computeAt("./", m_path_only_P0);
+    m_path = _computeAt("./csv/", m_path_only_P0);
   }
+  m_path_computed = true;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -59,21 +61,6 @@ void CsvOutputService::
 clear()
 {
   m_values_csv.clear();
-
-  if(m_with_option) {
-    m_path = options()->getPath();
-  }
-  else {
-    m_path = "./";
-  }
-  m_path_computed = false;
-  m_path_only_P0 = true;
-
-  m_name_tab = "";
-  m_name_tab_computed = false;
-  m_name_tab_only_P0 = true;
-
-  m_separator = "";
 
   m_name_rows.clear();
   m_name_columns.clear();
@@ -701,6 +688,14 @@ _computeAt(String name, bool& only_P0)
     else
     {
       only_P0 = true;
+    }
+
+    // On recherche "num_procs" dans le tableau (donc @num_procs@ dans le nom).
+    std::optional<Integer> num_procs = string_splited.span().findFirst("num_procs");
+    // On remplace "@num_procs@" par l'id du proc.
+    if (num_procs)
+    {
+      string_splited[num_procs.value()] = String::fromNumber(mesh()->parallelMng()->commSize());
     }
   }
 

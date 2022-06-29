@@ -48,11 +48,11 @@ add_executable(Quicksilver
   rng/RNGService.cc rng/RNG_axl.h
   tracking_mc/NuclearData.cc)
 
-arcane_generate_axl(QS)
-arcane_generate_axl(SamplingMC)
-arcane_generate_axl(TrackingMC)
-arcane_generate_axl(CsvOutput)
-arcane_generate_axl(RNG)
+arcane_generate_axl(qs/QS)
+arcane_generate_axl(sampling_mc/SamplingMC)
+arcane_generate_axl(tracking_mc/TrackingMC)
+arcane_generate_axl(simple_table_output/CsvOutput)
+arcane_generate_axl(rng/RNG)
 
 
 arcane_add_arcane_libraries_to_target(Quicksilver)

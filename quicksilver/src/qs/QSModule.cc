@@ -39,9 +39,9 @@ initModule()
 
   // Initialisation de la sortie CSV.
   if(options()->getCsvName() != "")
-    m_csv->init(options()->getCsvName(), ";");
+    m_csv->init(options()->getCsvName());
   else
-    m_csv->init("QAMA_P@proc_id@", ";");
+    m_csv->init("QAMA_P@proc_id@");
 
   // On ajoute les colonnes (une par itération).
   StringUniqueArray columns_name(options()->getNSteps());

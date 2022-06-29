@@ -11,11 +11,12 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
+#include "ISimpleTableOutput.hh"
+
 #include "arcane/BasicUnitTest.h"
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ServiceFactory.h>
 
-#include "ISimpleTableOutput.hh"
 #include "simple_table_output/CsvOutput_axl.h"
 
 using namespace Arcane;
@@ -45,7 +46,6 @@ public:
 public:
   void init() override;
   void init(String name_table) override;
-  void init(String name_table, String separator) override;
 
   void clear() override;
 

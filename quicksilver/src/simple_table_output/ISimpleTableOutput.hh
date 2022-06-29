@@ -15,6 +15,7 @@
 #define ISIMPLEOUTPUT_HH
 
 #include <arcane/ItemTypes.h>
+
 #include <optional>
 
 using namespace Arcane;
@@ -29,7 +30,6 @@ public:
 public:
   /**
    * @brief Méthode permettant d'initialiser le tableau.
-   * 
    */
   virtual void init() = 0;
   
@@ -41,16 +41,7 @@ public:
   virtual void init(String name_table) = 0;
 
   /**
-   * @brief Méthode permettant d'initialiser le tableau.
-   * 
-   * @param name_table Le nom du tableau (et du fichier de sortie).
-   * @param separator La chaine de caractère à inserer entre les valeurs lors de la sortie.
-   */
-  virtual void init(String name_table, String separator) = 0;
-
-  /**
-   * @brief Méthode permettant de nettoyer le tableau pour le réutiliser après.
-   * 
+   * @brief Méthode permettant de nettoyer le tableau. Nécessite un init() après.
    */
   virtual void clear() = 0;
 
