@@ -11,7 +11,6 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-#include "structEnum.hh"
 #include <arcane/IItemFamily.h>
 #include <arcane/IMesh.h>
 #include <arcane/IParallelMng.h>
@@ -20,10 +19,12 @@
 #include <arcane/ModuleBuildInfo.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
-#include "SamplingMC_axl.h"
+#include "structEnum.hh"
+#include "simple_table_output/ISimpleTableOutput.hh"
+#include "rng/IRandomNumberGenerator.hh"
+#include "sampling_mc/SamplingMC_axl.h"
 
 using namespace Arcane;
 
@@ -49,7 +50,21 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 7, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 0); }
+
+ protected:
+  void clearCrossSectionCache();
+  void setStatus();
+  void sourceParticles();
+  void populationControl();
+  void initParticle(ParticleEnumerator p, const Int64& rns);
+  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
+  void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
+  Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);
+  void rouletteLowWeightParticles();
+  void generate3DCoordinate(Particle p, VariableNodeReal3& node_coord);
+  void sampleIsotropic(Particle p);
+  Real getSpeedFromEnergy(Particle p);
 
  protected:
   IItemFamily* m_particle_family;
@@ -65,20 +80,7 @@ class SamplingMCModule : public ArcaneSamplingMCObject
 
   Timer* m_timer;
   ISimpleTableOutput* m_csv;
-
- protected:
-  void clearCrossSectionCache();
-  void setStatus();
-  void sourceParticles();
-  void populationControl();
-  void initParticle(ParticleEnumerator p, const Int64& rns);
-  void cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArray rnsNew);
-  void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
-  Real computeTetVolume(const Real3& v0_, const Real3& v1_, const Real3& v2_, const Real3& v3);
-  void rouletteLowWeightParticles();
-  void generate3DCoordinate(Particle p, VariableNodeReal3& node_coord);
-  void sampleIsotropic(Particle p);
-  Real getSpeedFromEnergy(Particle p);
+  IRandomNumberGenerator* m_rng;
 };
 
 /*---------------------------------------------------------------------------*/

@@ -286,10 +286,6 @@
 
   <options>
 
-    <!-- <service-instance name="csv-output" type="ISimpleOutput">
-      <description>Service CSV</description>
-    </service-instance> -->
-
     <simple name="nParticles" type="int64" default="1000000">
       <description>
         Number of particles

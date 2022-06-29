@@ -12,10 +12,12 @@
 /*---------------------------------------------------------------------------*/
 
 #include "ISimpleTableOutput.hh"
+
 #include "arcane/BasicUnitTest.h"
-#include "CsvOutput_axl.h"
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ServiceFactory.h>
+
+#include "simple_table_output/CsvOutput_axl.h"
 
 using namespace Arcane;
 
@@ -36,15 +38,7 @@ public:
     , m_last_row(-1)
     , m_last_column(-1)
     {
-      if(sbi.creationType() == ST_CaseOption) {
-        m_path = options()->getPath();
-        m_with_option = true;
-      }
-      else {
-        m_path = "./";
-        m_with_option = false;
-      }
-      
+      m_with_option = (sbi.creationType() == ST_CaseOption);
     }
   
   virtual ~CsvOutputService() {};
@@ -52,7 +46,6 @@ public:
 public:
   void init() override;
   void init(String name_table) override;
-  void init(String name_table, String separator) override;
 
   void clear() override;
 

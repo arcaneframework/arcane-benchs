@@ -8,9 +8,15 @@
   </variables>
 
 	<options>
-    <simple name="path" type="string" default="./csv_output/">
+    <simple name="tableName" type="string" default="">
       <description>
-        Emplacement pour fichiers .csv
+        Name for table file (example: Results ).
+      </description>
+    </simple>
+
+    <simple name="tableDir" type="string" default="">
+      <description>
+        Directory for table file (example: ./example2/ ).
       </description>
     </simple>
 	</options>

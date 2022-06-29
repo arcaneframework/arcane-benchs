@@ -11,7 +11,6 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-#include "structEnum.hh"
 #include <arcane/IAsyncParticleExchanger.h>
 #include <arcane/IItemFamily.h>
 #include <arcane/IMesh.h>
@@ -27,12 +26,22 @@
 #include <arcane/materials/MeshMaterialModifier.h>
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
-#include "ISimpleTableOutput.hh"
 #include <arcane/ServiceBuilder.h>
 
-#include "TrackingMC_axl.h"
-
+#include "structEnum.hh"
 #include "NuclearData.hh"
+#include "simple_table_output/ISimpleTableOutput.hh"
+#include "rng/IRandomNumberGenerator.hh"
+
+enum eShape
+{
+  UNDEFINED,
+  BRICK,
+  SPHERE
+};
+
+#include "tracking_mc/TrackingMC_axl.h"
+
 
 using namespace Arcane;
 using namespace Arcane::Materials;
@@ -89,53 +98,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 7, 0); }
-
- protected:
-  IItemFamily* m_particle_family;
-
-  IMeshMaterialMng* m_material_mng;
-  NuclearData* m_nuclearData;
-  Timer* m_timer;
-  ISimpleTableOutput* m_csv;
-
-  Int32UniqueArray m_exited_particles_local_ids;
-
-  // Les particules "extra" sont les particules qui n'ont pas fini leur itération
-  // (et donc necessite une autre sous-itération).
-  Int32UniqueArray m_extra_particles_local_ids;
-  Int32UniqueArray m_extra_particles_particle_src; //Particle localId source
-  Int32UniqueArray m_extra_particles_cellid_dst; //Cell localId dst
-  Int64UniqueArray m_extra_particles_global_id; //Futur globalId
-  Int64UniqueArray m_extra_particles_rns; //Futur RNS
-  RealUniqueArray m_extra_particles_energy_out; //updateTrajectory
-  RealUniqueArray m_extra_particles_angle_out; //updateTrajectory
-  RealUniqueArray m_extra_particles_energy_out_particle_src; //updateTrajectory
-  RealUniqueArray m_extra_particles_angle_out_particle_src; //updateTrajectory
-
-  Int32UniqueArray m_outgoing_particles_local_ids;
-  Int32UniqueArray m_outgoing_particles_rank_to;
-
-  std::atomic<Int64> m_num_segments_a{ 0 };
-  Int64 m_escape;
-  std::atomic<Int64> m_census_a{ 0 };
-  std::atomic<Int64> m_collision_a{ 0 };
-  std::atomic<Int64> m_scatter_a{ 0 };
-  std::atomic<Int64> m_fission_a{ 0 };
-  std::atomic<Int64> m_absorb_a{ 0 };
-  std::atomic<Int64> m_produce_a{ 0 };
-  Int64 m_end;
-
-  Int64 m_incoming;
-  Int64 m_outgoing;
-
-  GlobalMutex m_mutex_exit;
-  GlobalMutex m_mutex_extra;
-  GlobalMutex m_mutex_out;
-  GlobalMutex m_mutex_flux;
-  GlobalMutex m_mutex_lb;
-
-  bool m_do_loop_lb;
+  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 0); }
 
  protected:
   void tracking();
@@ -178,6 +141,53 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   template <typename T>
   Integer findMin(UniqueArray<T> array);
   void rotate3DVector(Particle particle, const Real& sin_Theta, const Real& cos_Theta, const Real& sin_Phi, const Real& cos_Phi);
+
+ protected:
+  IItemFamily* m_particle_family;
+
+  IMeshMaterialMng* m_material_mng;
+  NuclearData* m_nuclearData;
+  Timer* m_timer;
+  ISimpleTableOutput* m_csv;
+  IRandomNumberGenerator* m_rng;
+
+  Int32UniqueArray m_exited_particles_local_ids;
+
+  // Les particules "extra" sont les particules qui n'ont pas fini leur itération
+  // (et donc necessite une autre sous-itération).
+  Int32UniqueArray m_extra_particles_local_ids;
+  Int32UniqueArray m_extra_particles_particle_src; //Particle localId source
+  Int32UniqueArray m_extra_particles_cellid_dst; //Cell localId dst
+  Int64UniqueArray m_extra_particles_global_id; //Futur globalId
+  Int64UniqueArray m_extra_particles_rns; //Futur RNS
+  RealUniqueArray m_extra_particles_energy_out; //updateTrajectory
+  RealUniqueArray m_extra_particles_angle_out; //updateTrajectory
+  RealUniqueArray m_extra_particles_energy_out_particle_src; //updateTrajectory
+  RealUniqueArray m_extra_particles_angle_out_particle_src; //updateTrajectory
+
+  Int32UniqueArray m_outgoing_particles_local_ids;
+  Int32UniqueArray m_outgoing_particles_rank_to;
+
+  std::atomic<Int64> m_num_segments_a{ 0 };
+  Int64 m_escape;
+  std::atomic<Int64> m_census_a{ 0 };
+  std::atomic<Int64> m_collision_a{ 0 };
+  std::atomic<Int64> m_scatter_a{ 0 };
+  std::atomic<Int64> m_fission_a{ 0 };
+  std::atomic<Int64> m_absorb_a{ 0 };
+  std::atomic<Int64> m_produce_a{ 0 };
+  Int64 m_end;
+
+  Int64 m_incoming;
+  Int64 m_outgoing;
+
+  GlobalMutex m_mutex_exit;
+  GlobalMutex m_mutex_extra;
+  GlobalMutex m_mutex_out;
+  GlobalMutex m_mutex_flux;
+  GlobalMutex m_mutex_lb;
+
+  bool m_do_loop_lb;
 };
 
 /*---------------------------------------------------------------------------*/
