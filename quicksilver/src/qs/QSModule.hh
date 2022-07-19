@@ -21,8 +21,8 @@
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ILoadBalanceMng.h>
 #include <arcane/IMeshPartitionerBase.h>
+#include <arcane/ISimpleTableOutput.h>
 
-#include "simple_table_output/ISimpleTableOutput.hh"
 #include "structEnum.hh"
 
 enum eBoundaryCondition

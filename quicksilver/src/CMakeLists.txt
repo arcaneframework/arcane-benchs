@@ -44,14 +44,12 @@ add_executable(Quicksilver
   qs/QSModule.cc qs/QS_axl.h
   sampling_mc/SamplingMCModule.cc sampling_mc/SamplingMC_axl.h
   tracking_mc/TrackingMCModule.cc tracking_mc/TrackingMC_axl.h
-  simple_table_output/CsvOutputService.cc simple_table_output/CsvOutput_axl.h
   rng/RNGService.cc rng/RNG_axl.h
   tracking_mc/NuclearData.cc)
 
 arcane_generate_axl(qs/QS)
 arcane_generate_axl(sampling_mc/SamplingMC)
 arcane_generate_axl(tracking_mc/TrackingMC)
-arcane_generate_axl(simple_table_output/CsvOutput)
 arcane_generate_axl(rng/RNG)
 
 

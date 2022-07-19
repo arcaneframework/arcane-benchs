@@ -20,9 +20,9 @@
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
 #include <arcane/ServiceBuilder.h>
+#include <arcane/ISimpleTableOutput.h>
 
 #include "structEnum.hh"
-#include "simple_table_output/ISimpleTableOutput.hh"
 #include "rng/IRandomNumberGenerator.hh"
 #include "sampling_mc/SamplingMC_axl.h"
 

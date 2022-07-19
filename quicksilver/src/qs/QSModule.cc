@@ -221,12 +221,12 @@ endModule()
   // On calcule la valeur "Figure Of Merit". Le calcul est le même que dans QS originale.
   if(parallelMng()->commRank() == 0) {
     // On utilise les valeurs enregistrées dans le csv.
-    RealUniqueArray max_tracking_times(m_csv->getRow(
+    RealUniqueArray max_tracking_times(m_csv->row(
       (parallelMng()->commSize() == 1) ?
       "Tracking duration (Proc)" :
       "Tracking duration (ReduceMax)"
     ));
-    RealUniqueArray num_segments(m_csv->getRow(
+    RealUniqueArray num_segments(m_csv->row(
       (parallelMng()->commSize() == 1) ?
       "m_num_segments (Proc)" :
       "m_num_segments (ReduceSum)"
