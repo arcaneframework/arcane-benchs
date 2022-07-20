@@ -429,7 +429,7 @@ getBoundaryCondition(const Integer& pos)
       return ParticleEvent::reflection;
 
   default:
-    ARCANE_ASSERT(false, "Boundary condition undefined.");
+    ARCANE_ASSERT(false, ("Boundary condition undefined."));
     return ParticleEvent::undefined;
   }
 }

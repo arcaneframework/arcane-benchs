@@ -1,4 +1,4 @@
-// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
+﻿// -*- tab-width: 2; indent-tabs-mode: nil; coding: utf-8-with-signature -*-
 //-----------------------------------------------------------------------------
 // Copyright 2000-2022 CEA (www.cea.fr) IFPEN (www.ifpenergiesnouvelles.com)
 // See the top-level COPYRIGHT file for details.
@@ -74,7 +74,7 @@ randomNumberGenerator()
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.
   volatile Real fin = 5.4210108624275222e-20 * (uint64_t)(m_seed);
-  ARCANE_ASSERT(fin >= 0, "rngSample negative");
+  ARCANE_ASSERT(fin >= 0, ("rngSample negative"));
   return fin;
 }
 
@@ -87,7 +87,7 @@ randomNumberGenerator(Int64* seed)
   // by multiplying by
   // 1/(2**64 - 1) = 1/18446744073709551615.
   volatile Real fin = 5.4210108624275222e-20 * (uint64_t)(*seed);
-  ARCANE_ASSERT(fin >= 0, "rngSample negative");
+  ARCANE_ASSERT(fin >= 0, ("rngSample negative"));
   return fin;
 }
 

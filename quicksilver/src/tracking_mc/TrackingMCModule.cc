@@ -620,7 +620,7 @@ isInGeometry(const Integer& pos, Cell cell)
   } break;
 
   default:
-    ARCANE_ASSERT(false, "Pb dans isInGeometry");
+    ARCANE_ASSERT(false, ("Pb dans isInGeometry"));
   }
   return inside;
 }
@@ -1030,7 +1030,7 @@ collisionEvent(Particle particle)
       }
     }
   }
-  ARCANE_ASSERT(selected_iso != -1, "selected_iso == -1");
+  ARCANE_ASSERT(selected_iso != -1, ("selected_iso == -1"));
 
   Integer max_production_size = options()->getMax_production_size();
 
@@ -1064,7 +1064,7 @@ collisionEvent(Particle particle)
     m_produce_a += nOut;
     break;
   case NuclearDataReaction::Undefined:
-    ARCANE_ASSERT(false, "reactionType invalid");
+    ARCANE_ASSERT(false, ("reactionType invalid"));
   }
 
 #endif
@@ -1473,7 +1473,7 @@ getNearestFacet(Particle particle, VariableNodeReal3& node_coord)
     nearest_facet.distance = 0;
   }
 
-  ARCANE_ASSERT(nearest_facet.distance < PhysicalConstants::_hugeDouble, "nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble");
+  ARCANE_ASSERT(nearest_facet.distance < PhysicalConstants::_hugeDouble, ("nearest_facet.distance_to_facet >= PhysicalConstants::_hugeDouble"));
 
   return nearest_facet;
 }
