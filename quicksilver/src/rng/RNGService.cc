@@ -19,69 +19,96 @@ using namespace Arcane;
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-void RNGService::
+bool RNGService::
 initSeed()
 {
-  if(m_with_option) {
-    m_seed = options()->getInitialSeed();
-  }
-  else {
-    m_seed = 1029384756;
-  }
+  m_seed = 1029384756;
+  return true;
 }
 
-void RNGService::
-initSeed(Int64 seed)
+bool RNGService::
+initSeed(RandomNumberGeneratorSeed seed)
 {
-  m_seed = seed;
+  if (seed.sizeOfSeed() != m_size_of_seed) {
+    return false;
+  }
+  seed.seed(m_seed);
+  return true;
 }
 
 
-Int64 RNGService::
-getSeed()
+RandomNumberGeneratorSeed RNGService::
+seed()
 {
-  return m_seed;
+  return RandomNumberGeneratorSeed(m_seed, m_size_of_seed);
+}
+
+
+RandomNumberGeneratorSeed RNGService::
+emptySeed()
+{
+  return RandomNumberGeneratorSeed(0, m_size_of_seed);
+}
+
+Integer RNGService::
+neededSizeOfSeed()
+{
+  return m_size_of_seed;
 }
 
 // This routine spawns a "child" random number seed from a "parent" random
 // number seed.
-Int64 RNGService::
-randomSeedGenerator()
+RandomNumberGeneratorSeed RNGService::
+generateRandomSeed(Integer leap)
 {
   Int64 spawned_seed = _hashState(m_seed);
   // Bump the parent seed as that is what is expected from the interface.
-  randomNumberGenerator();
-  return spawned_seed;
+  generateRandomNumber(0);
+  return RandomNumberGeneratorSeed(spawned_seed, m_size_of_seed);
 }
 
-Int64 RNGService::
-randomSeedGenerator(Int64* parent_seed)
+RandomNumberGeneratorSeed RNGService::
+generateRandomSeed(RandomNumberGeneratorSeed* parent_seed, Integer leap)
 {
-  Int64 spawned_seed = _hashState(*parent_seed);
+  Int64 i_seed;
+  if (!parent_seed->seed(i_seed, false)) {
+    ARCANE_FATAL("Bad size of seed");
+  }
+
+  Int64 spawned_seed = _hashState(i_seed);
+  parent_seed->setSeed(i_seed);
   // Bump the parent seed as that is what is expected from the interface.
-  randomNumberGenerator(parent_seed);
-  return spawned_seed;
+  generateRandomNumber(parent_seed, 0);
+  return RandomNumberGeneratorSeed(spawned_seed, m_size_of_seed);
 }
 
 // Sample returns the pseudo-random number produced by a call to a random
 // number generator.
 Real RNGService::
-randomNumberGenerator()
+generateRandomNumber(Integer leap)
 {
-  // Reset the state from the previous value.
-  m_seed = 2862933555777941757ULL * (uint64_t)(m_seed) + 3037000493ULL;
-  // Map the int state in (0,2**64) to double (0,1)
-  // by multiplying by
-  // 1/(2**64 - 1) = 1/18446744073709551615.
-  volatile Real fin = 5.4210108624275222e-20 * (uint64_t)(m_seed);
-  ARCANE_ASSERT(fin >= 0, "rngSample negative");
-  return fin;
+  return _rngSample(&m_seed);
 }
 
 Real RNGService::
-randomNumberGenerator(Int64* seed)
+generateRandomNumber(RandomNumberGeneratorSeed* seed, Integer leap)
 {
-  // Reset the state from the previous value.
+  Int64 i_seed;
+  if (!seed->seed(i_seed, false)) {
+    ARCANE_FATAL("Bad size of seed");
+  }
+  Real fin = _rngSample(&i_seed);
+  seed->setSeed(i_seed);
+  return fin;
+}
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+
+Real RNGService::
+_rngSample(Int64* seed)
+{
+    // Reset the state from the previous value.
   *seed = 2862933555777941757ULL * (uint64_t)(*seed) + 3037000493ULL;
   // Map the int state in (0,2**64) to double (0,1)
   // by multiplying by
@@ -90,9 +117,6 @@ randomNumberGenerator(Int64* seed)
   ARCANE_ASSERT(fin >= 0, "rngSample negative");
   return fin;
 }
-
-/*---------------------------------------------------------------------------*/
-/*---------------------------------------------------------------------------*/
 
 // Break a 64 bit state into 2 32 bit ints.
 void RNGService::

@@ -28,10 +28,10 @@
 #include <arccore/concurrency/Mutex.h>
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ISimpleTableOutput.h>
+#include <arcane/IRandomNumberGenerator.h>
 
 #include "structEnum.hh"
 #include "NuclearData.hh"
-#include "rng/IRandomNumberGenerator.hh"
 
 enum eShape
 {

@@ -50,35 +50,35 @@ sampleCollision(Real incidentEnergy,
                 IRandomNumberGenerator* rng)
 {
   Real randomNumber;
+
+  RandomNumberGeneratorSeed rngSeed = (rng->emptySeed() = *seed);
+
   switch (_reactionType) {
   case Scatter:
     nOut = 1;
-    randomNumber = rng->randomNumberGenerator(seed);
+    randomNumber = rng->generateRandomNumber(&rngSeed);
     energyOut[0] =
     incidentEnergy * (1.0 - (randomNumber * (1.0 / material_mass)));
-    randomNumber = rng->randomNumberGenerator(seed) * 2.0 - 1.0;
+    randomNumber = rng->generateRandomNumber(&rngSeed) * 2.0 - 1.0;
     angleOut[0] = randomNumber;
     break;
   case Absorption:
     break;
   case Fission: {
-#ifdef QS_LEGACY_COMPATIBILITY
-    Integer numParticleOut = (Integer)(_nuBar + rng->randomNumberGenerator(seed));
+    Integer numParticleOut = (Integer)(_nuBar + rng->generateRandomNumber(&rngSeed));
     ARCANE_ASSERT(numParticleOut <= max_production_size, "numParticleOut > max_production_size");
-#else
-    Integer numParticleOut = ((Integer)(_nuBar * rng->randomNumberGenerator(seed) * max_production_size) % max_production_size);
-#endif
     nOut = numParticleOut;
     for (Integer outIndex = 0; outIndex < numParticleOut; outIndex++) {
-      randomNumber = rng->randomNumberGenerator(seed) / 2.0 + 0.5;
+      randomNumber = rng->generateRandomNumber(&rngSeed) / 2.0 + 0.5;
       energyOut[outIndex] = (20 * randomNumber * randomNumber);
-      randomNumber = rng->randomNumberGenerator(seed) * 2.0 - 1.0;
+      randomNumber = rng->generateRandomNumber(&rngSeed) * 2.0 - 1.0;
       angleOut[outIndex] = randomNumber;
     }
   } break;
   case Undefined:
     ARCANE_WARNING("_reactionType invalid");
   }
+  rngSeed.seed(seed);
 }
 
 // Return the cross section for this energy group

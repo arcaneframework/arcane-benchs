@@ -10,7 +10,7 @@
 #include <cstdlib>
 #include <string>
 
-#include "rng/IRandomNumberGenerator.hh"
+#include <arcane/IRandomNumberGenerator.h>
 
 using namespace Arcane;
 

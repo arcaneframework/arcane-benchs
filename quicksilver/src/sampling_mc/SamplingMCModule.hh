@@ -21,9 +21,9 @@
 #include <arccore/concurrency/Mutex.h>
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ISimpleTableOutput.h>
+#include <arcane/IRandomNumberGenerator.h>
 
 #include "structEnum.hh"
-#include "rng/IRandomNumberGenerator.hh"
 #include "sampling_mc/SamplingMC_axl.h"
 
 using namespace Arcane;

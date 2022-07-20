@@ -885,7 +885,9 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
   if (particle_num_mean_free_path_particle == 0.0) {
     // Sample the number of mean-free-paths remaining before
     // the next collision from an exponential distribution.
-    Real random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+    RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[particle]);
+    Real random_number = m_rng->generateRandomNumber(&seed);
+    seed.seed(m_particle_rns[particle]);
 
     particle_num_mean_free_path_particle = -1.0 * std::log(random_number);
   }
@@ -1000,7 +1002,11 @@ collisionEvent(Particle particle)
   Cell cell = particle.cell();
 
   // Pick the isotope and reaction.
-  Real random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+  RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[particle]);
+  Real random_number = m_rng->generateRandomNumber(&seed);
+  seed.seed(m_particle_rns[particle]);
+
+
   const Real total_cross_section = m_particle_total_cross_section[particle];
   Real current_cross_section = total_cross_section * random_number;
   const Integer particle_ene_grp_particle = m_particle_ene_grp[particle];
@@ -1074,7 +1080,6 @@ collisionEvent(Particle particle)
 #ifndef QS_LEGACY_COMPATIBILITY
     m_absorb_a++;
 #endif
-
     return 0;
   }
 
@@ -1101,10 +1106,13 @@ collisionEvent(Particle particle)
     m_fission_a++;
     m_produce_a += nOut;
 #endif
-
+    seed = m_particle_rns[particle];
     GlobalMutex::ScopedLock(m_mutex_extra);
     for (Integer i = 1; i < nOut; i++) {
-      Int64 rns = m_rng->randomSeedGenerator(&m_particle_rns[particle]);
+
+      Int64 rns = 0;
+      m_rng->generateRandomSeed(&seed).seed(rns);
+
       m_extra_particles_rns.add(rns);
       rns &= ~(1UL << 63);
       m_extra_particles_global_id.add(rns);
@@ -1117,6 +1125,7 @@ collisionEvent(Particle particle)
     m_extra_particles_local_ids.add(particle.localId());
     m_extra_particles_energy_out_particle_src.add(energyOut[0]);
     m_extra_particles_angle_out_particle_src.add(angleOut[0]);
+    seed.seed(m_particle_rns[particle]);
   }
 
   return nOut;
@@ -1273,7 +1282,12 @@ updateTrajectory(const Real& energy, const Real& angle, Particle particle)
   Real3 particle_velocity_particle = m_particle_velocity[particle];
 
   Real cosTheta = angle;
-  Real random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+
+  RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[particle]);
+
+  Real random_number = m_rng->generateRandomNumber(&seed);
+  seed.seed(m_particle_rns[particle]);
+
   Real phi = 2 * 3.14159265 * random_number;
   Real sinPhi = sin(phi);
   Real cosPhi = cos(phi);
@@ -1288,10 +1302,12 @@ updateTrajectory(const Real& energy, const Real& angle, Particle particle)
   particle_velocity_particle[MD_DirY] = speed * particle_dir_cos_particle[MD_DirB];
   particle_velocity_particle[MD_DirZ] = speed * particle_dir_cos_particle[MD_DirG];
 
-  random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+  seed = m_particle_rns[particle];
+  random_number = m_rng->generateRandomNumber(&seed);
   m_particle_num_mean_free_path[particle] = -1.0 * std::log(random_number);
 
   m_particle_velocity[particle] = particle_velocity_particle;
+  seed.seed(m_particle_rns[particle]);
 }
 
 /**
