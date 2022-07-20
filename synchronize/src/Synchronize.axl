@@ -1,0 +1,16 @@
+<?xml version="1.0" ?><!-- -*- SGML -*- -->
+<!-- Description de la configuration du module 'Synchronize' -->
+<module name="Synchronize" version="1.0" namespace-name="Synchronize">
+
+  <entry-points>
+    <entry-point method-name="doOneIteration" name="SY_DoOneIteration" where="compute-loop" property="none" />
+  </entry-points>
+
+  <options>
+
+  </options>
+  
+  <!-- ###################################################################### -->
+  <!-- ###################################################################### -->
+  
+</module>
