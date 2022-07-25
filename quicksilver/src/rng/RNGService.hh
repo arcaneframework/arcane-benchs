@@ -33,19 +33,26 @@ public:
 public:
   bool initSeed() override;
   bool initSeed(RandomNumberGeneratorSeed seed) override;
+  bool initSeed(ByteArrayView seed) override;
 
   RandomNumberGeneratorSeed seed() override;
   RandomNumberGeneratorSeed emptySeed() override;
+  ByteUniqueArray emptySeedBUA() override;
+  ByteConstArrayView viewSeed() override;
 
   Integer neededSizeOfSeed() override;
 
   bool isLeapSeedSupported() override { return false; };
   RandomNumberGeneratorSeed generateRandomSeed(Integer leap) override;
+  ByteUniqueArray generateRandomSeedBUA(Integer leap = 0) override;
+
   RandomNumberGeneratorSeed generateRandomSeed(RandomNumberGeneratorSeed* parent_seed, Integer leap) override;
+  ByteUniqueArray generateRandomSeed(ByteArrayView parent_seed, Integer leap = 0) override;
 
   bool isLeapNumberSupported() override { return false; };
   Real generateRandomNumber(Integer leap) override;
   Real generateRandomNumber(RandomNumberGeneratorSeed* seed, Integer leap) override;
+  Real generateRandomNumber(ByteArrayView seed, Integer leap = 0) override;
 
 protected:
   Real _rngSample(Int64* seed);

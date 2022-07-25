@@ -36,6 +36,16 @@ initSeed(RandomNumberGeneratorSeed seed)
   return true;
 }
 
+bool RNGService::
+initSeed(ByteArrayView seed)
+{
+  RNGSeedHelper helper(seed);
+  if (helper.sizeOfSeed() != m_size_of_seed) {
+    return false;
+  }
+  helper.value(m_seed);
+  return true;
+}
 
 RandomNumberGeneratorSeed RNGService::
 seed()
@@ -43,11 +53,22 @@ seed()
   return RandomNumberGeneratorSeed(m_seed, m_size_of_seed);
 }
 
+ByteConstArrayView RNGService::
+viewSeed()
+{
+  return RNGSeedHelper(&m_seed).view();
+}
 
 RandomNumberGeneratorSeed RNGService::
 emptySeed()
 {
   return RandomNumberGeneratorSeed(0, m_size_of_seed);
+}
+
+ByteUniqueArray RNGService::
+emptySeedBUA()
+{
+  return ByteUniqueArray(m_size_of_seed);
 }
 
 Integer RNGService::
@@ -67,6 +88,14 @@ generateRandomSeed(Integer leap)
   return RandomNumberGeneratorSeed(spawned_seed, m_size_of_seed);
 }
 
+ByteUniqueArray RNGService::
+generateRandomSeedBUA(Integer leap)
+{
+  Int64 spawned_seed = _hashState(m_seed);
+  generateRandomNumber(0);
+  return RNGSeedHelper(&spawned_seed).copy();
+}
+
 RandomNumberGeneratorSeed RNGService::
 generateRandomSeed(RandomNumberGeneratorSeed* parent_seed, Integer leap)
 {
@@ -80,6 +109,16 @@ generateRandomSeed(RandomNumberGeneratorSeed* parent_seed, Integer leap)
   // Bump the parent seed as that is what is expected from the interface.
   generateRandomNumber(parent_seed, 0);
   return RandomNumberGeneratorSeed(spawned_seed, m_size_of_seed);
+}
+
+ByteUniqueArray RNGService::
+generateRandomSeed(ByteArrayView parent_seed, Integer leap)
+{
+  Int64* i_seed = (Int64*)parent_seed.data();
+
+  Int64 spawned_seed = _hashState(*i_seed);
+  generateRandomNumber(parent_seed, 0);
+  return RNGSeedHelper(&spawned_seed).copy();
 }
 
 // Sample returns the pseudo-random number produced by a call to a random
@@ -99,6 +138,14 @@ generateRandomNumber(RandomNumberGeneratorSeed* seed, Integer leap)
   }
   Real fin = _rngSample(&i_seed);
   seed->setSeed(i_seed);
+  return fin;
+}
+
+Real RNGService::
+generateRandomNumber(ByteArrayView seed, Integer leap)
+{
+  Int64* i_seed = (Int64*)seed.data();
+  Real fin = _rngSample(i_seed);
   return fin;
 }
 

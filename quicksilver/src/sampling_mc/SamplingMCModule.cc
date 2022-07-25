@@ -33,6 +33,12 @@ initModule()
   m_timer = new Timer(subDomain(), "SamplingMC", Timer::TimerReal);
   m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   m_rng = ServiceBuilder<IRandomNumberGenerator>(subDomain()).getSingleton();
+  m_particle_rns.resize(m_rng->neededSizeOfSeed());
+  if(m_rng->neededSizeOfSeed() != sizeof(Int64))
+  {
+    warning() << "Size of seed used by IRandomNumberGenerator is " << m_rng->neededSizeOfSeed() 
+              << " Bytes. Recommended size for this app is " << sizeof(Int64) << " Bytes";
+  }
 }
 
 /**
@@ -284,8 +290,8 @@ sourceParticles()
   Int32UniqueArray particles_lid(particle_count);
   std::map<Int64, Int64> rng;
   Integer particle_index_g = 0;
-  RandomNumberGeneratorSeed seed_cell = m_rng->emptySeed();
-  RandomNumberGeneratorSeed seed_partic = m_rng->emptySeed();
+  ByteUniqueArray seed_cell = m_rng->emptySeedBUA();
+  ByteUniqueArray seed_partic = m_rng->emptySeedBUA();
 
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.
@@ -307,7 +313,6 @@ sourceParticles()
          particle_index++) {
       Int64 random_number_seed;
       Int64 rns;
-      Int64 id;
 
       random_number_seed = m_source_tally[icell];
       m_source_tally[icell]++;
@@ -315,21 +320,19 @@ sourceParticles()
       random_number_seed +=
       (*icell).uniqueId().asInt64() * INT64_C(0x0100000000);
 
-      seed_cell = random_number_seed;
+      RNGSeedHelper(seed_cell).setValue(random_number_seed);
 
       // La graine sera considérée comme un uint64, mais l'uniqueid doit être
       // positif donc on change le signe en mettant le bit de poids fort à 0.
-      seed_partic = m_rng->generateRandomSeed(&seed_cell);
+      seed_partic = m_rng->generateRandomSeed(seed_cell);
+      RNGSeedHelper(seed_cell).value(random_number_seed);
+      RNGSeedHelper(seed_partic).value(rns);
 
-      seed_cell.seed(random_number_seed);
-      seed_partic.seed(rns);
+      random_number_seed &= ~(1UL << 63);
 
-      id = random_number_seed;
-      id &= ~(1UL << 63);
-
-      uids[particle_index_g] = id;
+      uids[particle_index_g] = random_number_seed;
       local_id_cells[particle_index_g] = icell.localId();
-      rng[id] = rns;
+      rng[random_number_seed] = rns;
 
       particle_index_g++;
     }
@@ -352,10 +355,9 @@ sourceParticles()
 
       generate3DCoordinate(p, node_coord);
       sampleIsotropic(p);
-      
-      RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[ipartic]);
+
       m_particle_kin_ene[ipartic] =
-      (m_e_max() - m_e_min()) * m_rng->generateRandomNumber(&seed) + m_e_min();
+      (m_e_max() - m_e_min()) * m_rng->generateRandomNumber(m_particle_rns[ipartic]) + m_e_min();
 
       Real speed = getSpeedFromEnergy(p);
 
@@ -365,13 +367,11 @@ sourceParticles()
 
       m_particle_weight[ipartic] = source_particle_weight;
 
-      Real randomNumber = m_rng->generateRandomNumber(&seed);
+      Real randomNumber = m_rng->generateRandomNumber(m_particle_rns[ipartic]);
       m_particle_num_mean_free_path[ipartic] = -1.0 * std::log(randomNumber);
 
-      randomNumber = m_rng->generateRandomNumber(&seed);
+      randomNumber = m_rng->generateRandomNumber(m_particle_rns[ipartic]);
       m_particle_time_census[ipartic] = m_global_deltat() * randomNumber;
-
-      seed.seed(m_particle_rns[ipartic]);
 
       m_source_a++;
     }
@@ -412,11 +412,7 @@ populationControl()
 
     arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
-        RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[iparticle]);
-
-        Real randomNumber = m_rng->generateRandomNumber(&seed);
-
-        seed.seed(m_particle_rns[iparticle]);
+        Real randomNumber = m_rng->generateRandomNumber(m_particle_rns[iparticle]);
 
         if (randomNumber > splitRRFactor) {
           // Kill
@@ -444,9 +440,7 @@ populationControl()
     arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         Particle particle = (*iparticle);
-        RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[iparticle]);
-
-        Real randomNumber = m_rng->generateRandomNumber(&seed);
+        Real randomNumber = m_rng->generateRandomNumber(m_particle_rns[iparticle]);
 
         // Split
         Integer splitFactor = (Integer)floor(splitRRFactor);
@@ -460,15 +454,14 @@ populationControl()
         for (Integer splitFactorIndex = 0; splitFactorIndex < splitFactor;
              splitFactorIndex++) {
           m_split++;
-          Int64 rns = 0;
-          m_rng->generateRandomSeed(&seed).seed(rns);
+          Int64 rns;
+          RNGSeedHelper(m_rng->generateRandomSeed(m_particle_rns[iparticle])).value(rns);
           addRns.add(rns);
           rns &= ~(1UL << 63); // On passe en positif.
           addIdP.add(rns);
           addCellIdP.add(particle.cell().localId());
           addSrcP.add(iparticle.localId());
         }
-        seed.seed(m_particle_rns[iparticle]);
       }
     });
 
@@ -492,7 +485,7 @@ populationControl()
 void SamplingMCModule::
 initParticle(ParticleEnumerator p, const Int64& rns)
 {
-  m_particle_rns[p] = rns;
+  RNGSeedHelper(m_particle_rns[p]).setValue(rns);
   m_particle_coord[p] = 0.0;
   m_particle_velocity[p] = 0.0;
   m_particle_dir_cos[p] = 0.0;
@@ -546,7 +539,7 @@ cloneParticles(Int32UniqueArray idsSrc,
 void SamplingMCModule::
 cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
-  m_particle_rns[pNew] = rns;
+  RNGSeedHelper(m_particle_rns[pNew]).setValue(rns);
 
   m_particle_coord[pNew] = m_particle_coord[pSrc];
   m_particle_velocity[pNew] = m_particle_velocity[pSrc];
@@ -587,11 +580,7 @@ rouletteLowWeightParticles()
     arcaneParallelForeach(m_processingView, [&](ParticleVectorView particles) {
       ENUMERATE_PARTICLE (iparticle, particles) {
         if (m_particle_weight[iparticle] <= weightCutoff) {
-          RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[iparticle]);
-
-          Real randomNumber = m_rng->generateRandomNumber(&seed);
-
-          seed.seed(m_particle_rns[iparticle]);
+          Real randomNumber = m_rng->generateRandomNumber(m_particle_rns[iparticle]);
           if (randomNumber <= lowWeightCutoff) {
             // The particle history continues with an increased weight.
             m_particle_weight[iparticle] /= lowWeightCutoff;
@@ -627,10 +616,7 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
   // Determine the cell-center nodal point coordinates.
   Real3 center(m_cell_center_coord[cell]);
 
-  RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[p]);
-
-  Real random_number = m_rng->generateRandomNumber(&seed);
-
+  Real random_number = m_rng->generateRandomNumber(m_particle_rns[p]);
 
   Real which_volume = random_number * 6.0 * m_volume[cell];
 
@@ -702,9 +688,9 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
 #endif
 
   // Sample from the tet.
-  Real r1 = m_rng->generateRandomNumber(&seed);
-  Real r2 = m_rng->generateRandomNumber(&seed);
-  Real r3 = m_rng->generateRandomNumber(&seed);
+  Real r1 = m_rng->generateRandomNumber(m_particle_rns[p]);
+  Real r2 = m_rng->generateRandomNumber(m_particle_rns[p]);
+  Real r3 = m_rng->generateRandomNumber(m_particle_rns[p]);
 
   // Cut and fold cube into prism.
   if (r1 + r2 > 1.0) {
@@ -736,8 +722,6 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
   (r4 * center.y + r1 * point0.y + r2 * point1.y + r3 * point2.y);
   m_particle_coord[p][MD_DirZ] =
   (r4 * center.z + r1 * point0.z + r2 * point1.z + r3 * point2.z);
-
-  seed.seed(m_particle_rns[p]);
 }
 
 /**
@@ -782,19 +766,16 @@ sampleIsotropic(Particle p)
 {
   Real3 particle_dir_cos_p = m_particle_dir_cos[p];
 
-  RandomNumberGeneratorSeed seed = (m_rng->emptySeed() = m_particle_rns[p]);
-
-  particle_dir_cos_p[MD_DirG] = 1.0 - 2.0 * m_rng->generateRandomNumber(&seed);
+  particle_dir_cos_p[MD_DirG] = 1.0 - 2.0 * m_rng->generateRandomNumber(m_particle_rns[p]);
 
   Real sine_gamma = sqrt((1.0 - (particle_dir_cos_p[MD_DirG] * particle_dir_cos_p[MD_DirG])));
 
-  Real phi = PhysicalConstants::_pi * (2.0 * m_rng->generateRandomNumber(&seed) - 1.0);
+  Real phi = PhysicalConstants::_pi * (2.0 * m_rng->generateRandomNumber(m_particle_rns[p]) - 1.0);
 
   particle_dir_cos_p[MD_DirA] = sine_gamma * cos(phi);
   particle_dir_cos_p[MD_DirB] = sine_gamma * sin(phi);
 
   m_particle_dir_cos[p] = particle_dir_cos_p;
-  seed.seed(m_particle_rns[p]);
 }
 
 /**
