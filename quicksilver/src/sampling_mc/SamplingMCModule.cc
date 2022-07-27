@@ -290,8 +290,8 @@ sourceParticles()
   Int32UniqueArray particles_lid(particle_count);
   std::map<Int64, Int64> rng;
   Integer particle_index_g = 0;
-  ByteUniqueArray seed_cell = m_rng->emptySeedBUA();
-  ByteUniqueArray seed_partic = m_rng->emptySeedBUA();
+  ByteUniqueArray seed_cell = m_rng->emptySeed();
+  ByteUniqueArray seed_partic = m_rng->emptySeed();
 
   // On gérère les uniqueId et les graines des futures particules.
   // TODO : On a besoin d'un index global si parallélisation.

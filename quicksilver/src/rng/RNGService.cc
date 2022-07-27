@@ -27,16 +27,6 @@ initSeed()
 }
 
 bool RNGService::
-initSeed(RandomNumberGeneratorSeed seed)
-{
-  if (seed.sizeOfSeed() != m_size_of_seed) {
-    return false;
-  }
-  seed.seed(m_seed);
-  return true;
-}
-
-bool RNGService::
 initSeed(ByteArrayView seed)
 {
   RNGSeedHelper helper(seed);
@@ -47,26 +37,14 @@ initSeed(ByteArrayView seed)
   return true;
 }
 
-RandomNumberGeneratorSeed RNGService::
-seed()
-{
-  return RandomNumberGeneratorSeed(m_seed, m_size_of_seed);
-}
-
 ByteConstArrayView RNGService::
 viewSeed()
 {
   return RNGSeedHelper(&m_seed).view();
 }
 
-RandomNumberGeneratorSeed RNGService::
-emptySeed()
-{
-  return RandomNumberGeneratorSeed(0, m_size_of_seed);
-}
-
 ByteUniqueArray RNGService::
-emptySeedBUA()
+emptySeed()
 {
   return ByteUniqueArray(m_size_of_seed);
 }
@@ -79,44 +57,24 @@ neededSizeOfSeed()
 
 // This routine spawns a "child" random number seed from a "parent" random
 // number seed.
-RandomNumberGeneratorSeed RNGService::
-generateRandomSeed(Integer leap)
-{
-  Int64 spawned_seed = _hashState(m_seed);
-  // Bump the parent seed as that is what is expected from the interface.
-  generateRandomNumber(0);
-  return RandomNumberGeneratorSeed(spawned_seed, m_size_of_seed);
-}
-
 ByteUniqueArray RNGService::
-generateRandomSeedBUA(Integer leap)
+generateRandomSeed(Integer leap)
 {
   Int64 spawned_seed = _hashState(m_seed);
   generateRandomNumber(0);
   return RNGSeedHelper(&spawned_seed).copy();
 }
 
-RandomNumberGeneratorSeed RNGService::
-generateRandomSeed(RandomNumberGeneratorSeed* parent_seed, Integer leap)
-{
-  Int64 i_seed;
-  if (!parent_seed->seed(i_seed, false)) {
-    ARCANE_FATAL("Bad size of seed");
-  }
-
-  Int64 spawned_seed = _hashState(i_seed);
-  parent_seed->setSeed(i_seed);
-  // Bump the parent seed as that is what is expected from the interface.
-  generateRandomNumber(parent_seed, 0);
-  return RandomNumberGeneratorSeed(spawned_seed, m_size_of_seed);
-}
-
 ByteUniqueArray RNGService::
 generateRandomSeed(ByteArrayView parent_seed, Integer leap)
 {
+  if(parent_seed.size() != m_size_of_seed) {
+    ARCANE_FATAL("Erreur de taille de graine.");
+  }
   Int64* i_seed = (Int64*)parent_seed.data();
 
   Int64 spawned_seed = _hashState(*i_seed);
+  // Bump the parent seed as that is what is expected from the interface.
   generateRandomNumber(parent_seed, 0);
   return RNGSeedHelper(&spawned_seed).copy();
 }
@@ -130,20 +88,11 @@ generateRandomNumber(Integer leap)
 }
 
 Real RNGService::
-generateRandomNumber(RandomNumberGeneratorSeed* seed, Integer leap)
-{
-  Int64 i_seed;
-  if (!seed->seed(i_seed, false)) {
-    ARCANE_FATAL("Bad size of seed");
-  }
-  Real fin = _rngSample(&i_seed);
-  seed->setSeed(i_seed);
-  return fin;
-}
-
-Real RNGService::
 generateRandomNumber(ByteArrayView seed, Integer leap)
 {
+  if(seed.size() != m_size_of_seed) {
+    ARCANE_FATAL("Erreur de taille de graine.");
+  }
   Int64* i_seed = (Int64*)seed.data();
   Real fin = _rngSample(i_seed);
   return fin;
