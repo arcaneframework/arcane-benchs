@@ -169,8 +169,8 @@ loadBalancing()
   //pinfo() << "P" << mesh()->parallelMng()->commRank() << " - Load Balancing - Difficulté SD avant LB - Cell : " << sum_cell << " - Face : " << sum_face;
 
   // Pour les infos d'équilibrage, on affiche l'équilibrage effectuée avant l'itération (il y a donc un décallage ici).
-  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Cell Before (Proc)", sum_cell);
-  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Face Before (Proc)", sum_face);
+  m_csv->editElement(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Cell Before (Proc)", sum_cell);
+  m_csv->editElement(("Iteration " + String::fromNumber(m_global_iteration()+1)), "LB Sum Criterion Face Before (Proc)", sum_face);
 
   ILoadBalanceMng* lb = subDomain()->loadBalanceMng();
   lb->addCriterion(m_criterion_lb_cell);
@@ -205,8 +205,8 @@ afterLoadBalancing()
 
   // Pour les infos d'équilibrage, on affiche l'équilibrage effectuée avant le début de l'itération.
   // (ici en revanche, pas de décallages car cette méthode est appelée au début de l'itération d'après).
-  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Cell After (Proc)", sum_cell);
-  m_csv->editElem(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Face After (Proc)", sum_face);
+  m_csv->editElement(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Cell After (Proc)", sum_cell);
+  m_csv->editElement(("Iteration " + String::fromNumber(m_global_iteration())), "LB Sum Criterion Face After (Proc)", sum_face);
 
   m_criterion_lb_cell.fill(1.);
   m_criterion_lb_face.fill(1.);
@@ -256,7 +256,7 @@ endModule()
 
     // On ajoute une ligne "de séparation" dans le csv, puis le "Figure Of Merit".
     m_csv->addRow("---------------");
-    m_csv->addElemRow("Figure Of Merit", fOm);
+    m_csv->addElementInRow("Figure Of Merit", fOm);
   }
 
   // Si une des options est édité dans le .arc.
