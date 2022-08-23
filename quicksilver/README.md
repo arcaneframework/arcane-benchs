@@ -3,7 +3,7 @@
 
 ### How to use it?
 
-Build and Install Arcane (version 3.6.6+).
+Build and Install Arcane (version 3.7.3+).
 
 And:
 

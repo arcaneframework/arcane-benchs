@@ -50,7 +50,7 @@ class SamplingMCModule : public ArcaneSamplingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 1); }
 
  protected:
   void clearCrossSectionCache();
