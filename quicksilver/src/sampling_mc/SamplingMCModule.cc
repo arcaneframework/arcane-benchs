@@ -84,12 +84,11 @@ cycleSampling()
   Real time = m_timer->lastActivationTime();
   m_csv->addElementInRow("Sampling duration (Proc)", time);
 
-  if(parallelMng()->commSize() != 1) {
-    time = parallelMng()->reduce(Parallel::ReduceMax, time);
-    if(parallelMng()->commRank() == 0) {
-      m_csv->addElementInRow("Sampling duration (ReduceMax)", time);
-    }
+  time = parallelMng()->reduce(Parallel::ReduceMax, time);
+  if(parallelMng()->commRank() == 0) {
+    m_csv->addElementInRow("Sampling duration (ReduceMax)", time);
   }
+
   info() << "--- Sampling duration: " << time << " s ---";
 }
 
@@ -106,6 +105,42 @@ cycleFinalize()
   m_csv->editElementDown(m_rr);       // "m_rr (Proc)"
   m_csv->editElementDown(m_split);    // "m_split (Proc)"
 
+  Int64UniqueArray sum_int64 = {m_start, m_source_a, m_rr, m_split};
+
+  Int64UniqueArray min_int64 = sum_int64.clone();
+  Int64UniqueArray max_int64 = sum_int64.clone();
+
+  parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
+  parallelMng()->reduce(Parallel::ReduceMin, min_int64);
+  parallelMng()->reduce(Parallel::ReduceMax, max_int64);
+
+  Int64UniqueArray avg_int64 = sum_int64.clone();
+  for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
+
+  // L'ordre des lignes est donné dans QSModule.cc.
+  // Les editElementDown() au lieu de addElementInRow()
+  //  permettent d'accélerer cette partie.
+  m_csv->addElementInRow("m_start (ReduceSum)", sum_int64[0]);
+  m_csv->editElementDown(min_int64[0]); // "m_start (ReduceMin)"
+  m_csv->editElementDown(max_int64[0]); // "m_start (ReduceMax)"
+  m_csv->editElementDown(avg_int64[0]); // "m_start (ReduceAvg)"
+
+  m_csv->addElementInRow("m_source (ReduceSum)", sum_int64[1]);
+  m_csv->editElementDown(min_int64[1]); // "m_source (ReduceMin)"
+  m_csv->editElementDown(max_int64[1]); // "m_source (ReduceMax)"
+  m_csv->editElementDown(avg_int64[1]); // "m_source (ReduceAvg)"
+
+  m_csv->addElementInRow("m_rr (ReduceSum)", sum_int64[2]);
+  m_csv->editElementDown(min_int64[2]); // "m_rr (ReduceMin)"
+  m_csv->editElementDown(max_int64[2]); // "m_rr (ReduceMax)"
+  m_csv->editElementDown(avg_int64[2]); // "m_rr (ReduceAvg)"
+  
+  m_csv->addElementInRow("m_split (ReduceSum)", sum_int64[3]);
+  m_csv->editElementDown(min_int64[3]); // "m_split (ReduceMin)"
+  m_csv->editElementDown(max_int64[3]); // "m_split (ReduceMax)"
+  m_csv->editElementDown(avg_int64[3]); // "m_split (ReduceAvg)"
+
+
   if(commSize == 1){
     info() << "    Number of particles at beginning of cycle                    "
               "(m_start): "
@@ -121,54 +156,16 @@ cycleFinalize()
           << m_split;
   }
   else {
-    Int64UniqueArray sum_int64 = {m_start, m_source_a, m_rr, m_split};
+    #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
 
-    Int64UniqueArray min_int64 = sum_int64.clone();
-    Int64UniqueArray max_int64 = sum_int64.clone();
-
-    parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
-    parallelMng()->reduce(Parallel::ReduceMin, min_int64);
-    parallelMng()->reduce(Parallel::ReduceMax, max_int64);
-
-    if(parallelMng()->commRank() == 0) {
-
-      Int64UniqueArray avg_int64 = sum_int64.clone();
-      for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
-
-      // L'ordre des lignes est donné dans QSModule.cc.
-      // Les editElementDown() au lieu de addElementInRow()
-      //  permettent d'accélerer cette partie.
-      m_csv->addElementInRow("m_start (ReduceSum)", sum_int64[0]);
-      m_csv->editElementDown(min_int64[0]); // "m_start (ReduceMin)"
-      m_csv->editElementDown(max_int64[0]); // "m_start (ReduceMax)"
-      m_csv->editElementDown(avg_int64[0]); // "m_start (ReduceAvg)"
-
-      m_csv->addElementInRow("m_source (ReduceSum)", sum_int64[1]);
-      m_csv->editElementDown(min_int64[1]); // "m_source (ReduceMin)"
-      m_csv->editElementDown(max_int64[1]); // "m_source (ReduceMax)"
-      m_csv->editElementDown(avg_int64[1]); // "m_source (ReduceAvg)"
-
-      m_csv->addElementInRow("m_rr (ReduceSum)", sum_int64[2]);
-      m_csv->editElementDown(min_int64[2]); // "m_rr (ReduceMin)"
-      m_csv->editElementDown(max_int64[2]); // "m_rr (ReduceMax)"
-      m_csv->editElementDown(avg_int64[2]); // "m_rr (ReduceAvg)"
-      
-      m_csv->addElementInRow("m_split (ReduceSum)", sum_int64[3]);
-      m_csv->editElementDown(min_int64[3]); // "m_split (ReduceMin)"
-      m_csv->editElementDown(max_int64[3]); // "m_split (ReduceMax)"
-      m_csv->editElementDown(avg_int64[3]); // "m_split (ReduceAvg)"
-
-      #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
-
-      info() << "    Number of particles at beginning of cycle                    "
-                "(m_start): " << infos(0);
-      info() << "    Number of particles sourced in population control           "
-                "(m_source): " << infos(1);
-      info() << "    Number of particles Russian Rouletted in population control   "
-                "  (m_rr): " << infos(2);
-      info() << "    Number of particles split in population control              "
-                "(m_split): " << infos(3);
-    }
+    info() << "    Number of particles at beginning of cycle                    "
+              "(m_start): " << infos(0);
+    info() << "    Number of particles sourced in population control           "
+              "(m_source): " << infos(1);
+    info() << "    Number of particles Russian Rouletted in population control   "
+              "  (m_rr): " << infos(2);
+    info() << "    Number of particles split in population control              "
+              "(m_split): " << infos(3);
   }
 
   m_start = 0;

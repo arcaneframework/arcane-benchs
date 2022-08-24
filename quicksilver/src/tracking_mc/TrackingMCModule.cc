@@ -70,11 +70,9 @@ cycleTracking()
   Real time = m_timer->lastActivationTime();
   m_csv->addElementInRow("Tracking duration (Proc)", time);
 
-  if(parallelMng()->commSize() != 1) {
-    time = parallelMng()->reduce(Parallel::ReduceMax, time);
-    if(parallelMng()->commRank() == 0) {
-      m_csv->addElementInRow("Tracking duration (ReduceMax)", time);
-    }
+  time = parallelMng()->reduce(Parallel::ReduceMax, time);
+  if(parallelMng()->commRank() == 0) {
+    m_csv->addElementInRow("Tracking duration (ReduceMax)", time);
   }
 
   info() << "--- Tracking duration: " << time << " s ---";
@@ -96,8 +94,6 @@ cycleFinalize()
     }
   }
 
-  Integer commSize = parallelMng()->commSize();
-
   m_csv->addElementInRow("m_absorb (Proc)", m_absorb_a);
   m_csv->editElementDown(m_scatter_a); // "m_scatter (Proc)"
   m_csv->editElementDown(m_fission_a); // "m_fission (Proc)"
@@ -110,6 +106,99 @@ cycleFinalize()
   m_csv->editElementDown(m_incoming); // "m_incoming (Proc)"
   m_csv->editElementDown(m_outgoing); // "m_outgoing (Proc)"
   m_csv->editElementDown(sum_scalar_flux_tally); // "sum_scalar_flux_tally (Proc)"
+
+  Int64UniqueArray sum_int64 = 
+    {m_absorb_a, m_scatter_a, m_fission_a, m_produce_a, m_collision_a, m_escape, m_census_a,
+    m_num_segments_a, m_end, m_incoming, m_outgoing};
+
+  Int64UniqueArray min_int64 = sum_int64.clone();
+  Int64UniqueArray max_int64 = sum_int64.clone();
+
+  Real sum_real = sum_scalar_flux_tally;
+  Real min_real = sum_scalar_flux_tally;
+  Real max_real = sum_scalar_flux_tally;
+
+  parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
+  parallelMng()->reduce(Parallel::ReduceMin, min_int64);
+  parallelMng()->reduce(Parallel::ReduceMax, max_int64);
+
+  sum_real = parallelMng()->reduce(Parallel::ReduceSum, sum_real);
+  min_real = parallelMng()->reduce(Parallel::ReduceMin, min_real);
+  max_real = parallelMng()->reduce(Parallel::ReduceMax, max_real);
+
+  Integer commSize = parallelMng()->commSize();
+
+  if(mesh()->parallelMng()->commRank() == 0) {
+
+    // TODO : Real ou Int64 ?
+    Int64UniqueArray avg_int64 = sum_int64.clone();
+    for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
+
+    // L'ordre des lignes est donné dans QSModule.cc.
+    // Les editElementDown() au lieu de addElementInRow()
+    //  permettent d'accélerer cette partie.
+    // On peut mettre des addElementInRow() à chaque fois
+    // mais chaque addElementInRow() effectue une recherche de 
+    // string dans un tableau...
+    m_csv->addElementInRow("m_absorb (ReduceSum)", sum_int64[0]);
+    m_csv->editElementDown(min_int64[0]); // "m_absorb (ReduceMin)"
+    m_csv->editElementDown(max_int64[0]); // "m_absorb (ReduceMax)"
+    m_csv->editElementDown(avg_int64[0]); // "m_absorb (ReduceAvg)"
+
+    m_csv->addElementInRow("m_scatter (ReduceSum)", sum_int64[1]);
+    m_csv->editElementDown(min_int64[1]); // "m_scatter (ReduceMin)"
+    m_csv->editElementDown(max_int64[1]); // "m_scatter (ReduceMax)"
+    m_csv->editElementDown(avg_int64[1]); // "m_scatter (ReduceAvg)"
+
+    m_csv->addElementInRow("m_fission (ReduceSum)", sum_int64[2]);
+    m_csv->editElementDown(min_int64[2]); // "m_fission (ReduceMin)"
+    m_csv->editElementDown(max_int64[2]); // "m_fission (ReduceMax)"
+    m_csv->editElementDown(avg_int64[2]); // "m_fission (ReduceAvg)"
+
+    m_csv->addElementInRow("m_produce (ReduceSum)", sum_int64[3]);
+    m_csv->editElementDown(min_int64[3]); // "m_produce (ReduceMin)"
+    m_csv->editElementDown(max_int64[3]); // "m_produce (ReduceMax)"
+    m_csv->editElementDown(avg_int64[3]); // "m_produce (ReduceAvg)"
+
+    m_csv->addElementInRow("m_collision (ReduceSum)", sum_int64[4]);
+    m_csv->editElementDown(min_int64[4]); // "m_collision (ReduceMin)"
+    m_csv->editElementDown(max_int64[4]); // "m_collision (ReduceMax)"
+    m_csv->editElementDown(avg_int64[4]); // "m_collision (ReduceAvg)"
+
+    m_csv->addElementInRow("m_escape (ReduceSum)", sum_int64[5]);
+    m_csv->editElementDown(min_int64[5]); // "m_escape (ReduceMin)"
+    m_csv->editElementDown(max_int64[5]); // "m_escape (ReduceMax)"
+    m_csv->editElementDown(avg_int64[5]); // "m_escape (ReduceAvg)"
+
+    m_csv->addElementInRow("m_census (ReduceSum)", sum_int64[6]);
+    m_csv->editElementDown(min_int64[6]); // "m_census (ReduceMin)"
+    m_csv->editElementDown(max_int64[6]); // "m_census (ReduceMax)"
+    m_csv->editElementDown(avg_int64[6]); // "m_census (ReduceAvg)"
+
+    m_csv->addElementInRow("m_num_segments (ReduceSum)", sum_int64[7]);
+    m_csv->editElementDown(min_int64[7]); // "m_num_segments (ReduceMin)"
+    m_csv->editElementDown(max_int64[7]); // "m_num_segments (ReduceMax)"
+    m_csv->editElementDown(avg_int64[7]); // "m_num_segments (ReduceAvg)"
+
+    m_csv->addElementInRow("m_end (ReduceSum)", sum_int64[8]);
+    m_csv->editElementDown(min_int64[8]); // "m_end (ReduceMin)"
+    m_csv->editElementDown(max_int64[8]); // "m_end (ReduceMax)"
+    m_csv->editElementDown(avg_int64[8]); // "m_end (ReduceAvg)"
+
+    m_csv->addElementInRow("m_incoming (ReduceSum)", sum_int64[9]);
+    m_csv->editElementDown(min_int64[9]); // "m_incoming (ReduceMin)"
+    m_csv->editElementDown(max_int64[9]); // "m_incoming (ReduceMax)"
+    m_csv->editElementDown(avg_int64[9]); // "m_incoming (ReduceAvg)"
+
+    m_csv->addElementInRow("m_outgoing (ReduceSum)", sum_int64[10]);
+    m_csv->editElementDown(min_int64[10]); // "m_outgoing (ReduceMin)"
+    m_csv->editElementDown(max_int64[10]); // "m_outgoing (ReduceMax)"
+    m_csv->editElementDown(avg_int64[10]); // "m_outgoing (ReduceAvg)"
+
+    m_csv->addElementInRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
+    m_csv->editElementDown(min_real); // "sum_scalar_flux_tally (ReduceMin)"
+    m_csv->editElementDown(max_real); // "sum_scalar_flux_tally (ReduceMax)"
+    m_csv->editElementDown(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
 
   if(commSize == 1){
     info() << "    Number of particles absorbed                                "
@@ -150,98 +239,6 @@ cycleFinalize()
           << sum_scalar_flux_tally;
   }
   else {
-    Int64UniqueArray sum_int64 = 
-      {m_absorb_a, m_scatter_a, m_fission_a, m_produce_a, m_collision_a, m_escape, m_census_a,
-      m_num_segments_a, m_end, m_incoming, m_outgoing};
-
-    Int64UniqueArray min_int64 = sum_int64.clone();
-    Int64UniqueArray max_int64 = sum_int64.clone();
-
-    Real sum_real = sum_scalar_flux_tally;
-    Real min_real = sum_scalar_flux_tally;
-    Real max_real = sum_scalar_flux_tally;
-
-    parallelMng()->reduce(Parallel::ReduceSum, sum_int64);
-    parallelMng()->reduce(Parallel::ReduceMin, min_int64);
-    parallelMng()->reduce(Parallel::ReduceMax, max_int64);
-
-    sum_real = parallelMng()->reduce(Parallel::ReduceSum, sum_real);
-    min_real = parallelMng()->reduce(Parallel::ReduceMin, min_real);
-    max_real = parallelMng()->reduce(Parallel::ReduceMax, max_real);
-
-    if(mesh()->parallelMng()->commRank() == 0) {
-
-      // TODO : Real ou Int64 ?
-      Int64UniqueArray avg_int64 = sum_int64.clone();
-      for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
-
-      // L'ordre des lignes est donné dans QSModule.cc.
-      // Les editElementDown() au lieu de addElementInRow()
-      //  permettent d'accélerer cette partie.
-      // On peut mettre des addElementInRow() à chaque fois
-      // mais chaque addElementInRow() effectue une recherche de 
-      // string dans un tableau...
-      m_csv->addElementInRow("m_absorb (ReduceSum)", sum_int64[0]);
-      m_csv->editElementDown(min_int64[0]); // "m_absorb (ReduceMin)"
-      m_csv->editElementDown(max_int64[0]); // "m_absorb (ReduceMax)"
-      m_csv->editElementDown(avg_int64[0]); // "m_absorb (ReduceAvg)"
-
-      m_csv->addElementInRow("m_scatter (ReduceSum)", sum_int64[1]);
-      m_csv->editElementDown(min_int64[1]); // "m_scatter (ReduceMin)"
-      m_csv->editElementDown(max_int64[1]); // "m_scatter (ReduceMax)"
-      m_csv->editElementDown(avg_int64[1]); // "m_scatter (ReduceAvg)"
-
-      m_csv->addElementInRow("m_fission (ReduceSum)", sum_int64[2]);
-      m_csv->editElementDown(min_int64[2]); // "m_fission (ReduceMin)"
-      m_csv->editElementDown(max_int64[2]); // "m_fission (ReduceMax)"
-      m_csv->editElementDown(avg_int64[2]); // "m_fission (ReduceAvg)"
-
-      m_csv->addElementInRow("m_produce (ReduceSum)", sum_int64[3]);
-      m_csv->editElementDown(min_int64[3]); // "m_produce (ReduceMin)"
-      m_csv->editElementDown(max_int64[3]); // "m_produce (ReduceMax)"
-      m_csv->editElementDown(avg_int64[3]); // "m_produce (ReduceAvg)"
-
-      m_csv->addElementInRow("m_collision (ReduceSum)", sum_int64[4]);
-      m_csv->editElementDown(min_int64[4]); // "m_collision (ReduceMin)"
-      m_csv->editElementDown(max_int64[4]); // "m_collision (ReduceMax)"
-      m_csv->editElementDown(avg_int64[4]); // "m_collision (ReduceAvg)"
-
-      m_csv->addElementInRow("m_escape (ReduceSum)", sum_int64[5]);
-      m_csv->editElementDown(min_int64[5]); // "m_escape (ReduceMin)"
-      m_csv->editElementDown(max_int64[5]); // "m_escape (ReduceMax)"
-      m_csv->editElementDown(avg_int64[5]); // "m_escape (ReduceAvg)"
-
-      m_csv->addElementInRow("m_census (ReduceSum)", sum_int64[6]);
-      m_csv->editElementDown(min_int64[6]); // "m_census (ReduceMin)"
-      m_csv->editElementDown(max_int64[6]); // "m_census (ReduceMax)"
-      m_csv->editElementDown(avg_int64[6]); // "m_census (ReduceAvg)"
-
-      m_csv->addElementInRow("m_num_segments (ReduceSum)", sum_int64[7]);
-      m_csv->editElementDown(min_int64[7]); // "m_num_segments (ReduceMin)"
-      m_csv->editElementDown(max_int64[7]); // "m_num_segments (ReduceMax)"
-      m_csv->editElementDown(avg_int64[7]); // "m_num_segments (ReduceAvg)"
-
-      m_csv->addElementInRow("m_end (ReduceSum)", sum_int64[8]);
-      m_csv->editElementDown(min_int64[8]); // "m_end (ReduceMin)"
-      m_csv->editElementDown(max_int64[8]); // "m_end (ReduceMax)"
-      m_csv->editElementDown(avg_int64[8]); // "m_end (ReduceAvg)"
-
-      m_csv->addElementInRow("m_incoming (ReduceSum)", sum_int64[9]);
-      m_csv->editElementDown(min_int64[9]); // "m_incoming (ReduceMin)"
-      m_csv->editElementDown(max_int64[9]); // "m_incoming (ReduceMax)"
-      m_csv->editElementDown(avg_int64[9]); // "m_incoming (ReduceAvg)"
-
-      m_csv->addElementInRow("m_outgoing (ReduceSum)", sum_int64[10]);
-      m_csv->editElementDown(min_int64[10]); // "m_outgoing (ReduceMin)"
-      m_csv->editElementDown(max_int64[10]); // "m_outgoing (ReduceMax)"
-      m_csv->editElementDown(avg_int64[10]); // "m_outgoing (ReduceAvg)"
-
-      m_csv->addElementInRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
-      m_csv->editElementDown(min_real); // "sum_scalar_flux_tally (ReduceMin)"
-      m_csv->editElementDown(max_real); // "sum_scalar_flux_tally (ReduceMax)"
-      m_csv->editElementDown(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
-
-
       #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
 
       info() << "    Number of particles absorbed                                "

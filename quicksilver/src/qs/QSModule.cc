@@ -36,12 +36,25 @@ initModule()
 
   // On récupère un pointeur vers le singleton csv.
   m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+  m_csv_compare = ServiceBuilder<ISimpleTableComparator>(subDomain()).getSingleton();
 
   // Initialisation de la sortie CSV.
+  String csvName, csvDir;
+
   if(options()->getCsvName() != "")
-    m_csv->init(options()->getCsvName());
+    csvName = options()->getCsvName();
   else
-    m_csv->init("QAMA_P@proc_id@");
+    csvName = "QAMA_P@proc_id@";
+
+  // On regarde si on a le nom du répertoire.
+  // Sinon, on donne une emplacement par défaut.
+  if(options()->getCsvDir() != "")
+    csvDir = options()->getCsvDir();
+  else
+    csvDir = "csv_output";
+
+  m_csv->init(csvName, csvDir);
+
 
   // On ajoute les colonnes (une par itération).
   StringUniqueArray columns_name(options()->getNSteps());
@@ -83,8 +96,7 @@ initModule()
     });
   }
 
-  // Si on a une execution parallèle, on ajoute aussi les min, max et arg des infos.
-  if(parallelMng()->commSize() != 1 && parallelMng()->commRank() == 0) {
+  if(parallelMng()->commRank() == 0) {
     m_csv->addRows(StringUniqueArray {
       "Sampling duration (ReduceMax)",
       "Tracking duration (ReduceMax)",
@@ -259,21 +271,58 @@ endModule()
     m_csv->addElementInRow("Figure Of Merit", fOm);
   }
 
+  if(options()->getCsvReferenceDir() != "") {
+    info() << "Init comparator";
+    m_csv_compare->init(m_csv);
+    if(options()->getCsvReferenceDir() != "default") {
+      info() << "Set reference directory";
+      m_csv_compare->editRootDirectory(Directory(options()->getCsvReferenceDir()));
+    }
+    // Si demande d'écriture.
+    if(options()->getCsvOverwriteReference()) {
+      info() << "Write reference file (only P0)";
+      m_csv_compare->writeReferenceFile(0);
+    }
+    // Sinon lecture.
+    else {
+      // Si le fichier existe, comparaison.
+      if(m_csv_compare->isReferenceExist(0)) {
+        info() << "Launch comparator with reference file (only P0)";
+        m_csv_compare->editRegexRows("^.*ReduceSum.*$");
+        m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
+        m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
+        m_csv_compare->isAnArrayExclusiveRows(true);
+
+        if(!m_csv_compare->compareWithReference(0, 0.01, false)){
+          error() << "Differents values found";
+        }
+
+        else if(parallelMng()->commRank() == 0){
+          info() << "Same values!!!";
+        }
+      }
+      // Sinon erreur.
+      else {
+        error() << "Reference file not found";
+      }
+    }
+    info() << "End comparator";
+
+  }
+
   // Si une des options est édité dans le .arc.
   // À noter que le nom du fichier .csv est le nom du tableau (initialisé dans initModule()).
   if(options()->getCsvName() != "" || options()->getCsvDir() != "") {
-    // On regarde si on a le nom du répertoire.
-    // Sinon, on donne une emplacement par défaut.
-    String path;
-    if(options()->getCsvDir() != "")
-      path = options()->getCsvDir();
-    else
-      path = "./csv_output/";
-
-    //m_csv->print();
-    m_csv->writeFile(path);
-    
+    info() << "Begin write CSV";
+    if(!m_csv->writeFile()) error() << "Error write CSV";
+    info() << "End write CSV";
   }
+}
+
+void QSModule::
+compareWithRef()
+{
+
 }
 
 /*---------------------------------------------------------------------------*/

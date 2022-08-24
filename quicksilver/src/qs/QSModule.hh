@@ -22,6 +22,7 @@
 #include <arcane/ILoadBalanceMng.h>
 #include <arcane/IMeshPartitionerBase.h>
 #include <arcane/ISimpleTableOutput.h>
+#include <arcane/ISimpleTableComparator.h>
 
 #include "structEnum.hh"
 
@@ -65,9 +66,11 @@ public ArcaneQSObject
   void initMesh();
   void loadBalancing();
   ParticleEvent getBoundaryCondition(const Integer& pos);
+  void compareWithRef();
 
 protected:
   ISimpleTableOutput* m_csv;
+  ISimpleTableComparator* m_csv_compare;
 };
 
 /*---------------------------------------------------------------------------*/

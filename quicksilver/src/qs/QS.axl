@@ -231,6 +231,19 @@
       </description>
     </simple>
 
+    <simple name="csvReferenceDir" type="string" default="">
+      <description>
+        TODO
+      </description>
+    </simple>
+
+    <simple name="csvOverwriteReference" type="bool" default="false">
+      <description>
+        TODO
+      </description>
+    </simple>
+
+
     <simple name="loadBalancingMat" type="bool" default="false">
       <description>
         Enable load balancing before compute loop (materials properties based).
