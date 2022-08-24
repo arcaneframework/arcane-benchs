@@ -10,7 +10,7 @@
 #include <cstdlib>
 #include <string>
 
-#include "rng/IRandomNumberGenerator.hh"
+#include <arcane/IRandomNumberGenerator.h>
 
 using namespace Arcane;
 
@@ -54,7 +54,7 @@ class NuclearDataReaction
   Real getCrossSection(Integer group);
 
   void sampleCollision(Real incidentEnergy, Real material_mass, RealUniqueArray& energyOut,
-                       RealUniqueArray& angleOut, Integer& nOut, Int64* seed,
+                       RealUniqueArray& angleOut, Integer& nOut, ByteArrayView seed,
                        Integer max_production_size, IRandomNumberGenerator* rng);
 
   RealUniqueArray _crossSection; //!< tabular data for microscopic cross section

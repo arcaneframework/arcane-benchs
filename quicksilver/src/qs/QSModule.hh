@@ -21,8 +21,8 @@
 #include <arcane/ServiceBuilder.h>
 #include <arcane/ILoadBalanceMng.h>
 #include <arcane/IMeshPartitionerBase.h>
+#include <arcane/ISimpleTableOutput.h>
 
-#include "simple_table_output/ISimpleTableOutput.hh"
 #include "structEnum.hh"
 
 enum eBoundaryCondition
@@ -59,7 +59,7 @@ public ArcaneQSObject
   void afterLoadBalancing() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 4, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 4, 1); }
 
  protected:
   void initMesh();

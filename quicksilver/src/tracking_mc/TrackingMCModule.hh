@@ -27,11 +27,11 @@
 #include <arcane/materials/MeshMaterialVariableRef.h>
 #include <arccore/concurrency/Mutex.h>
 #include <arcane/ServiceBuilder.h>
+#include <arcane/ISimpleTableOutput.h>
+#include <arcane/IRandomNumberGenerator.h>
 
 #include "structEnum.hh"
 #include "NuclearData.hh"
-#include "simple_table_output/ISimpleTableOutput.hh"
-#include "rng/IRandomNumberGenerator.hh"
 
 enum eShape
 {
@@ -98,7 +98,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   void cycleFinalize() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 0); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 8, 1); }
 
  protected:
   void tracking();

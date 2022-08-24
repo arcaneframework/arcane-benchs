@@ -68,12 +68,12 @@ cycleTracking()
 
   
   Real time = m_timer->lastActivationTime();
-  m_csv->addElemRow("Tracking duration (Proc)", time);
+  m_csv->addElementInRow("Tracking duration (Proc)", time);
 
   if(parallelMng()->commSize() != 1) {
     time = parallelMng()->reduce(Parallel::ReduceMax, time);
     if(parallelMng()->commRank() == 0) {
-      m_csv->addElemRow("Tracking duration (ReduceMax)", time);
+      m_csv->addElementInRow("Tracking duration (ReduceMax)", time);
     }
   }
 
@@ -98,18 +98,18 @@ cycleFinalize()
 
   Integer commSize = parallelMng()->commSize();
 
-  m_csv->addElemRow("m_absorb (Proc)", m_absorb_a);
-  m_csv->editElemDown(m_scatter_a); // "m_scatter (Proc)"
-  m_csv->editElemDown(m_fission_a); // "m_fission (Proc)"
-  m_csv->editElemDown(m_produce_a); // "m_produce (Proc)"
-  m_csv->editElemDown(m_collision_a); // "m_collision (Proc)"
-  m_csv->editElemDown(m_escape); // "m_escape (Proc)"
-  m_csv->editElemDown(m_census_a); // "m_census (Proc)"
-  m_csv->editElemDown(m_num_segments_a); // "m_num_segments (Proc)"
-  m_csv->editElemDown(m_end); // "m_end (Proc)"
-  m_csv->editElemDown(m_incoming); // "m_incoming (Proc)"
-  m_csv->editElemDown(m_outgoing); // "m_outgoing (Proc)"
-  m_csv->editElemDown(sum_scalar_flux_tally); // "sum_scalar_flux_tally (Proc)"
+  m_csv->addElementInRow("m_absorb (Proc)", m_absorb_a);
+  m_csv->editElementDown(m_scatter_a); // "m_scatter (Proc)"
+  m_csv->editElementDown(m_fission_a); // "m_fission (Proc)"
+  m_csv->editElementDown(m_produce_a); // "m_produce (Proc)"
+  m_csv->editElementDown(m_collision_a); // "m_collision (Proc)"
+  m_csv->editElementDown(m_escape); // "m_escape (Proc)"
+  m_csv->editElementDown(m_census_a); // "m_census (Proc)"
+  m_csv->editElementDown(m_num_segments_a); // "m_num_segments (Proc)"
+  m_csv->editElementDown(m_end); // "m_end (Proc)"
+  m_csv->editElementDown(m_incoming); // "m_incoming (Proc)"
+  m_csv->editElementDown(m_outgoing); // "m_outgoing (Proc)"
+  m_csv->editElementDown(sum_scalar_flux_tally); // "sum_scalar_flux_tally (Proc)"
 
   if(commSize == 1){
     info() << "    Number of particles absorbed                                "
@@ -176,70 +176,70 @@ cycleFinalize()
       for(Integer i = 0; i < avg_int64.size(); i++) avg_int64[i] /= commSize;
 
       // L'ordre des lignes est donné dans QSModule.cc.
-      // Les editElemDown() au lieu de addElemRow()
+      // Les editElementDown() au lieu de addElementInRow()
       //  permettent d'accélerer cette partie.
-      // On peut mettre des addElemRow() à chaque fois
-      // mais chaque addElemRow() effectue une recherche de 
+      // On peut mettre des addElementInRow() à chaque fois
+      // mais chaque addElementInRow() effectue une recherche de 
       // string dans un tableau...
-      m_csv->addElemRow("m_absorb (ReduceSum)", sum_int64[0]);
-      m_csv->editElemDown(min_int64[0]); // "m_absorb (ReduceMin)"
-      m_csv->editElemDown(max_int64[0]); // "m_absorb (ReduceMax)"
-      m_csv->editElemDown(avg_int64[0]); // "m_absorb (ReduceAvg)"
+      m_csv->addElementInRow("m_absorb (ReduceSum)", sum_int64[0]);
+      m_csv->editElementDown(min_int64[0]); // "m_absorb (ReduceMin)"
+      m_csv->editElementDown(max_int64[0]); // "m_absorb (ReduceMax)"
+      m_csv->editElementDown(avg_int64[0]); // "m_absorb (ReduceAvg)"
 
-      m_csv->addElemRow("m_scatter (ReduceSum)", sum_int64[1]);
-      m_csv->editElemDown(min_int64[1]); // "m_scatter (ReduceMin)"
-      m_csv->editElemDown(max_int64[1]); // "m_scatter (ReduceMax)"
-      m_csv->editElemDown(avg_int64[1]); // "m_scatter (ReduceAvg)"
+      m_csv->addElementInRow("m_scatter (ReduceSum)", sum_int64[1]);
+      m_csv->editElementDown(min_int64[1]); // "m_scatter (ReduceMin)"
+      m_csv->editElementDown(max_int64[1]); // "m_scatter (ReduceMax)"
+      m_csv->editElementDown(avg_int64[1]); // "m_scatter (ReduceAvg)"
 
-      m_csv->addElemRow("m_fission (ReduceSum)", sum_int64[2]);
-      m_csv->editElemDown(min_int64[2]); // "m_fission (ReduceMin)"
-      m_csv->editElemDown(max_int64[2]); // "m_fission (ReduceMax)"
-      m_csv->editElemDown(avg_int64[2]); // "m_fission (ReduceAvg)"
+      m_csv->addElementInRow("m_fission (ReduceSum)", sum_int64[2]);
+      m_csv->editElementDown(min_int64[2]); // "m_fission (ReduceMin)"
+      m_csv->editElementDown(max_int64[2]); // "m_fission (ReduceMax)"
+      m_csv->editElementDown(avg_int64[2]); // "m_fission (ReduceAvg)"
 
-      m_csv->addElemRow("m_produce (ReduceSum)", sum_int64[3]);
-      m_csv->editElemDown(min_int64[3]); // "m_produce (ReduceMin)"
-      m_csv->editElemDown(max_int64[3]); // "m_produce (ReduceMax)"
-      m_csv->editElemDown(avg_int64[3]); // "m_produce (ReduceAvg)"
+      m_csv->addElementInRow("m_produce (ReduceSum)", sum_int64[3]);
+      m_csv->editElementDown(min_int64[3]); // "m_produce (ReduceMin)"
+      m_csv->editElementDown(max_int64[3]); // "m_produce (ReduceMax)"
+      m_csv->editElementDown(avg_int64[3]); // "m_produce (ReduceAvg)"
 
-      m_csv->addElemRow("m_collision (ReduceSum)", sum_int64[4]);
-      m_csv->editElemDown(min_int64[4]); // "m_collision (ReduceMin)"
-      m_csv->editElemDown(max_int64[4]); // "m_collision (ReduceMax)"
-      m_csv->editElemDown(avg_int64[4]); // "m_collision (ReduceAvg)"
+      m_csv->addElementInRow("m_collision (ReduceSum)", sum_int64[4]);
+      m_csv->editElementDown(min_int64[4]); // "m_collision (ReduceMin)"
+      m_csv->editElementDown(max_int64[4]); // "m_collision (ReduceMax)"
+      m_csv->editElementDown(avg_int64[4]); // "m_collision (ReduceAvg)"
 
-      m_csv->addElemRow("m_escape (ReduceSum)", sum_int64[5]);
-      m_csv->editElemDown(min_int64[5]); // "m_escape (ReduceMin)"
-      m_csv->editElemDown(max_int64[5]); // "m_escape (ReduceMax)"
-      m_csv->editElemDown(avg_int64[5]); // "m_escape (ReduceAvg)"
+      m_csv->addElementInRow("m_escape (ReduceSum)", sum_int64[5]);
+      m_csv->editElementDown(min_int64[5]); // "m_escape (ReduceMin)"
+      m_csv->editElementDown(max_int64[5]); // "m_escape (ReduceMax)"
+      m_csv->editElementDown(avg_int64[5]); // "m_escape (ReduceAvg)"
 
-      m_csv->addElemRow("m_census (ReduceSum)", sum_int64[6]);
-      m_csv->editElemDown(min_int64[6]); // "m_census (ReduceMin)"
-      m_csv->editElemDown(max_int64[6]); // "m_census (ReduceMax)"
-      m_csv->editElemDown(avg_int64[6]); // "m_census (ReduceAvg)"
+      m_csv->addElementInRow("m_census (ReduceSum)", sum_int64[6]);
+      m_csv->editElementDown(min_int64[6]); // "m_census (ReduceMin)"
+      m_csv->editElementDown(max_int64[6]); // "m_census (ReduceMax)"
+      m_csv->editElementDown(avg_int64[6]); // "m_census (ReduceAvg)"
 
-      m_csv->addElemRow("m_num_segments (ReduceSum)", sum_int64[7]);
-      m_csv->editElemDown(min_int64[7]); // "m_num_segments (ReduceMin)"
-      m_csv->editElemDown(max_int64[7]); // "m_num_segments (ReduceMax)"
-      m_csv->editElemDown(avg_int64[7]); // "m_num_segments (ReduceAvg)"
+      m_csv->addElementInRow("m_num_segments (ReduceSum)", sum_int64[7]);
+      m_csv->editElementDown(min_int64[7]); // "m_num_segments (ReduceMin)"
+      m_csv->editElementDown(max_int64[7]); // "m_num_segments (ReduceMax)"
+      m_csv->editElementDown(avg_int64[7]); // "m_num_segments (ReduceAvg)"
 
-      m_csv->addElemRow("m_end (ReduceSum)", sum_int64[8]);
-      m_csv->editElemDown(min_int64[8]); // "m_end (ReduceMin)"
-      m_csv->editElemDown(max_int64[8]); // "m_end (ReduceMax)"
-      m_csv->editElemDown(avg_int64[8]); // "m_end (ReduceAvg)"
+      m_csv->addElementInRow("m_end (ReduceSum)", sum_int64[8]);
+      m_csv->editElementDown(min_int64[8]); // "m_end (ReduceMin)"
+      m_csv->editElementDown(max_int64[8]); // "m_end (ReduceMax)"
+      m_csv->editElementDown(avg_int64[8]); // "m_end (ReduceAvg)"
 
-      m_csv->addElemRow("m_incoming (ReduceSum)", sum_int64[9]);
-      m_csv->editElemDown(min_int64[9]); // "m_incoming (ReduceMin)"
-      m_csv->editElemDown(max_int64[9]); // "m_incoming (ReduceMax)"
-      m_csv->editElemDown(avg_int64[9]); // "m_incoming (ReduceAvg)"
+      m_csv->addElementInRow("m_incoming (ReduceSum)", sum_int64[9]);
+      m_csv->editElementDown(min_int64[9]); // "m_incoming (ReduceMin)"
+      m_csv->editElementDown(max_int64[9]); // "m_incoming (ReduceMax)"
+      m_csv->editElementDown(avg_int64[9]); // "m_incoming (ReduceAvg)"
 
-      m_csv->addElemRow("m_outgoing (ReduceSum)", sum_int64[10]);
-      m_csv->editElemDown(min_int64[10]); // "m_outgoing (ReduceMin)"
-      m_csv->editElemDown(max_int64[10]); // "m_outgoing (ReduceMax)"
-      m_csv->editElemDown(avg_int64[10]); // "m_outgoing (ReduceAvg)"
+      m_csv->addElementInRow("m_outgoing (ReduceSum)", sum_int64[10]);
+      m_csv->editElementDown(min_int64[10]); // "m_outgoing (ReduceMin)"
+      m_csv->editElementDown(max_int64[10]); // "m_outgoing (ReduceMax)"
+      m_csv->editElementDown(avg_int64[10]); // "m_outgoing (ReduceAvg)"
 
-      m_csv->addElemRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
-      m_csv->editElemDown(min_real); // "sum_scalar_flux_tally (ReduceMin)"
-      m_csv->editElemDown(max_real); // "sum_scalar_flux_tally (ReduceMax)"
-      m_csv->editElemDown(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
+      m_csv->addElementInRow("sum_scalar_flux_tally (ReduceSum)", sum_real);
+      m_csv->editElementDown(min_real); // "sum_scalar_flux_tally (ReduceMin)"
+      m_csv->editElementDown(max_real); // "sum_scalar_flux_tally (ReduceMax)"
+      m_csv->editElementDown(sum_real/commSize); // "sum_scalar_flux_tally (ReduceAvg)"
 
 
       #define infos(pos) sum_int64[pos] << ", [" << min_int64[pos] << ", " << max_int64[pos] << ", " << avg_int64[pos] << "]"
@@ -885,7 +885,7 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
   if (particle_num_mean_free_path_particle == 0.0) {
     // Sample the number of mean-free-paths remaining before
     // the next collision from an exponential distribution.
-    Real random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+    Real random_number = m_rng->generateRandomNumber(m_particle_rns[particle]);
 
     particle_num_mean_free_path_particle = -1.0 * std::log(random_number);
   }
@@ -1000,7 +1000,8 @@ collisionEvent(Particle particle)
   Cell cell = particle.cell();
 
   // Pick the isotope and reaction.
-  Real random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+  Real random_number = m_rng->generateRandomNumber(m_particle_rns[particle]);
+
   const Real total_cross_section = m_particle_total_cross_section[particle];
   Real current_cross_section = total_cross_section * random_number;
   const Integer particle_ene_grp_particle = m_particle_ene_grp[particle];
@@ -1041,7 +1042,7 @@ collisionEvent(Particle particle)
   const Real mat_mass = m_mass[cell];
 
   m_nuclearData->_isotopes[selected_unique_number]._species[0]._reactions[selected_react].sampleCollision(
-  m_particle_kin_ene[particle], mat_mass, energyOut, angleOut, nOut, &(m_particle_rns[particle]), max_production_size, m_rng);
+  m_particle_kin_ene[particle], mat_mass, energyOut, angleOut, nOut, m_particle_rns[particle], max_production_size, m_rng);
 
   m_collision_a++;
 
@@ -1074,7 +1075,6 @@ collisionEvent(Particle particle)
 #ifndef QS_LEGACY_COMPATIBILITY
     m_absorb_a++;
 #endif
-
     return 0;
   }
 
@@ -1101,11 +1101,14 @@ collisionEvent(Particle particle)
     m_fission_a++;
     m_produce_a += nOut;
 #endif
-
     GlobalMutex::ScopedLock(m_mutex_extra);
     for (Integer i = 1; i < nOut; i++) {
-      Int64 rns = m_rng->randomSeedGenerator(&m_particle_rns[particle]);
+
+      Int64 rns;
+      RNGSeedHelper(m_rng->generateRandomSeed(m_particle_rns[particle])).value(rns);
+
       m_extra_particles_rns.add(rns);
+
       rns &= ~(1UL << 63);
       m_extra_particles_global_id.add(rns);
       m_extra_particles_cellid_dst.add(particle.cell().localId());
@@ -1236,7 +1239,7 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
 void TrackingMCModule::
 cloneParticle(Particle pSrc, Particle pNew, const Int64& rns)
 {
-  m_particle_rns[pNew] = rns;
+  RNGSeedHelper(m_particle_rns[pNew]).setValue(rns);
   m_particle_coord[pNew] = m_particle_coord[pSrc];
   m_particle_velocity[pNew] = m_particle_velocity[pSrc];
   m_particle_dir_cos[pNew] = m_particle_dir_cos[pSrc];
@@ -1273,7 +1276,9 @@ updateTrajectory(const Real& energy, const Real& angle, Particle particle)
   Real3 particle_velocity_particle = m_particle_velocity[particle];
 
   Real cosTheta = angle;
-  Real random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+
+  Real random_number = m_rng->generateRandomNumber(m_particle_rns[particle]);
+
   Real phi = 2 * 3.14159265 * random_number;
   Real sinPhi = sin(phi);
   Real cosPhi = cos(phi);
@@ -1288,7 +1293,7 @@ updateTrajectory(const Real& energy, const Real& angle, Particle particle)
   particle_velocity_particle[MD_DirY] = speed * particle_dir_cos_particle[MD_DirB];
   particle_velocity_particle[MD_DirZ] = speed * particle_dir_cos_particle[MD_DirG];
 
-  random_number = m_rng->randomNumberGenerator(&m_particle_rns[particle]);
+  random_number = m_rng->generateRandomNumber(m_particle_rns[particle]);
   m_particle_num_mean_free_path[particle] = -1.0 * std::log(random_number);
 
   m_particle_velocity[particle] = particle_velocity_particle;

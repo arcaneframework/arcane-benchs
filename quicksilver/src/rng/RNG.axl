@@ -2,16 +2,12 @@
 <service name="RNG" version="1.0" singleton="true">
 
   <description>Jeu de données du service RNG</description>
-  <interface name="IRandomNumberGenerator" />
+  <interface name="Arcane::IRandomNumberGenerator" />
 
-	<variables>
+  <variables>
   </variables>
 
-	<options>
-    <simple name="initialSeed" type="int64" default="1029384756">
-      <description>
-        Seed initial
-      </description>
-    </simple>
-	</options>
+  <options>
+  </options>
+
 </service>

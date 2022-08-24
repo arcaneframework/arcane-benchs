@@ -12,7 +12,7 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-#include "IRandomNumberGenerator.hh"
+#include <arcane/IRandomNumberGenerator.h>
 #include "rng/RNG_axl.h"
 
 using namespace Arcane;
@@ -25,24 +25,29 @@ public:
     : ArcaneRNGObject(sbi)
     , m_seed(0)
     {
-      m_with_option = (sbi.creationType() == ST_CaseOption);
     }
   
   virtual ~RNGService() {};
 
 public:
-  void initSeed() override;
-  void initSeed(Int64 seed) override;
+  bool initSeed() override;
+  bool initSeed(ByteArrayView seed) override;
 
-  Int64 getSeed() override;
+  ByteUniqueArray emptySeed() override;
+  ByteConstArrayView viewSeed() override;
 
-  Int64 randomSeedGenerator() override;
-  Int64 randomSeedGenerator(Int64* parent_seed) override;
+  Integer neededSizeOfSeed() override;
 
-  Real randomNumberGenerator() override;
-  Real randomNumberGenerator(Int64* seed) override;
+  bool isLeapSeedSupported() override { return false; };
+  ByteUniqueArray generateRandomSeed(Integer leap = 0) override;
+  ByteUniqueArray generateRandomSeed(ByteArrayView parent_seed, Integer leap = 0) override;
+
+  bool isLeapNumberSupported() override { return false; };
+  Real generateRandomNumber(Integer leap) override;
+  Real generateRandomNumber(ByteArrayView seed, Integer leap = 0) override;
 
 protected:
+  Real _rngSample(Int64* seed);
   void _breakupUInt64(uint64_t uint64_in, uint32_t& front_bits, uint32_t& back_bits);
   uint64_t _reconstructUInt64(uint32_t front_bits, uint32_t back_bits);
   void _pseudoDES(uint32_t& lword, uint32_t& irword);
@@ -50,7 +55,7 @@ protected:
 
 protected:
   Int64 m_seed;
-  bool m_with_option;
+  const Integer m_size_of_seed = sizeof(Int64);
 };
 
 /*---------------------------------------------------------------------------*/

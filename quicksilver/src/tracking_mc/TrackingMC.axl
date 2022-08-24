@@ -218,9 +218,9 @@
         field-name="particle_rns"
         name="ParticleRNS"
         family-name="ArcaneParticles"
-        data-type="int64"
+        data-type="bool"
         item-kind="particle"
-        dim="0"
+        dim="1"
         dump="true"
         need-sync="true" />
 

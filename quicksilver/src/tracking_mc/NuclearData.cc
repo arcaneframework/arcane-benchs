@@ -45,34 +45,31 @@ void NuclearDataReaction::
 sampleCollision(Real incidentEnergy,
                 Real material_mass, RealUniqueArray& energyOut,
                 RealUniqueArray& angleOut, Integer& nOut,
-                Int64* seed,
+                ByteArrayView seed,
                 Integer max_production_size,
                 IRandomNumberGenerator* rng)
 {
   Real randomNumber;
+
   switch (_reactionType) {
   case Scatter:
     nOut = 1;
-    randomNumber = rng->randomNumberGenerator(seed);
+    randomNumber = rng->generateRandomNumber(seed);
     energyOut[0] =
     incidentEnergy * (1.0 - (randomNumber * (1.0 / material_mass)));
-    randomNumber = rng->randomNumberGenerator(seed) * 2.0 - 1.0;
+    randomNumber = rng->generateRandomNumber(seed) * 2.0 - 1.0;
     angleOut[0] = randomNumber;
     break;
   case Absorption:
     break;
   case Fission: {
-#ifdef QS_LEGACY_COMPATIBILITY
-    Integer numParticleOut = (Integer)(_nuBar + rng->randomNumberGenerator(seed));
+    Integer numParticleOut = (Integer)(_nuBar + rng->generateRandomNumber(seed));
     ARCANE_ASSERT(numParticleOut <= max_production_size, ("numParticleOut > max_production_size"));
-#else
-    Integer numParticleOut = ((Integer)(_nuBar * rng->randomNumberGenerator(seed) * max_production_size) % max_production_size);
-#endif
     nOut = numParticleOut;
     for (Integer outIndex = 0; outIndex < numParticleOut; outIndex++) {
-      randomNumber = rng->randomNumberGenerator(seed) / 2.0 + 0.5;
+      randomNumber = rng->generateRandomNumber(seed) / 2.0 + 0.5;
       energyOut[outIndex] = (20 * randomNumber * randomNumber);
-      randomNumber = rng->randomNumberGenerator(seed) * 2.0 - 1.0;
+      randomNumber = rng->generateRandomNumber(seed) * 2.0 - 1.0;
       angleOut[outIndex] = randomNumber;
     }
   } break;
