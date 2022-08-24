@@ -116,3 +116,7 @@ foreach(X RANGE ${NB_TEST})
   message(STATUS "Quicksilver: TEST_NAME=${TEST_NAME} NB_PROC=${NB_PROC} NB_THREAD=${NB_THREAD}")
   configure_file(quicksilver/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/launch_quicksilver_${TEST_BASE_NAME}.sh @ONLY)
 endforeach()
+
+# ----------------------------------------------------------------------------
+# Add Synchronize
+add_subdirectory(synchronize/src)
