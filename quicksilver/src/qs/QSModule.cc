@@ -13,8 +13,10 @@
 
 #include "QSModule.hh"
 
-#include <iostream>
+#include <arcane/utils/ApplicationInfo.h>
+#include <arcane/utils/CommandLineArguments.h>
 
+#include <iostream>
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
@@ -271,7 +273,41 @@ endModule()
     m_csv->addElementInRow("Figure Of Merit", fOm);
   }
 
-  if(options()->getCsvReferenceDir() != "") {
+  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
+
+  if(!reference_input.empty()) {
+
+    info() << "Init comparator with args";
+    m_csv_compare->init(m_csv);
+
+    info() << "Set reference directory";
+    m_csv_compare->editRootDirectory(Directory(reference_input));
+
+    if(m_csv_compare->isReferenceExist(0)) {
+
+      info() << "Launch comparator with reference file (only P0)";
+      m_csv_compare->editRegexRows("^.*ReduceSum.*$");
+      m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
+      m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
+      m_csv_compare->isAnArrayExclusiveRows(true);
+
+      if(!m_csv_compare->compareWithReference(0, 0.01, false)){
+        error() << "Differents values found";
+        ARCANE_FATAL("Differents values found");
+      }
+
+      else if(parallelMng()->commRank() == 0){
+        info() << "Same values!!!";
+      }
+    }
+
+    // Sinon erreur.
+    else {
+      error() << "Reference file not found";
+      ARCANE_FATAL("Reference file not found");
+    }
+  }
+  else if(options()->getCsvReferenceDir() != "") {
     info() << "Init comparator";
     m_csv_compare->init(m_csv);
     if(options()->getCsvReferenceDir() != "default") {
