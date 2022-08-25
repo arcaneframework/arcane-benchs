@@ -273,78 +273,8 @@ endModule()
     m_csv->addElementInRow("Figure Of Merit", fOm);
   }
 
-  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
-
-  if(!reference_input.empty()) {
-
-    info() << "Init comparator with args";
-    m_csv_compare->init(m_csv);
-
-    info() << "Set reference directory";
-    m_csv_compare->editRootDirectory(Directory(reference_input));
-
-    if(m_csv_compare->isReferenceExist(0)) {
-
-      info() << "Launch comparator with reference file (only P0)";
-      m_csv_compare->editRegexRows("^.*ReduceSum.*$");
-      m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
-      m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
-      m_csv_compare->isAnArrayExclusiveRows(true);
-
-      if(!m_csv_compare->compareWithReference(0, 0.01, false)){
-        error() << "Differents values found";
-        ARCANE_FATAL("Differents values found");
-      }
-
-      else if(parallelMng()->commRank() == 0){
-        info() << "Same values!!!";
-      }
-    }
-
-    // Sinon erreur.
-    else {
-      error() << "Reference file not found";
-      ARCANE_FATAL("Reference file not found");
-    }
-  }
-  else if(options()->getCsvReferenceDir() != "") {
-    info() << "Init comparator";
-    m_csv_compare->init(m_csv);
-    if(options()->getCsvReferenceDir() != "default") {
-      info() << "Set reference directory";
-      m_csv_compare->editRootDirectory(Directory(options()->getCsvReferenceDir()));
-    }
-    // Si demande d'écriture.
-    if(options()->getCsvOverwriteReference()) {
-      info() << "Write reference file (only P0)";
-      m_csv_compare->writeReferenceFile(0);
-    }
-    // Sinon lecture.
-    else {
-      // Si le fichier existe, comparaison.
-      if(m_csv_compare->isReferenceExist(0)) {
-        info() << "Launch comparator with reference file (only P0)";
-        m_csv_compare->editRegexRows("^.*ReduceSum.*$");
-        m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
-        m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
-        m_csv_compare->isAnArrayExclusiveRows(true);
-
-        if(!m_csv_compare->compareWithReference(0, 0.01, false)){
-          error() << "Differents values found";
-        }
-
-        else if(parallelMng()->commRank() == 0){
-          info() << "Same values!!!";
-        }
-      }
-      // Sinon erreur.
-      else {
-        error() << "Reference file not found";
-      }
-    }
-    info() << "End comparator";
-
-  }
+  // Lancement de la comparaison avec fichier de référence (si demandé par l'utilisateur).
+  compareWithRef();
 
   // Si une des options est édité dans le .arc.
   // À noter que le nom du fichier .csv est le nom du tableau (initialisé dans initModule()).
@@ -358,7 +288,58 @@ endModule()
 void QSModule::
 compareWithRef()
 {
+  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
+  bool overwrite_reference = (subDomain()->applicationInfo().commandLineArguments().getParameter("OverwriteReference") == "true");
 
+  // L'argument overwrite ne fonctionne qu'avec l'argument ref dir.
+  if(reference_input.empty()) {
+    reference_input = options()->getCsvReferenceDir();
+    overwrite_reference = options()->getCsvOverwriteReference();
+  }
+
+  if(!reference_input.empty()) {
+
+    info() << "Init comparator";
+    m_csv_compare->init(m_csv);
+
+    if(reference_input != "default") {
+      info() << "Set reference directory: " << reference_input;
+      m_csv_compare->editRootDirectory(Directory(reference_input));
+    }
+
+    // Si demande d'écriture.
+    if(overwrite_reference) {
+      info() << "Write reference file (only P0)";
+      m_csv_compare->writeReferenceFile(0);
+    }
+
+    // Sinon lecture.
+    else {
+      // Si le fichier existe, comparaison.
+      if(m_csv_compare->isReferenceExist(0)) {
+        info() << "Launch comparator with reference file (only P0)";
+        m_csv_compare->editRegexRows("^.*ReduceSum.*$");
+        m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
+        m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
+        m_csv_compare->isAnArrayExclusiveRows(true);
+
+        if(!m_csv_compare->compareWithReference(0, 0.01, false)){
+          error() << "Differents values found";
+          ARCANE_FATAL("Differents values found");
+        }
+
+        else if(parallelMng()->commRank() == 0){
+          info() << "Same values!!!";
+        }
+      }
+      // Sinon erreur.
+      else {
+        error() << "Reference file not found";
+        ARCANE_FATAL("Reference file not found");
+      }
+    }
+    info() << "End comparator";
+  }
 }
 
 /*---------------------------------------------------------------------------*/
