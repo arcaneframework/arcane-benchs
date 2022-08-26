@@ -58,15 +58,15 @@ public ArcaneQSObject
   void cycleFinalize() override;
   void loopLoadBalancing() override;
   void afterLoadBalancing() override;
+  void compareWithReference() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 4, 1); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 5, 0); }
 
  protected:
   void initMesh();
   void loadBalancing();
   ParticleEvent getBoundaryCondition(const Integer& pos);
-  void compareWithRef();
 
 protected:
   ISimpleTableOutput* m_csv;

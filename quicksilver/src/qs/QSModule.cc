@@ -227,6 +227,67 @@ afterLoadBalancing()
 }
 
 /**
+ * @brief Méthode permettant de comparer les résultats obtenus avec
+ * les résultats de références.
+ */
+void QSModule::
+compareWithReference()
+{
+  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
+  bool overwrite_reference = (subDomain()->applicationInfo().commandLineArguments().getParameter("OverwriteReference") == "true");
+
+  // L'argument overwrite ne fonctionne qu'avec l'argument ref dir.
+  if(reference_input.empty()) {
+    reference_input = options()->getCsvReferenceDir();
+    overwrite_reference = options()->getCsvOverwriteReference();
+  }
+
+  if(!reference_input.empty()) {
+    info() << "-------------------------------------";
+    info() << "Launch of the results comparator part";
+    m_csv_compare->init(m_csv);
+
+    if(reference_input != "default") {
+      info() << "  Set reference directory: " << reference_input;
+      m_csv_compare->editRootDirectory(Directory(reference_input));
+    }
+
+    // Si demande d'écriture.
+    if(overwrite_reference) {
+      info() << "  Write reference file";
+      m_csv_compare->writeReferenceFile(0);
+    }
+
+    // Sinon lecture.
+    else {
+      // Si le fichier existe, comparaison.
+      if(m_csv_compare->isReferenceExist(0)) {
+        m_csv_compare->editRegexRows("^.*ReduceSum.*$");
+        m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
+        m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
+        m_csv_compare->isAnArrayExclusiveRows(true);
+
+        info() << "  Check results with reference file";
+        if(!m_csv_compare->compareWithReference(0, 0.01, false)){
+          error() << "End checking : Differents values found";
+          ARCANE_FATAL("End checking : Differents values found");
+        }
+
+        else if(parallelMng()->commRank() == 0){
+          info() << "End checking : Same values";
+        }
+      }
+      // Sinon erreur.
+      else {
+        error() << "Reference file not found";
+        ARCANE_FATAL("Reference file not found");
+      }
+    }
+    info() << "-------------------------------------";
+  }
+}
+
+/**
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void QSModule::
@@ -236,13 +297,9 @@ endModule()
   if(parallelMng()->commRank() == 0) {
     // On utilise les valeurs enregistrées dans le csv.
     RealUniqueArray max_tracking_times(m_csv->row(
-      (parallelMng()->commSize() == 1) ?
-      "Tracking duration (Proc)" :
       "Tracking duration (ReduceMax)"
     ));
     RealUniqueArray num_segments(m_csv->row(
-      (parallelMng()->commSize() == 1) ?
-      "m_num_segments (Proc)" :
       "m_num_segments (ReduceSum)"
     ));
 
@@ -273,72 +330,12 @@ endModule()
     m_csv->addElementInRow("Figure Of Merit", fOm);
   }
 
-  // Lancement de la comparaison avec fichier de référence (si demandé par l'utilisateur).
-  compareWithRef();
-
   // Si une des options est édité dans le .arc.
   // À noter que le nom du fichier .csv est le nom du tableau (initialisé dans initModule()).
   if(options()->getCsvName() != "" || options()->getCsvDir() != "") {
-    info() << "Begin write CSV";
+    info() << "Write results in CSV files";
     if(!m_csv->writeFile()) error() << "Error write CSV";
-    info() << "End write CSV";
-  }
-}
-
-void QSModule::
-compareWithRef()
-{
-  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
-  bool overwrite_reference = (subDomain()->applicationInfo().commandLineArguments().getParameter("OverwriteReference") == "true");
-
-  // L'argument overwrite ne fonctionne qu'avec l'argument ref dir.
-  if(reference_input.empty()) {
-    reference_input = options()->getCsvReferenceDir();
-    overwrite_reference = options()->getCsvOverwriteReference();
-  }
-
-  if(!reference_input.empty()) {
-
-    info() << "Init comparator";
-    m_csv_compare->init(m_csv);
-
-    if(reference_input != "default") {
-      info() << "Set reference directory: " << reference_input;
-      m_csv_compare->editRootDirectory(Directory(reference_input));
-    }
-
-    // Si demande d'écriture.
-    if(overwrite_reference) {
-      info() << "Write reference file (only P0)";
-      m_csv_compare->writeReferenceFile(0);
-    }
-
-    // Sinon lecture.
-    else {
-      // Si le fichier existe, comparaison.
-      if(m_csv_compare->isReferenceExist(0)) {
-        info() << "Launch comparator with reference file (only P0)";
-        m_csv_compare->editRegexRows("^.*ReduceSum.*$");
-        m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
-        m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
-        m_csv_compare->isAnArrayExclusiveRows(true);
-
-        if(!m_csv_compare->compareWithReference(0, 0.01, false)){
-          error() << "Differents values found";
-          ARCANE_FATAL("Differents values found");
-        }
-
-        else if(parallelMng()->commRank() == 0){
-          info() << "Same values!!!";
-        }
-      }
-      // Sinon erreur.
-      else {
-        error() << "Reference file not found";
-        ARCANE_FATAL("Reference file not found");
-      }
-    }
-    info() << "End comparator";
+    info() << "End write results in CSV files";
   }
 }
 
