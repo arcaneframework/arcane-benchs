@@ -243,8 +243,9 @@ compareWithReference()
   }
 
   if(!reference_input.empty()) {
-    info() << "-------------------------------------";
-    info() << "Launch of the results comparator part";
+    info() << "---------------------------------------";
+    info() << "-----------Comparator part-------------";
+    info() << "---------------------------------------";
     m_csv_compare->init(m_csv);
 
     if(reference_input != "default") {
@@ -274,16 +275,19 @@ compareWithReference()
         }
 
         else if(parallelMng()->commRank() == 0){
-          info() << "End checking : Same values";
+          info() << "  End checking : Same values!!!";
         }
       }
       // Sinon erreur.
       else {
-        error() << "Reference file not found";
+        error() << "  Reference file not found";
         ARCANE_FATAL("Reference file not found");
       }
     }
-    info() << "-------------------------------------";
+    info() << "---------------------------------------";
+    info() << "---------End Comparator part-----------";
+    info() << "---------------------------------------";
+    info() << "-";
   }
 }
 
