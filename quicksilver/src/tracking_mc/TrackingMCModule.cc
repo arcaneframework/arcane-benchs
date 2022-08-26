@@ -366,7 +366,7 @@ initNuclearData()
   bool pre_lb = m_pre_lb();
   if(pre_lb) info() << "--- Equilibrage de charge niveau materiau activé ---";
 
-  Real min_difficulty = 100.;
+  Real min_difficulty = 999999.;
   Real max_difficulty = 0.;
 
   for (Integer i = 0; i < num_materials; i++) {
