@@ -15,6 +15,7 @@
 
 #include <arcane/utils/ApplicationInfo.h>
 #include <arcane/utils/CommandLineArguments.h>
+#include <arcane/impl/ArcaneMain.h>
 
 #include <iostream>
 /*---------------------------------------------------------------------------*/
@@ -269,9 +270,10 @@ compareWithReference()
         m_csv_compare->isAnArrayExclusiveRows(true);
 
         info() << "  Check results with reference file";
-        if(!m_csv_compare->compareWithReference(0, 0.01, false)){
+        if(!m_csv_compare->compareWithReference(0, false)){
           error() << "End checking : Differents values found";
-          ARCANE_FATAL("End checking : Differents values found");
+          IArcaneMain::arcaneMain()->setErrorCode(1);
+          //ARCANE_FATAL("End checking : Differents values found");
         }
 
         else if(parallelMng()->commRank() == 0){
@@ -281,7 +283,8 @@ compareWithReference()
       // Sinon erreur.
       else {
         error() << "  Reference file not found";
-        ARCANE_FATAL("Reference file not found");
+        IArcaneMain::arcaneMain()->setErrorCode(1);
+        //ARCANE_FATAL("Reference file not found");
       }
     }
     info() << "---------------------------------------";
