@@ -268,6 +268,7 @@ compareWithReference()
         m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
         m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
         m_csv_compare->isAnArrayExclusiveRows(true);
+        m_csv_compare->addEpsilonRow("sum_scalar_flux_tally (ReduceSum)", 1.0e-13);
 
         info() << "  Check results with reference file";
         if(!m_csv_compare->compareWithReference(0, false)){

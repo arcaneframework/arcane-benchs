@@ -102,37 +102,5 @@
 
 </case>
 <!-- 
-*I-QS         End iteration #1
-*I-QS           Informations:
-*I-QS             Number of particles at beginning of cycle                    (m_start): 0
-*I-QS             Number of particles sourced in                              (m_source): 9984
-*I-QS             Number of particles Russian Rouletted in population control     (m_rr): 0
-*I-QS             Number of particles split in population control              (m_split): 89999
-*I-QS             Number of particles absorbed                                (m_absorb): 20312
-*I-QS             Number of scatters                                         (m_scatter): 509005
-*I-QS             Number of fission events                                   (m_fission): 25438
-*I-QS             Number of particles created by collisions                  (m_produce): 40655
-*I-QS             Number of collisions                                     (m_collision): 554755
-*I-QS             Number of particles that escape                             (m_escape): 0
-*I-QS             Number of particles that enter census                       (m_census): 94888
-*I-QS             Number of segements                                   (m_num_segments): 672040
-*I-QS             Number of particles at end of cycle                            (m_end): 94888
-*I-QS             Particles contribution to the scalar flux      (sum_scalar_flux_tally): 73772081.4358831
-
-*I-QS         End iteration #2
-*I-QS           Informations:
-*I-QS             Number of particles at beginning of cycle                    (m_start): 94888
-*I-QS             Number of particles sourced in                              (m_source): 9984
-*I-QS             Number of particles Russian Rouletted in population control     (m_rr): 4831
-*I-QS             Number of particles split in population control              (m_split): 0
-*I-QS             Number of particles absorbed                                (m_absorb): 36110
-*I-QS             Number of scatters                                         (m_scatter): 889113
-*I-QS             Number of fission events                                   (m_fission): 43996
-*I-QS             Number of particles created by collisions                  (m_produce): 70307
-*I-QS             Number of collisions                                     (m_collision): 969219
-*I-QS             Number of particles that escape                             (m_escape): 0
-*I-QS             Number of particles that enter census                       (m_census): 90242
-*I-QS             Number of segements                                   (m_num_segments): 1098441
-*I-QS             Number of particles at end of cycle                            (m_end): 90242
-*I-QS             Particles contribution to the scalar flux      (sum_scalar_flux_tally): 200813514.61978
+  
  -->
