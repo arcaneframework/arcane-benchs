@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<module name="ArcaneLoops" version="1.0">
+  <description>Descripteur du module ArcaneLoops</description>
+  <entry-points>
+    <entry-point method-name="compute" name="Compute" where="compute-loop" property="none" />
+    <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
+  </entry-points>
+</module>
