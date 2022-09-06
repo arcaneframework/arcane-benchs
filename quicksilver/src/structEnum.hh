@@ -18,7 +18,24 @@
 
 using namespace Arcane;
 
-#define QS_LEGACY_COMPATIBILITY
+// Si true, alors les résultats de sortie doivent être les mêmes que ceux de
+// Quicksilver Original.
+// (Mettre à true pour avoir le même comportement que QS Original).
+#define QS_LEGACY_COMPATIBILITY true
+
+// Permet d'activer le calcul des cross sections avant le tracking.
+// (Mettre à false pour avoir le même comportement que QS Original).
+#define QS_PRECOMPUTE_CROSS_SECTION false
+
+// Permet d'activer la verification du statut des particules (pour prévenir le
+// fait qu'une particule 'morte' soit toujours trackée, par exemple).
+// Attention : Si l'option est désactivée, m_particle_status ne sera plus mis à
+// 'ParticleState::oldParticle'. Il y aura donc une modification des valeurs et donc
+// la comparaison bit-à-bit ne sera pas possible entre un write option true et un
+// read option false, par exemple. Mis à part cette grandeur, il n'y aura pas
+// de modification au niveau des résultats.
+// (Mettre à false pour avoir le même comportement que QS Original).
+#define QS_CHECK_PARTICLE_STATUS false
 
 enum CosDir
 {

@@ -18,6 +18,7 @@
 #include <map>
 #include <set>
 
+
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
@@ -58,7 +59,9 @@ cycleTracking()
     // Doit-on calculer le cout d'une cellule pour l'équilibrage de charge ?
     m_do_loop_lb = (m_loop_lb() != 0 && m_global_iteration() % m_loop_lb() == 0);
 
+    #if QS_PRECOMPUTE_CROSS_SECTION
     computeCrossSection();
+    #endif
     tracking();
     
     if(m_absorb_a != 0 || m_escape != 0){
@@ -631,11 +634,13 @@ isInGeometry(const Integer& pos, Cell cell)
 void TrackingMCModule::
 cycleTrackingGuts(Particle particle, VariableNodeReal3& node_coord)
 {
+  #if QS_CHECK_PARTICLE_STATUS
   if (m_particle_status[particle] == ParticleState::exitedParticle 
   || m_particle_status[particle] == ParticleState::censusParticle) {
     ARCANE_FATAL("Particule déjà traitée.");
   }
-
+  #endif
+  
   if (m_particle_time_census[particle] <= 0.0) {
     m_particle_time_census[particle] += m_global_deltat();
   }
@@ -867,8 +872,13 @@ computeNextEvent(Particle particle, VariableNodeReal3& node_coord)
 
   // Randomly determine the distance to the next collision
   // based upon the composition of the current cell.
-  //Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(cell, particle_ene_grp_particle);
+
+
+  #if QS_PRECOMPUTE_CROSS_SECTION
   Real macroscopic_total_cross_section = m_total[cell][particle_ene_grp_particle];
+  #else
+  Real macroscopic_total_cross_section = weightedMacroscopicCrossSection(cell, particle_ene_grp_particle);
+  #endif
 
   // Cache the cross section
   m_particle_total_cross_section[particle] = macroscopic_total_cross_section;
@@ -1045,7 +1055,7 @@ collisionEvent(Particle particle)
 
 // Dans QS original, une particule peut se fissionner en 1 partie (une particule => une particule).
 // {nOut = 1 / reactionType = Fission} possible.
-#ifdef QS_LEGACY_COMPATIBILITY
+#if QS_LEGACY_COMPATIBILITY
 
   // Set the reaction for this particle.
   NuclearDataReaction::Enum reactionType = m_nuclearData->_isotopes[selected_unique_number]._species[0]._reactions[selected_react]._reactionType;
@@ -1069,7 +1079,7 @@ collisionEvent(Particle particle)
 
   // Si nOut == 0, la particule est absorbée.
   if (nOut == 0) {
-#ifndef QS_LEGACY_COMPATIBILITY
+#if not QS_LEGACY_COMPATIBILITY
     m_absorb_a++;
 #endif
     return 0;
@@ -1077,7 +1087,7 @@ collisionEvent(Particle particle)
 
   // Si nOut == 1, la particule change de trajectoire.
   else if (nOut == 1) {
-#ifndef QS_LEGACY_COMPATIBILITY
+#if not QS_LEGACY_COMPATIBILITY
     m_scatter_a++;
 #endif
     updateTrajectory(energyOut[0], angleOut[0], particle);
@@ -1094,7 +1104,7 @@ collisionEvent(Particle particle)
   // devenir lourd si la particule effectue plusieurs fissions).
   // On enregistre les infos pour la future phase création des particules.
   else {
-#ifndef QS_LEGACY_COMPATIBILITY
+#if not QS_LEGACY_COMPATIBILITY
     m_fission_a++;
     m_produce_a += nOut;
 #endif
@@ -1332,10 +1342,18 @@ computeCrossSection()
  * 
  * @param cell La cellule où se trouve la particule
  * @param energyGroup Le groupe d'energie.
+ * @return Real La distance entre la particule et la prochaine collision.
  */
-void TrackingMCModule::
+Real TrackingMCModule::
 weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
 {
+  #if not QS_PRECOMPUTE_CROSS_SECTION
+  const Real precomputedCrossSection = m_total[cell][energyGroup];
+
+  if (precomputedCrossSection > 0.0)
+    return precomputedCrossSection;
+  #endif
+
   const Real cell_number_density = m_cell_number_density[cell];
   ConstArrayView<Real> atom_fraction_av = m_atom_fraction[cell];
   ConstArrayView<Integer> iso_gid_av = m_iso_gid[cell];
@@ -1349,7 +1367,14 @@ weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup)
     sum += macroscopicCrossSection(-1, cell_number_density, atom_fraction, isotope_gid, isoIndex, energyGroup);
   }
 
-  m_total[cell][energyGroup] = sum;
+  {
+    #if not QS_PRECOMPUTE_CROSS_SECTION
+    GlobalMutex::ScopedLock(m_mutex_total);
+    #endif
+    m_total[cell][energyGroup] = sum;
+  }
+
+  return sum;
 }
 
 /**

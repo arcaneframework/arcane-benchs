@@ -53,7 +53,9 @@ cycleSampling()
     clearCrossSectionCache();
 
     m_processingView = m_particle_family->view();
+    #if QS_CHECK_PARTICLE_STATUS
     setStatus();
+    #endif
     m_start = m_processingView.size();
 
     // Création des particules.
@@ -623,7 +625,7 @@ generate3DCoordinate(Particle p, VariableNodeReal3& node_coord)
   Node second_node;
   Face face;
 
-#ifdef QS_LEGACY_COMPATIBILITY
+#if QS_LEGACY_COMPATIBILITY
   // Pour pouvoir comparer les résultats avec ceux de QS original,
   // on doit explorer les facet de la même manière que QS original.
   /// La face QS n°0 correspond à la face Arcane n°4, &c.
