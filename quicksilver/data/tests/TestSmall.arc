@@ -38,7 +38,7 @@
   <q-s>
     <dt>8e-07</dt>
     <boundaryCondition>reflect</boundaryCondition>
-    <nSteps>10</nSteps>
+    <nSteps>20</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
