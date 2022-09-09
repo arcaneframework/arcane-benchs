@@ -7,6 +7,11 @@
   </entry-points>
 
   <options>
+    <simple name="nb-synchronize-per-iteration" type="int64" default="0" >
+      <description>
+        Nombre de synchronisations par itération. Si '0', le nombre est infini.
+      </description>
+    </simple>
 
   </options>
   

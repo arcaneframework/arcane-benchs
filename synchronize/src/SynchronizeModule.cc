@@ -84,7 +84,12 @@ SynchronizeModule(const ModuleBuildInfo& sbi)
 void SynchronizeModule::
 doOneIteration()
 {
-  info() << "Launching infinite loop of synchronize...";
+  Int64 nb_sync = options()->nbSynchronizePerIteration();
+  if (nb_sync==0)
+    info() << "Launching infinite loop of synchronize...";
+  else
+    info() << "Launching " << nb_sync << " synchronize.";
+
   VariableCellReal3 cell_test1(VariableBuildInfo(meshHandle(),"TMP1"));
   cell_test1.fill(Real3(1.0,1.0,1.0));
 
@@ -101,7 +106,8 @@ doOneIteration()
   cell_test5.fill(Real3(1.0,1.0,1.0));
 
   Int64 nb_iteration = 0;
-  while (1){
+  bool do_continue = true;
+  while (do_continue){
     ++nb_iteration;
     if ((nb_iteration%50000)==0)
       info() << "Iteration " << nb_iteration << " ...";
@@ -110,6 +116,8 @@ doOneIteration()
     cell_test3.synchronize();
     cell_test4.synchronize();
     cell_test5.synchronize();
+    if (nb_sync!=0)
+      do_continue = (nb_iteration<nb_sync);
   }
 }
 
