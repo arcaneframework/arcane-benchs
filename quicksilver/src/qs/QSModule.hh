@@ -22,6 +22,7 @@
 #include <arcane/ILoadBalanceMng.h>
 #include <arcane/IMeshPartitionerBase.h>
 #include <arcane/ISimpleTableOutput.h>
+#include <arcane/ISimpleTableComparator.h>
 
 #include "structEnum.hh"
 
@@ -57,9 +58,10 @@ public ArcaneQSObject
   void cycleFinalize() override;
   void loopLoadBalancing() override;
   void afterLoadBalancing() override;
+  void compareWithReference() override;
   void endModule() override;
 
-  VersionInfo versionInfo() const override { return VersionInfo(1, 4, 1); }
+  VersionInfo versionInfo() const override { return VersionInfo(1, 5, 0); }
 
  protected:
   void initMesh();
@@ -68,6 +70,7 @@ public ArcaneQSObject
 
 protected:
   ISimpleTableOutput* m_csv;
+  ISimpleTableComparator* m_csv_compare;
 };
 
 /*---------------------------------------------------------------------------*/

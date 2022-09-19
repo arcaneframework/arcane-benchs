@@ -38,11 +38,11 @@
   <q-s>
     <dt>2e-09</dt>
     <boundaryCondition>reflect</boundaryCondition>
-    <nSteps>10</nSteps>
+    <nSteps>100</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvDir>./Coral2_P1_8192/</csvDir>
+    <csvDir>./Coral2_P1_n8192/</csvDir>
     <csvName>Results_P@proc_id@</csvName>
   </q-s>
 

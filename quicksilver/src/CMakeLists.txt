@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Quicksilver LANGUAGES CXX)
+project(Quicksilver LANGUAGES C CXX)
 
 set(BUILD_SHARED_LIBS TRUE)
 

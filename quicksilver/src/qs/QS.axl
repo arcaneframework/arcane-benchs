@@ -172,6 +172,7 @@
     <entry-point method-name="cycleFinalize" name="CycleFinalize" where="compute-loop" property="none" />
     <entry-point method-name="loopLoadBalancing" name="LoopLoadBalancing" where="compute-loop" property="none" />
     <entry-point method-name="afterLoadBalancing" name="AfterLoadBalancing" where="on-mesh-changed" property="none" />
+    <entry-point method-name="compareWithReference" name="CompareWithReference" where="exit" property="none" />
     <entry-point method-name="endModule" name="EndModule" where="exit" property="none" />
   </entry-points>
 
@@ -230,6 +231,19 @@
         Directory for csv file (example: ./ ).
       </description>
     </simple>
+
+    <simple name="csvReferenceDir" type="string" default="">
+      <description>
+        TODO
+      </description>
+    </simple>
+
+    <simple name="csvOverwriteReference" type="bool" default="false">
+      <description>
+        TODO
+      </description>
+    </simple>
+
 
     <simple name="loadBalancingMat" type="bool" default="false">
       <description>

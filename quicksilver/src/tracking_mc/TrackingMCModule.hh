@@ -116,7 +116,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   void cloneParticle(Particle pSrc, Particle pNew, const Int64& rns);
   void updateTrajectory(const Real& energy, const Real& angle, Particle particle);
   void computeCrossSection();
-  void weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
+  Real weightedMacroscopicCrossSection(Cell cell, const Integer& energyGroup);
   Real macroscopicCrossSection(const Integer& reactionIndex,
                                const Real& cell_number_density,
                                const Real& atom_fraction,
@@ -186,6 +186,7 @@ class TrackingMCModule : public ArcaneTrackingMCObject
   GlobalMutex m_mutex_out;
   GlobalMutex m_mutex_flux;
   GlobalMutex m_mutex_lb;
+  GlobalMutex m_mutex_total;
 
   bool m_do_loop_lb;
 };

@@ -13,8 +13,11 @@
 
 #include "QSModule.hh"
 
-#include <iostream>
+#include <arcane/utils/ApplicationInfo.h>
+#include <arcane/utils/CommandLineArguments.h>
+#include <arcane/impl/ArcaneMain.h>
 
+#include <iostream>
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
@@ -36,12 +39,25 @@ initModule()
 
   // On récupère un pointeur vers le singleton csv.
   m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
+  m_csv_compare = ServiceBuilder<ISimpleTableComparator>(subDomain()).getSingleton();
 
   // Initialisation de la sortie CSV.
+  String csvName, csvDir;
+
   if(options()->getCsvName() != "")
-    m_csv->init(options()->getCsvName());
+    csvName = options()->getCsvName();
   else
-    m_csv->init("QAMA_P@proc_id@");
+    csvName = "QAMA_P@proc_id@";
+
+  // On regarde si on a le nom du répertoire.
+  // Sinon, on donne une emplacement par défaut.
+  if(options()->getCsvDir() != "")
+    csvDir = options()->getCsvDir();
+  else
+    csvDir = "csv_output";
+
+  m_csv->init(csvName, csvDir);
+
 
   // On ajoute les colonnes (une par itération).
   StringUniqueArray columns_name(options()->getNSteps());
@@ -83,8 +99,7 @@ initModule()
     });
   }
 
-  // Si on a une execution parallèle, on ajoute aussi les min, max et arg des infos.
-  if(parallelMng()->commSize() != 1 && parallelMng()->commRank() == 0) {
+  if(parallelMng()->commRank() == 0) {
     m_csv->addRows(StringUniqueArray {
       "Sampling duration (ReduceMax)",
       "Tracking duration (ReduceMax)",
@@ -213,6 +228,74 @@ afterLoadBalancing()
 }
 
 /**
+ * @brief Méthode permettant de comparer les résultats obtenus avec
+ * les résultats de références.
+ */
+void QSModule::
+compareWithReference()
+{
+  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
+  bool overwrite_reference = (subDomain()->applicationInfo().commandLineArguments().getParameter("OverwriteReference") == "true");
+
+  // L'argument overwrite ne fonctionne qu'avec l'argument ref dir.
+  if(reference_input.empty()) {
+    reference_input = options()->getCsvReferenceDir();
+    overwrite_reference = options()->getCsvOverwriteReference();
+  }
+
+  if(!reference_input.empty()) {
+    info() << "---------------------------------------";
+    info() << "-----------Comparator part-------------";
+    info() << "---------------------------------------";
+    m_csv_compare->init(m_csv);
+
+    if(reference_input != "default") {
+      info() << "  Set reference directory: " << reference_input;
+      m_csv_compare->editRootDirectory(Directory(reference_input));
+    }
+
+    // Si demande d'écriture.
+    if(overwrite_reference) {
+      info() << "  Write reference file";
+      m_csv_compare->writeReferenceFile(0);
+    }
+
+    // Sinon lecture.
+    else {
+      // Si le fichier existe, comparaison.
+      if(m_csv_compare->isReferenceExist(0)) {
+        m_csv_compare->editRegexRows("^.*ReduceSum.*$");
+        m_csv_compare->addRowForComparing("m_incoming (ReduceSum)");
+        m_csv_compare->addRowForComparing("m_outgoing (ReduceSum)");
+        m_csv_compare->isAnArrayExclusiveRows(true);
+        m_csv_compare->addEpsilonRow("sum_scalar_flux_tally (ReduceSum)", 1.0e-13);
+
+        info() << "  Check results with reference file";
+        if(!m_csv_compare->compareWithReference(0, false)){
+          error() << "End checking : Differents values found";
+          IArcaneMain::arcaneMain()->setErrorCode(1);
+          //ARCANE_FATAL("End checking : Differents values found");
+        }
+
+        else if(parallelMng()->commRank() == 0){
+          info() << "  End checking : Same values!!!";
+        }
+      }
+      // Sinon erreur.
+      else {
+        error() << "  Reference file not found";
+        IArcaneMain::arcaneMain()->setErrorCode(1);
+        //ARCANE_FATAL("Reference file not found");
+      }
+    }
+    info() << "---------------------------------------";
+    info() << "---------End Comparator part-----------";
+    info() << "---------------------------------------";
+    info() << "-";
+  }
+}
+
+/**
  * @brief Méthode appelée à la fin de la boucle en temps.
  */
 void QSModule::
@@ -222,13 +305,9 @@ endModule()
   if(parallelMng()->commRank() == 0) {
     // On utilise les valeurs enregistrées dans le csv.
     RealUniqueArray max_tracking_times(m_csv->row(
-      (parallelMng()->commSize() == 1) ?
-      "Tracking duration (Proc)" :
       "Tracking duration (ReduceMax)"
     ));
     RealUniqueArray num_segments(m_csv->row(
-      (parallelMng()->commSize() == 1) ?
-      "m_num_segments (Proc)" :
       "m_num_segments (ReduceSum)"
     ));
 
@@ -262,17 +341,9 @@ endModule()
   // Si une des options est édité dans le .arc.
   // À noter que le nom du fichier .csv est le nom du tableau (initialisé dans initModule()).
   if(options()->getCsvName() != "" || options()->getCsvDir() != "") {
-    // On regarde si on a le nom du répertoire.
-    // Sinon, on donne une emplacement par défaut.
-    String path;
-    if(options()->getCsvDir() != "")
-      path = options()->getCsvDir();
-    else
-      path = "./csv_output/";
-
-    //m_csv->print();
-    m_csv->writeFile(path);
-    
+    info() << "Write results in CSV files";
+    if(!m_csv->writeFile()) error() << "Error write CSV";
+    info() << "End write results in CSV files";
   }
 }
 

@@ -39,7 +39,7 @@
     <!-- <dt>2e-10</dt> -->
     <dt>2e-09</dt>
     <boundaryCondition>reflect</boundaryCondition>
-    <nSteps>2</nSteps>
+    <nSteps>10</nSteps>
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
@@ -47,6 +47,8 @@
     <csvName>Results_P@proc_id@</csvName>
     <loadBalancingMat>true</loadBalancingMat>
     <loadBalancingLoop>0</loadBalancingLoop>
+    <csvReferenceDir>default</csvReferenceDir>
+    <csvOverwriteReference>false</csvOverwriteReference>
   </q-s>
 
   <sampling-m-c>
