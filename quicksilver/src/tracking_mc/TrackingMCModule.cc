@@ -231,10 +231,10 @@ cycleFinalize()
     info() << "    Number of particles at end of cycle                           "
               " (m_end): "
           << m_end;
-    info() << "    Number of particles incoming from other sub-domain        "
+    info() << "    Number of particles incoming from others sub-domains      "
               "(m_incoming): "
           << m_incoming;
-    info() << "    Number of particles outgoing to other sub-domain          "
+    info() << "    Number of particles outgoing to others sub-domains        "
               "(m_outgoing): "
           << m_outgoing;
     info() << "    Particles contribution to the scalar flux     "
@@ -262,9 +262,9 @@ cycleFinalize()
                 "(m_num_segments): " << infos(7);
       info() << "    Number of particles at end of cycle                           "
                 " (m_end): " << infos(8);
-      info() << "    Number of particles incoming from other sub-domain        "
+      info() << "    Number of particles incoming from others sub-domains      "
                 "(m_incoming): " << infos(9);
-      info() << "    Number of particles outgoing to other sub-domain          "
+      info() << "    Number of particles outgoing to others sub-domains        "
                 "(m_outgoing): " << infos(10);
       info() << "    Particles contribution to the scalar flux     "
                 " (sum_scalar_flux_tally): "
