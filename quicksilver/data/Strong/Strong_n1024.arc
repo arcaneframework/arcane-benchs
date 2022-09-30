@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <case codename="Quicksilver" xml:lang="en" codeversion="1.0">
   <arcane>
-    <title>TestLarge</title>
+    <title>Strong_n1024</title>
     <timeloop>QAMALoop</timeloop>
   </arcane>
 
@@ -42,15 +42,11 @@
     <eMax>20</eMax>
     <eMin>1e-09</eMin>
     <nGroups>230</nGroups>
-    <csvDir>./TestLarge/</csvDir>
+    <csvDir>Strong_n1024</csvDir>
     <csvName>Results_P@proc_id@</csvName>
   </q-s>
 
   <sampling-m-c>
-    <!-- Weak Scaling -->
-    <!-- <nParticles>1024000000</nParticles> -->
-
-    <!-- Strong Scaling -->
     <nParticles>128000000</nParticles>
     
     <lowWeightCutoff>0.001</lowWeightCutoff>
