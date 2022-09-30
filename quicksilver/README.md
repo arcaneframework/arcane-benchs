@@ -50,10 +50,13 @@ All arc input files examples:
 
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleDefault.arc
-QS_ARC=${QS_SOURCE_DIR}/data/tests/TestSmall.arc
-QS_ARC=${QS_SOURCE_DIR}/data/tests/TestMedium.arc
-QS_ARC=${QS_SOURCE_DIR}/data/tests/TestLarge.arc
-QS_ARC=${QS_SOURCE_DIR}/data/tests/TestHuge.arc
+
+QS_ARC=${QS_SOURCE_DIR}/data/Strong/Strong_n128.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Strong/Strong_n256.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Strong/Strong_n512.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Strong/Strong_n1024.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Strong/Strong_n2048.arc
+QS_ARC=${QS_SOURCE_DIR}/data/Strong/Strong_n2520.arc
 
 QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n128.arc
 QS_ARC=${QS_SOURCE_DIR}/data/Coral2/Coral2_P1_n256.arc
