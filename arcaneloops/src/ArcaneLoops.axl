@@ -5,4 +5,12 @@
     <entry-point method-name="compute" name="Compute" where="compute-loop" property="none" />
     <entry-point method-name="startInit" name="StartInit" where="start-init" property="none" />
   </entry-points>
+  <options>
+    <simple name = "nb-loop-multiplier" type = "integer" default = "100" >
+      <userclass>User</userclass>
+      <description>
+        Multiplicateur sur le nombre d'itérations à effectuer.
+      </description>
+    </simple>
+  </options>
 </module>

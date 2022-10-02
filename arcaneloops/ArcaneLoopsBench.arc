@@ -16,4 +16,8 @@
       </generator>
     </mesh>
   </meshes>
+
+  <arcane-loops>
+    <nb-loop-multiplier>100</nb-loop-multiplier>
+  </arcane-loops>
 </case>
