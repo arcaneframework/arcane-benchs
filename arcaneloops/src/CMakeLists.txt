@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
 project(ArcaneLoopsBench LANGUAGES C CXX)
 
 find_package(Arcane REQUIRED)

@@ -1,6 +1,6 @@
-﻿cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
+﻿cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
-project(ArcaneBenchs VERSION 1.0 LANGUAGES CXX)
+project(ArcaneBenchs VERSION 1.0 LANGUAGES C CXX)
 
 # Il ne faut pas compiler la ou se trouve les sources
 if(CMAKE_BINARY_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)

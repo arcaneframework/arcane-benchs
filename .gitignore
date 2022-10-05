@@ -63,3 +63,8 @@ perso_build_install.txt
 
 # KDE config directory file
 .directory
+
+# CMake files
+CMakeUserPresets.json
+cmake-build-debug
+cmake-build-release
