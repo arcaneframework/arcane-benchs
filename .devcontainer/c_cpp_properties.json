@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Linux - Dev Container",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/workspaces/builds/build_arcane_benchs/Debug/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++20",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
