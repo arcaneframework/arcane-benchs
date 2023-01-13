@@ -5,7 +5,6 @@
 	"extensions": [
 		"ms-vscode.cpptools",
 		"ms-vscode.cmake-tools",
-		"vadimcn.vscode-lldb",
 		"cheshirekow.cmake-format"
 	],
   "postCreateCommand": "bash -i .devcontainer/post_install.sh",
