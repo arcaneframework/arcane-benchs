@@ -1,18 +1,19 @@
 {
-	"name": "Arcane",
+	"name": "Arcane (Minimal/Debug)",
 	"image": "ghcr.io/arcaneframework/arcane_ubuntu-2204:gcc-12_minimal_debug_latest",
 	"remoteUser": "root",
 	"extensions": [
 		"ms-vscode.cpptools",
 		"ms-vscode.cmake-tools",
-		"cheshirekow.cmake-format"
+		"cheshirekow.cmake-format",
+		"xaver.clang-format"
 	],
-  "postCreateCommand": "bash -i .devcontainer/post_install.sh",
+	"postCreateCommand": "bash -i .devcontainer/post_install.sh",
 	"containerEnv": {
 		"ENV1": "lalala"
 	},
 	"settings": {
-		"cmake.buildDirectory": "/workspaces/builds/build_arcane_benchs/${buildType}",
+		"cmake.buildDirectory": "/workspaces/builds/build_arcane-benchs/${buildType}",
 		"editor.tabSize": 2
 	}
 }
