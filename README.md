@@ -1,14 +1,5 @@
 # Benchs for Arcane
 
-- [Benchs for Arcane](#benchs-for-arcane)
-  - [Compilation](#compilation)
-    - [Arcane](#arcane)
-    - [Bench](#bench)
-  - [Benchs](#benchs)
-    - [MicroHydro](#microhydro)
-    - [MaHyCo](#mahyco)
-    - [QAMA (Quicksilver Arcane Mini-App)](#qama-quicksilver-arcane-mini-app)
-
 This repository contains benchs for evaluating performance of some
 message passing patterns.
 
@@ -17,6 +8,15 @@ To get sources files for the benchs:
 ~~~{.sh}
 git clone https://github.com/arcaneframework/arcane-benchs
 ~~~
+
+- [Benchs for Arcane](#benchs-for-arcane)
+  - [Compilation](#compilation)
+    - [Arcane](#arcane)
+    - [Bench](#bench)
+  - [Benchs](#benchs)
+    - [MicroHydro](#microhydro)
+    - [MaHyCo](#mahyco)
+    - [QAMA (Quicksilver Arcane Mini-App)](#qama-quicksilver-arcane-mini-app)
 
 ## Compilation
 
