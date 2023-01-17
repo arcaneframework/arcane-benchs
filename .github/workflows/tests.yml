@@ -22,7 +22,7 @@ env:
 
   # CTest
   CT_RESULT_DIR: '/__w/arcane-benchs/arcane-benchs/test'
-  CT_OPTS: "--timeout 1200 --output-on-failure"
+  CT_OPTS: "--timeout 2400 --output-on-failure"
 
   # MPI
   OMPI_ALLOW_RUN_AS_ROOT: 1
@@ -48,6 +48,7 @@ jobs:
           cmake \
           -S ${{ env.SOURCE_DIR }} \
           -B ${{ env.BUILD_DIR }} \
+          -DCMAKE_BUILD_TYPE=Debug \
           -GNinja
 
       - name: Build
