@@ -1,0 +1,3 @@
+#!/bin/sh
+export OMPI_MCA_rmaps_base_oversubscribe=1
+@MPIEXEC_EXECUTABLE@ -n @NB_PROC@ ${MPI_ARGS} @QAMA_EXE@ -A,T=@NB_THREAD@,MaxIteration=@MAX_ITER@,ReferenceDirectory=@QAMA_REF_DIR@ @QAMA_DATADIR@/@SUBDIR@/@TEST_BASE_NAME@.arc

@@ -89,16 +89,16 @@ endforeach()
 
 
 # ----------------------------------------------------------------------------
-# Add Quicksilver and tests for Quicksilver
+# Add QAMA and tests for QAMA
 
-add_subdirectory(quicksilver)
-set(QUICKSILVER_EXE "${Quicksilver_BINARY_DIR}/Quicksilver")
+add_subdirectory(qama)
+set(QAMA_EXE "${QAMA_BINARY_DIR}/qama")
 
-set(QUICKSILVER_REF_DIR "${CMAKE_CURRENT_SOURCE_DIR}/quicksilver/reference_files")
-set(QUICKSILVER_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/quicksilver/data")
+set(QAMA_REF_DIR "${CMAKE_CURRENT_SOURCE_DIR}/qama/reference_files")
+set(QAMA_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/qama/data")
 
 # Get test names and number of cores from JSON file
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/quicksilver/test_list.json" TESTLIST_JSON)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/qama/test_list.json" TESTLIST_JSON)
 
 string(JSON NB_TEST LENGTH "${TESTLIST_JSON}" "test_list")
 math(EXPR NB_TEST "${NB_TEST} - 1")
@@ -111,16 +111,15 @@ foreach(X RANGE ${NB_TEST})
   string(JSON MAX_ITER GET "${TESTLIST_JSON}" "test_list" ${X} "max-iter")
 
   if(PROCESSOR_COUNT GREATER_EQUAL NB_PROC)
-    set(TEST_NAME "quicksilver_${TEST_BASE_NAME}_${NB_PROC}proc_${NB_THREAD}thread")
+    set(TEST_NAME "qama_${TEST_BASE_NAME}_${NB_PROC}proc_${NB_THREAD}thread")
 
-    message(STATUS "Quicksilver: TEST_BASE_NAME=${TEST_BASE_NAME} NB_PROC=${NB_PROC} NB_THREAD=${NB_THREAD}")
+    message(STATUS "QAMA: TEST_BASE_NAME=${TEST_BASE_NAME} NB_PROC=${NB_PROC} NB_THREAD=${NB_THREAD}")
 
-    configure_file(quicksilver/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/quicksilver/launch_${TEST_NAME}.sh @ONLY)
-    add_test(NAME ${TEST_NAME} COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/quicksilver/launch_${TEST_NAME}.sh)
+    configure_file(qama/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/qama/launch_${TEST_NAME}.sh @ONLY)
+    add_test(NAME ${TEST_NAME} COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/qama/launch_${TEST_NAME}.sh)
   endif()
 
 endforeach()
-
 
 # ----------------------------------------------------------------------------
 # Add Synchronize
