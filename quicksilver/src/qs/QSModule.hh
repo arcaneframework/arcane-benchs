@@ -71,6 +71,7 @@ public ArcaneQSObject
 protected:
   ISimpleTableOutput* m_csv;
   ISimpleTableComparator* m_csv_compare;
+  Integer m_max_iteration;
 };
 
 /*---------------------------------------------------------------------------*/

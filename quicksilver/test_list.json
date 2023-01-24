@@ -1,5 +1,19 @@
 {
-  "tests_arc" : [
-    { "name" : "ExampleFull", "nb-proc" : "4", "nb-thread" : "2" }
+  "test_list" : [
+    { "name" : "ExampleFull", "subdir" : "tests", "max-iter" : "100", "nb-proc" : "4", "nb-thread" : "1" },
+    { "name" : "ExampleFull", "subdir" : "tests", "max-iter" : "100", "nb-proc" : "4", "nb-thread" : "2" },
+    { "name" : "ExampleFull", "subdir" : "tests", "max-iter" : "100", "nb-proc" : "1", "nb-thread" : "8" },
+
+    { "name" : "Coral2_P1_n128", "subdir" : "Coral2", "max-iter" : "100", "nb-proc" : "128", "nb-thread" : "4" },
+    { "name" : "Coral2_P1_n128", "subdir" : "Coral2", "max-iter" : "10", "nb-proc" : "1", "nb-thread" : "256" },
+
+    { "name" : "Coral2_P2_n128", "subdir" : "Coral2", "max-iter" : "100", "nb-proc" : "128", "nb-thread" : "4" },
+    { "name" : "Coral2_P2_n128", "subdir" : "Coral2", "max-iter" : "10", "nb-proc" : "1", "nb-thread" : "256" },
+
+    { "name" : "CTS2_n128", "subdir" : "CTS2", "max-iter" : "100", "nb-proc" : "128", "nb-thread" : "4" },
+    // { "name" : "CTS2_n128", "subdir" : "CTS2", "max-iter" : "10", "nb-proc" : "1", "nb-thread" : "256" },
+    
+    { "name" : "Strong_n128", "subdir" : "Strong", "max-iter" : "100", "nb-proc" : "128", "nb-thread" : "4" }
+    // { "name" : "Strong_n128", "subdir" : "Strong", "max-iter" : "10", "nb-proc" : "1", "nb-thread" : "256" }
   ]
 }

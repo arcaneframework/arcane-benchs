@@ -5,7 +5,7 @@
 
 Build and Install Arcane (version 3.7.3+).
 
-And:
+And, if you want to compile only QAMA:
 
 ```sh
 ARCANE_INSTALL_PATH= # your install path.
@@ -36,8 +36,8 @@ mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 
 In .arc, you have:
 - For CSV:
-  - 'csvDir'  : path for results
-  - 'csvName' : name of csv files
+  - 'csvDir'  : directory for the results
+  - 'csvName' : name of the output csv files
 
 In these names, you can put '@proc_id@' (replaced by rank of process) and/or '@n_proc@' (replaced by number of processes).
 

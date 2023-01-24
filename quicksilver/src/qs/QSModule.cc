@@ -37,6 +37,16 @@ initModule()
 
   initMesh();
 
+  String max_iteration_command_line = subDomain()->applicationInfo().commandLineArguments().getParameter("MaxIteration");
+
+  if(!max_iteration_command_line.empty()){
+    m_max_iteration = atoi(max_iteration_command_line.toStdStringView().data());
+  }
+  else {
+    m_max_iteration = options()->getNSteps();
+  }
+
+
   // On récupère un pointeur vers le singleton csv.
   m_csv = ServiceBuilder<ISimpleTableOutput>(subDomain()).getSingleton();
   m_csv_compare = ServiceBuilder<ISimpleTableComparator>(subDomain()).getSingleton();
@@ -60,8 +70,8 @@ initModule()
 
 
   // On ajoute les colonnes (une par itération).
-  StringUniqueArray columns_name(options()->getNSteps());
-  for(Integer i = 0; i < options()->getNSteps(); i++){
+  StringUniqueArray columns_name(m_max_iteration);
+  for(Integer i = 0; i < m_max_iteration; i++){
     columns_name[i] = "Iteration " + String::fromNumber(i+1);
   }
   m_csv->addColumns(columns_name);
@@ -134,7 +144,7 @@ cycleFinalize()
   if(parallelMng()->commSize() == 1) info() << "  Informations:";
   else  info() << "  Informations:                                            (variable name): Sum, [Min, Max, Avg]";
 
-  if (m_global_iteration() == options()->getNSteps())
+  if (m_global_iteration() == m_max_iteration)
     subDomain()->timeLoopMng()->stopComputeLoop(true);
 }
 
@@ -159,7 +169,7 @@ loopLoadBalancing()
 {
   if(options()->getLoadBalancingLoop() == 0 
     || (m_global_iteration() % options()->getLoadBalancingLoop() != 0 && m_global_iteration() != 1)
-    || m_global_iteration() == options()->getNSteps()) return;
+    || m_global_iteration() == m_max_iteration) return;
   info() << "loopLoadBalancing";
   loadBalancing();
 }
