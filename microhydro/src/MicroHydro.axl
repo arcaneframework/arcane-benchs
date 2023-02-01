@@ -218,6 +218,20 @@
       </description>
     </simple>
 
+    <service-instance name="st-output" type="Arcane::ISimpleTableOutput" default="SimpleCsvOutput">
+      <description>
+        Service SimpleTableOutput permettant d'enregistrer des valeurs et de les
+        sortir dans un fichier (par défaut, un fichier CSV).
+      </description>
+    </service-instance>
+
+    <service-instance name="st-comparator" type="Arcane::ISimpleTableComparator" default="SimpleCsvComparator">
+      <description>
+        Service SimpleTableComparator permettant de comparer des valeurs de
+        références avec les valeurs enregistré par SimpleTableOutput.
+      </description>
+    </service-instance>
+
   </options>
   
   <!-- ###################################################################### -->

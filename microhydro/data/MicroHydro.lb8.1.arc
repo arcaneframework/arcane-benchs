@@ -11,9 +11,6 @@
 
   <meshes>
     <mesh>
-      <!-- La validite numerique suppose que le maillage est 100x15x15.
-           Si ce n'est pas le cas, il faut desactiver l'option 'check-numerical-result' -->
-
       <ghost-layer-builder-version>4</ghost-layer-builder-version>
       <generator name="Cartesian3D" >
         <nb-part-x>2</nb-part-x>
@@ -57,7 +54,6 @@
 
   <!-- Configuration du module hydrodynamique -->
   <micro-hydro>
-    <check-numerical-result>false</check-numerical-result>
     <deltat-init>0.001</deltat-init>
     <deltat-min>0.0001</deltat-min>
     <deltat-max>0.01</deltat-max>
@@ -84,5 +80,13 @@
     <boundary-condition>
       <surface>ZMAX</surface><type>Vz</type><value>0.</value>
     </boundary-condition>
+    
+    <check-numerical-result>false</check-numerical-result>
+
+    <st-output name="SimpleCsvOutput">
+      <tableDir>MicroHydro.lb8.1</tableDir>
+      <tableName>Results_P@proc_id@</tableName>
+    </st-output>
+
   </micro-hydro>
 </case>

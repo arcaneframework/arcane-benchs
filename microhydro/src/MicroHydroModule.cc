@@ -21,6 +21,12 @@
 #include "arcane/ModuleFactory.h"
 #include "arcane/ItemPrinter.h"
 #include "arcane/ITimeStats.h"
+
+#include <arcane/ISimpleTableOutput.h>
+#include <arcane/ISimpleTableComparator.h>
+#include <arcane/utils/ApplicationInfo.h>
+#include <arcane/utils/CommandLineArguments.h>
+
 #include "arcane/accelerator/core/IAcceleratorMng.h"
 
 #include "arcane/mesh/ItemFamily.h"
@@ -43,37 +49,6 @@ namespace MicroHydro
 
 namespace ax = Arcane::Accelerator;
 using namespace Arcane;
-
-/*---------------------------------------------------------------------------*/
-/*---------------------------------------------------------------------------*/
-
-// Valeurs des références pour la validation
-
-double reference_density_ratio_maximum[50] = {
-  0.0160000000000123, 0.00170124869728498, 0.00204753556227649, 0.00246464898229085, 0.00296699303969296,
-  0.00357184605321602, 0.00429990753718348, 0.00517593569890155, 0.00622948244180328, 0.00749572737143143,
-  0.0090164010818345, 0.0108407663681081, 0.0130265854869945, 0.0156409265893111, 0.0187605241309118,
-  0.0224711528439701, 0.0268650034204973, 0.0320341788827704, 0.0380568426206173, 0.0449697158584332,
-  0.0527158336840399, 0.0610493482313262, 0.0693720874578793, 0.0764829000430237, 0.0802862351795616,
-  0.0670829131533573, 0.0597808473490852, 0.0654293866188612, 0.0698233985169538, 0.0724886365903765,
-  0.0728380430958174, 0.0702035766339136, 0.0641244580818233, 0.0547358261067183, 0.0568567736303723,
-  0.06387075263142, 0.0694149111684302, 0.0726551742001545, 0.072829643927776, 0.0693970119163948,
-  0.0622148000416855, 0.0517264119336657, 0.0592227788170703, 0.0665696529262891, 0.0717611469166364,
-  0.0741457462067702, 0.0730964375784472, 0.0682069575016942, 0.0596677042759776, 0.0543168109309979
-};
-
-double reference_global_deltat[50] = {
-  0.000000000000000e+00, 1.000000000000000e-04, 1.100000000000000e-04, 1.210000000000000e-04, 1.331000000000000e-04,
-  1.464100000000001e-04, 1.610510000000001e-04, 1.771561000000001e-04, 1.948717100000001e-04, 2.143588810000001e-04,
-  2.357947691000002e-04, 2.593742460100002e-04, 2.853116706110002e-04, 3.138428376721002e-04, 3.452271214393103e-04,
-  3.797498335832414e-04, 4.177248169415655e-04, 4.594972986357221e-04, 5.054470284992944e-04, 5.559917313492239e-04,
-  6.115909044841464e-04, 6.727499949325611e-04, 7.400249944258172e-04, 8.140274938683990e-04, 8.954302432552390e-04,
-  8.342344802558105e-04, 7.832988697246865e-04, 7.455699714960305e-04, 7.189393815728784e-04, 7.011461654789450e-04,
-  6.900170474392408e-04, 6.835626230429761e-04, 6.800416216153530e-04, 6.780401694886634e-04, 6.765567003929260e-04,
-  6.750478953733179e-04, 6.733949061097245e-04, 6.717890229153485e-04, 6.705765765568119e-04, 6.701124635250109e-04,
-  6.706540214144399e-04, 6.723370623794280e-04, 6.751721250357102e-04, 6.790835285303133e-04, 6.783102389627785e-04,
-  6.765647969871316e-04, 6.753134577141526e-04, 6.751179527299745e-04, 6.762828720782492e-04, 6.789494792300497e-04
-};
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -284,6 +259,9 @@ hydroStartInit()
       m_boundary_conditions.add(bcn);
     }
   }
+
+  options()->stOutput()->init();
+
   info() << "END_START_INIT";
 }
 
@@ -546,21 +524,7 @@ updateDensity()
 
   m_density_ratio_maximum = density_ratio_maximum.reduce();
 
-  // Vérifie la validité du ratio calculé. La référence n'est valide
-  // qu'en séquentiel car ce ratio n'est pas réduit sur tout les
-  // sous-domaines.
-  if (options()->getCheckNumericalResult()) {
-    if (!mesh()->parallelMng()->isParallel()) {
-      Integer iteration = m_global_iteration();
-      if (iteration <= 50) {
-        Real max_dr = m_density_ratio_maximum();
-        Real ref_max_dr = reference_density_ratio_maximum[iteration - 1];
-        if (!math::isNearlyEqualWithEpsilon(max_dr, ref_max_dr, 1.0e-12))
-          ARCANE_FATAL("Bad value for density_ratio_maximum: ref={0} v={1} diff={2}",
-                       ref_max_dr, max_dr, (ref_max_dr - max_dr) / ref_max_dr);
-      }
-    }
-  }
+  options()->stOutput()->addElementInRow("m_density_ratio_maximum", parallelMng()->reduce(Parallel::ReduceMax, m_density_ratio_maximum()));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -666,15 +630,7 @@ computeDeltaT()
   new_dt = math::min(new_dt, options()->getDeltatMax());
   new_dt = math::max(new_dt, options()->getDeltatMin());
 
-  if (options()->getCheckNumericalResult()) {
-    Integer iteration = m_global_iteration();
-    if (iteration < 25) {
-      Real ref_new_dt = reference_global_deltat[iteration];
-      if (!math::isNearlyEqual(new_dt, ref_new_dt))
-        ARCANE_FATAL("Bad value for 'new_dt' ref={0} v={1} diff={2}",
-                     ref_new_dt, new_dt, (new_dt - ref_new_dt) / ref_new_dt);
-    }
-  }
+  options()->stOutput()->addElementInRow("new_dt", new_dt);
 
   // Le dernier calcul se fait exactement au temps stopTime()
   {
@@ -909,6 +865,58 @@ hydroExit()
 {
   info() << "Hydro exit entry point";
   m_time_stats->dumpCurrentStats("SH_DoOneIteration");
+
+  // On ajoute un argument de ligne de commande pour changer le répertoire
+  // des fichiers de références.
+  String reference_input = subDomain()->applicationInfo().commandLineArguments().getParameter("ReferenceDirectory");
+
+  // Si l'on veut comparer les valeurs.
+  if (options()->getCheckNumericalResult() || !reference_input.empty()) {
+
+    // On ajoute un arguments de ligne de commande pour déterminer si lecture ou écriture.
+    bool overwrite_reference = (subDomain()->applicationInfo().commandLineArguments().getParameter("OverwriteReference") == "true");
+
+    // On initialise le comparateur.
+    options()->stComparator()->init(options()->stOutput());
+
+    // Si l'utilisateur veut un autre emplacement pour les fichiers de références.
+    if(!reference_input.empty()) {
+      info() << "Set reference directory: " << reference_input;
+      options()->stComparator()->editRootDirectory(Directory(reference_input));
+    }
+
+    // Si demande d'écriture.
+    if(overwrite_reference) {
+      info() << "Write reference file";
+      options()->stComparator()->writeReferenceFile(0);
+    }
+
+    // Sinon lecture.
+    else {
+      // Si le fichier existe, comparaison.
+      if(options()->stComparator()->isReferenceExist(0)) {
+        options()->stComparator()->addEpsilonRow("m_density_ratio_maximum", 1.0e-10);
+        options()->stComparator()->addEpsilonRow("new_dt", 1.0e-13);
+        if(options()->stComparator()->compareWithReference(0)){
+          info() << "Comparator: OK";
+        }
+        else{
+          ARCANE_FATAL("Comparator: NOK");
+        }
+      }
+      else{
+        ARCANE_FATAL("Ref file not found");
+      }
+    }
+  }
+
+  // // Précision maximum.
+  // options()->stOutput()->setPrecision(std::numeric_limits<Real>::max_digits10);
+  // options()->stOutput()->setForcedToUseScientificNotation(true);
+  // options()->stOutput()->setFixed(false);
+
+  // On écrit les valeurs de l'exécution actuelle.
+  options()->stOutput()->writeFile(0);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -936,6 +944,7 @@ _doCall(const char* func_name, std::function<void()> func)
 void MicroHydroModule::
 doOneIteration()
 {
+  options()->stOutput()->addColumn("Iteration " + String::fromNumber(m_global_iteration()));
   DO_CALL(computeForces);
   DO_CALL(computeVelocity);
   DO_CALL(computeViscosityWork);
