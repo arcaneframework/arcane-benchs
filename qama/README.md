@@ -14,7 +14,7 @@ QS_BUILD_TYPE=Release # or Debug
 QS_SOURCE_DIR=arcane-benchs/qama # your src path
 QS_BUILD_DIR=build_qama # build dir
 
-QS_EXE=${QS_BUILD_DIR}/src/Qama
+QS_EXE=${QS_BUILD_DIR}/src/qama
 QS_ARC=${QS_SOURCE_DIR}/data/tests/ExampleFull.arc
 cd ${QS_BUILD_DIR}
 
@@ -34,14 +34,103 @@ ${QS_EXE} -A,T=2 ${QS_ARC}
 mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 ```
 
-In .arc, you have:
-- For CSV:
-  - 'csvDir'  : directory for the results
-  - 'csvName' : name of the output csv files
+### Output results in CSV file
 
-In these names, you can put '@proc_id@' (replaced by rank of process) and/or '@n_proc@' (replaced by number of processes).
+QAMA uses SimpleCsvOutput to provide an easy method for outputting results
+to CSV files.
 
-You can change 'loadBalancingMat' (possibles values: 'true' / 'false') and 'loadBalancingLoop' (possibles values: integer >= 0).
+In the .arc file, you have the following options:
+- `csvDir`  : directory for the output CSV files
+- `csvName` : name of the output CSV files
+
+In these file names, you can use @proc_id@ (which will be replaced by the rank of the process) and/or @n_proc@ (which will be replaced by the number of processes) for customizing the file names.
+
+Example:
+```xml
+<csvDir>ExampleFull</csvDir>
+<csvName>Results_P@proc_id@</csvName>
+```
+With this example, the CSV files will be located in `./output/csv/ExampleFull/Results_P0.csv`.
+
+
+### Compare results with CSV reference file
+
+QAMA uses SimpleCsvComparator to provide a method for comparing the current
+results with a reference result. Reference files can be created by you,
+or you can use the reference files available in this repository.
+
+To use SimpleCsvComparator, you have two options in the .arc file:
+```xml
+<csvReferenceDir>default</csvReferenceDir>
+<csvOverwriteReference>false</csvOverwriteReference>
+```
+The csvReferenceDir option specifies the directory that contains all the reference files.
+SimpleCsvComparator uses the options of SimpleCsvOutput to determine the exact path of the directory.
+
+For example:
+```xml
+<csvReferenceDir>default</csvReferenceDir>
+<csvDir>ExampleFull</csvDir>
+<csvName>Results_P@proc_id@</csvName>
+```
+The path determined by SimpleCsvComparator is :
+`./output/csv_refs/ExampleFull/Results_P0.csv`
+
+```xml
+<csvReferenceDir>/tmp/my_tmp_refs</csvReferenceDir>
+<csvDir>Example123</csvDir>
+<csvName>Results456_P@proc_id@</csvName>
+```
+The path determined by SimpleCsvComparator is:
+`tmp/my_tmp_refs/Example123/Results456_P0.csv`
+
+```xml
+<csvReferenceDir>/tmp/my_tmp_refs</csvReferenceDir>
+<!-- <csvDir></csvDir> -->
+<csvName>Results456_P@proc_id@</csvName>
+```
+The path determined by SimpleCsvComparator is :
+`tmp/my_tmp_refs/Results456_P0.csv`
+
+```xml
+<csvReferenceDir>/tmp/my_tmp_refs</csvReferenceDir>
+<!-- <csvDir></csvDir> -->
+<!-- <csvName></csvName> -->
+```
+The path determined by SimpleCsvComparator is :
+`tmp/my_tmp_refs/Table_P0.csv`
+
+```xml
+<!-- <csvReferenceDir></csvReferenceDir> -->
+```
+No comparison will be made.
+
+You also have the csvOverwriteReference option. This option is used to write
+or overwrite the reference files in the csvDir directory.
+
+If you want to write a script to do this operation (or use ctest),
+you have two command-line arguments that overwrite these two options:
+- `ReferenceDirectory`
+- `OverwriteReference`
+- 
+Example usage:
+./QAMA -A,MaxIteration=10,ReferenceDirectory="/tmp/my_tmp_refs",OverwriteReference=false ./src/qama/data/tests/dataExampleFull.arc
+
+
+### Load balancing
+
+You can change the loadBalancingMat option (possible values: 'true' / 'false')
+and the loadBalancingLoop option (possible values: integer >= 0).
+
+QAMA has two load balancing modes: init (controlled by the loadBalancingMat option)
+and compute-loop (controlled by the loadBalancingLoop option).
+
+The first mode is executed once and is only based on material properties.
+The second mode is executed every loadBalancingLoop loops (executed if the current
+iteration is divisible by loadBalancingLoop) and is based on the number of segments in one loop.
+
+
+### Input .arc data available
 
 All arc input files examples:
 
