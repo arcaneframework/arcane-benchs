@@ -10,7 +10,7 @@
 	],
 	"postCreateCommand": "bash -i .devcontainer/post_install.sh",
 	"containerEnv": {
-		"ENV1": "lalala"
+		"ENV1": "val1"
 	},
 	"settings": {
 		"cmake.buildDirectory": "/workspaces/builds/build_arcane-benchs/${buildType}",
