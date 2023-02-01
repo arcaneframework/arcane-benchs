@@ -1,19 +1,8 @@
-name: 'Tests'
+name: 'Tests Debug'
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-    paths:
-      - '**.cc'
-      - '**.c'
-      - '**.hh'
-      - '**.h'
-      - '**.axl'
-      - '**.arc'
-      - '**.config'
-  workflow_dispatch:
+  schedule:
+    - cron: '12 0 * * 1' # Tous les lundis à 00:12 (du matin).
 
 env:
 
