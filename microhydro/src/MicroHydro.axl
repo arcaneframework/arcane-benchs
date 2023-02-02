@@ -210,13 +210,26 @@
 
     </complex>
 
-    <!-- - - - - - viscosity-linear-coef - - - - -->
     <simple name="check-numerical-result" type="bool" default="false" >
       <description>
         Indique si on souhaite vérifier numériquement les valeurs (faux par défaut
         car cela n'est pas implémenté pour toutes les implémentations de l'hydro).
       </description>
     </simple>
+
+    <service-instance name="st-output" type="Arcane::ISimpleTableOutput" default="SimpleCsvOutput">
+      <description>
+        Service SimpleTableOutput permettant d'enregistrer des valeurs et de les
+        sortir dans un fichier (par défaut, un fichier CSV).
+      </description>
+    </service-instance>
+
+    <service-instance name="st-comparator" type="Arcane::ISimpleTableComparator" default="SimpleCsvComparator">
+      <description>
+        Service SimpleTableComparator permettant de comparer des valeurs de
+        références avec les valeurs enregistré par SimpleTableOutput.
+      </description>
+    </service-instance>
 
   </options>
   
