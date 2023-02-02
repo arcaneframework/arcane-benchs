@@ -1,7 +1,7 @@
 # Quicksilver Arcane MiniApp (QAMA)
-## Monte-Carlo particle transport problem using Arcane framework
+### Monte-Carlo particle transport problem using Arcane framework
 
-### How to use it?
+## How to use it?
 
 Build and Install Arcane (version 3.7.3+).
 
@@ -34,7 +34,7 @@ ${QS_EXE} -A,T=2 ${QS_ARC}
 mpirun -n 4 ${QS_EXE} -A,T=2 ${QS_ARC}
 ```
 
-### Output results in CSV file
+## Output results in CSV file
 
 QAMA uses SimpleCsvOutput to provide an easy method for outputting results
 to CSV files.
@@ -43,7 +43,7 @@ In the .arc file, you have the following options:
 - `csvDir`  : directory for the output CSV files
 - `csvName` : name of the output CSV files
 
-In these file names, you can use @proc_id@ (which will be replaced by the rank of the process) and/or @n_proc@ (which will be replaced by the number of processes) for customizing the file names.
+In these file names, you can use `@proc_id@` (which will be replaced by the rank of the process) and/or `@n_proc@` (which will be replaced by the number of processes) for customizing the file names.
 
 Example:
 ```xml
@@ -53,7 +53,7 @@ Example:
 With this example, the CSV files will be located in `./output/csv/ExampleFull/Results_P0.csv`.
 
 
-### Compare results with CSV reference file
+## Compare results with CSV reference file
 
 QAMA uses SimpleCsvComparator to provide a method for comparing the current
 results with a reference result. Reference files can be created by you,
@@ -105,6 +105,8 @@ The path determined by SimpleCsvComparator is :
 ```
 No comparison will be made.
 
+___
+
 You also have the csvOverwriteReference option. This option is used to write
 or overwrite the reference files in the csvDir directory.
 
@@ -112,12 +114,12 @@ If you want to write a script to do this operation (or use ctest),
 you have two command-line arguments that overwrite these two options:
 - `ReferenceDirectory`
 - `OverwriteReference`
-- 
+
 Example usage:
-./QAMA -A,MaxIteration=10,ReferenceDirectory="/tmp/my_tmp_refs",OverwriteReference=false ./src/qama/data/tests/dataExampleFull.arc
+`./QAMA -A,MaxIteration=10,ReferenceDirectory="/tmp/my_tmp_refs",OverwriteReference=false ./src/qama/data/tests/data/ExampleFull.arc`
 
 
-### Load balancing
+## Load balancing
 
 You can change the loadBalancingMat option (possible values: 'true' / 'false')
 and the loadBalancingLoop option (possible values: integer >= 0).
@@ -130,7 +132,7 @@ The second mode is executed every loadBalancingLoop loops (executed if the curre
 iteration is divisible by loadBalancingLoop) and is based on the number of segments in one loop.
 
 
-### Input .arc data available
+## Input .arc data available
 
 All arc input files examples:
 
