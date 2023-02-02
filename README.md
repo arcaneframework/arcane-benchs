@@ -98,7 +98,7 @@ You can launch the test and get the results with the following
 commands:
 
 ~~~{sh}
-sh ./test_scripts/microhydro/launch_micro_hydro_lb8.1.sh > result1.txt
+sh ./test_scripts/microhydro/launch_microhydro_MicroHydro.lb8.1_8proc.sh > result1.txt
 grep 'total_time=' result1.txt | grep Cell
 ~~~
 
@@ -117,15 +117,16 @@ The results will be similar to this listing:
 There is two tests using 512 sub-domains:
 
 ~~~{txt}
-launch_micro_hydro_lb512.1.sh
-launch_micro_hydro_lb512.2.sh
+launch_microhydro_MicroHydro.lb512.1_512proc.sh
+launch_microhydro_MicroHydro.lb512.2_512proc.sh
 ~~~
 
 If you want to test if anything is OK you can launch smaller tests:
 
 ~~~{txt}
-launch_micro_hydro_lb32.1.sh
-launch_micro_hydro_lb8.1.sh
+launch_microhydro_MicroHydro.lb32.1_32proc.sh
+launch_microhydro_MicroHydro.lb8.1_8proc.sh
+launch_microhydro_MicroHydro.1.1_1proc.sh
 ~~~
 
 ### MaHyCo

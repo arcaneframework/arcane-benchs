@@ -210,7 +210,6 @@
 
     </complex>
 
-    <!-- - - - - - viscosity-linear-coef - - - - -->
     <simple name="check-numerical-result" type="bool" default="false" >
       <description>
         Indique si on souhaite vérifier numériquement les valeurs (faux par défaut

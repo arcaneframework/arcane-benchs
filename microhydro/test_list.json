@@ -1,9 +1,29 @@
 {
-    "list" : [
-        { "name" : "lb512.1", "nb-core" : "512" },
-        { "name" : "lb512.2", "nb-core" : "512" },
-        { "name" : "lb8.1", "nb-core" : "8" },
-        { "name" : "lb32.1", "nb-core" : "32" },
-        { "name" : "1.1", "nb-core" : "1" }
-    ]
+  "test_list": [
+    {
+      "name": "MicroHydro.1.1",
+      "nb-proc": "1",
+      "max-iter": "50"
+    },
+    {
+      "name": "MicroHydro.lb8.1",
+      "nb-proc": "8",
+      "max-iter": "50"
+    },
+    {
+      "name": "MicroHydro.lb32.1",
+      "nb-proc": "32",
+      "max-iter": "50"
+    },
+    {
+      "name": "MicroHydro.lb512.1",
+      "nb-proc": "512",
+      "max-iter": "50"
+    },
+    {
+      "name": "MicroHydro.lb512.2",
+      "nb-proc": "512",
+      "max-iter": "50"
+    }
+  ]
 }
