@@ -3,6 +3,7 @@
 
 #include "arcane/utils/ArcaneGlobal.h"
 #include "cartesian/CartTypes.h"
+#include <array>
 
 using namespace Arcane;
 namespace Cartesian {
