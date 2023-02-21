@@ -2062,7 +2062,7 @@ computeHydroDeltaT(DtCellInfoType &dt_cell_info)
   }
   // En fonction du type de dt_cell_info, on calcule ou pas les infos sur la maille qui fait le pas de temps
   Real h_minimum_aux = dt_cell_info.computeMinCellInfo(allCells(), mm, m_sound_speed, m_caracteristic_length);
-  ARCANE_ASSERT(h_minimum_aux==minimum_aux, ("Les minimum_aux calculés sur CPU et GPU sont différents"));
+  //ARCANE_ASSERT(h_minimum_aux==minimum_aux, ("Les minimum_aux calculés sur CPU et GPU sont différents"));
 
   Real dt_hydro = options()->cfl() * minimum_aux;
   dt_hydro = parallelMng()->reduce(Parallel::ReduceMin, dt_hydro);

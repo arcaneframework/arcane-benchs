@@ -85,18 +85,17 @@ endforeach()
 # # ----------------------------------------------------------------------------
 # # Add MaHyCo and tests for MaHyCo
 
-# add_subdirectory(mahyco)
-# set(MAHYCO_EXE "${Mahyco_BINARY_DIR}/Mahyco")
-# set(MAHYCO_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/mahyco/data")
-# set(MAHYCO_CPULIST 8 16 32 128 256 512 1024 2048 4096 8192)
-# foreach(X ${MAHYCO_CPULIST})
-#   # Used by 'mahyco/launch_test'
-#   set(NB_CPU ${X})
-#   configure_file(mahyco/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_${X}.sh @ONLY)
-#   add_test(NAME mahyco_${X}proc COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_${X}.sh)
-# endforeach()
+add_subdirectory(mahyco)
+set(MAHYCO_EXE "${Mahyco_BINARY_DIR}/Mahyco")
+set(MAHYCO_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/mahyco/data")
+set(MAHYCO_CPULIST 4 8 16 32 128 256 512 1024 2048 4096 8192)
+foreach(X ${MAHYCO_CPULIST})
+  # Used by 'mahyco/launch_test'
+  set(NB_CPU ${X})
+  configure_file(mahyco/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_${X}.sh @ONLY)
+endforeach()
 
-
+add_test(NAME mahyco_4proc COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_4.sh)
 
 # ----------------------------------------------------------------------------
 # Add QAMA and tests for QAMA
@@ -113,14 +112,22 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/qama/test_list.json" TESTLIST_JSON)
 string(JSON NB_TEST LENGTH "${TESTLIST_JSON}" "test_list")
 math(EXPR NB_TEST "${NB_TEST} - 1")
 
+set(MAX_ALLOWED_NB_PE ${PROCESSOR_COUNT})
+if (MAX_ALLOWED_NB_PE LESS_EQUAL 8)
+  set (MAX_ALLOWED_NB_PE 8)
+endif()
+message(STATUS "Max allowed nb_pe=${MAX_ALLOWED_NB_PE}")
+
 foreach(X RANGE ${NB_TEST})
   string(JSON TEST_BASE_NAME GET "${TESTLIST_JSON}" "test_list" ${X} "name")
   string(JSON NB_PROC GET "${TESTLIST_JSON}" "test_list" ${X} "nb-proc")
   string(JSON NB_THREAD GET "${TESTLIST_JSON}" "test_list" ${X} "nb-thread")
   string(JSON SUBDIR GET "${TESTLIST_JSON}" "test_list" ${X} "subdir")
   string(JSON MAX_ITER GET "${TESTLIST_JSON}" "test_list" ${X} "max-iter")
+  math(EXPR TOTAL_NB_PE "${NB_PROC} * ${NB_THREAD}")
+  message(STATUS "TOTAL_NB_PE=${TOTAL_NB_PE} MAX_ALLOWED=${MAX_ALLOWED_NB_PE}")
 
-  if(PROCESSOR_COUNT GREATER_EQUAL NB_PROC)
+  if (MAX_ALLOWED_NB_PE GREATER_EQUAL TOTAL_NB_PE)
     set(TEST_NAME "qama_${TEST_BASE_NAME}_${NB_PROC}proc_${NB_THREAD}thread")
 
     message(STATUS "QAMA: TEST_BASE_NAME=${TEST_BASE_NAME} NB_PROC=${NB_PROC} NB_THREAD=${NB_THREAD}")
