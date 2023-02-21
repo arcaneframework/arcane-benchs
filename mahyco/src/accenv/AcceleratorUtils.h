@@ -237,7 +237,7 @@ class AccMemAdviser {
 class Real3_View8
 {
  public:
-  Real3_View8(NumArray<Real3,2>& v) : m_ptr(v.to1DSpan().data()), nb_cell(v.dim2Size()) {}
+  Real3_View8(NumArray<Real3,MDDim2>& v) : m_ptr(v.to1DSpan().data()), nb_cell(v.dim2Size()) {}
  public:
   ARCCORE_HOST_DEVICE Real3& operator()(int node_index,int cell_index) const
   {
