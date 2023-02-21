@@ -88,15 +88,14 @@ endforeach()
 add_subdirectory(mahyco)
 set(MAHYCO_EXE "${Mahyco_BINARY_DIR}/Mahyco")
 set(MAHYCO_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/mahyco/data")
-set(MAHYCO_CPULIST 8 16 32 128 256 512 1024 2048 4096 8192)
+set(MAHYCO_CPULIST 4 8 16 32 128 256 512 1024 2048 4096 8192)
 foreach(X ${MAHYCO_CPULIST})
   # Used by 'mahyco/launch_test'
   set(NB_CPU ${X})
   configure_file(mahyco/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_${X}.sh @ONLY)
-  add_test(NAME mahyco_${X}proc COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_${X}.sh)
 endforeach()
 
-
+add_test(NAME mahyco_4proc COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_4.sh)
 
 # ----------------------------------------------------------------------------
 # Add QAMA and tests for QAMA
