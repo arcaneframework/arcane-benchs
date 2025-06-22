@@ -5,7 +5,6 @@
 #include <arcane/MeshVariableScalarRef.h>
 #include <arcane/MeshVariableArrayRef.h>
 #include <arcane/VariableBuildInfo.h>
-#include <arcane/accelerator/IRunQueueStream.h>
 
 /*---------------------------------------------------------------------------*/
 /* Equivalent à un var.synchronize() où var est une variable globale         */ 
