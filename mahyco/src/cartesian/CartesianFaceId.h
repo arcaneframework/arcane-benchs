@@ -128,7 +128,8 @@ class CartesianFaceUniqueIdBuilder {
   }
 
   //! Pour modifier les uniques Id cartesiens sur les faces
-  void computeFaceUniqueId() {
+  void computeFaceUniqueId()
+  {
     // Récupération des couples (unique_id, ptr_item)
     UniqueArray<UniqueIdItem> id_items;
     getFaceUniqueIdItems(m_face_family, id_items);
@@ -138,6 +139,7 @@ class CartesianFaceUniqueIdBuilder {
     for( Integer i=0; i<nb_faces_to_do; ++i ) {
       id_items[i].item->setUniqueId(id_items[i].unique_id);
     }
+    m_face_family->notifyItemsUniqueIdChanged();
   }
 
  private:
