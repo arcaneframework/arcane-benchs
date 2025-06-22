@@ -788,7 +788,7 @@ collisionEventSuite()
   // On effectue la suite de la collision.
   arcaneParallelFor(0, particles_view.size(), [&](Integer begin, Integer size) {
     for (Integer i = begin; i < (begin + size); i++) {
-      Particle particle(particles_view[i].internal());
+      Particle particle(particles_view[i]);
       updateTrajectory(m_extra_particles_energy_out[i], m_extra_particles_angle_out[i], particle);
     }
   });
@@ -801,7 +801,7 @@ collisionEventSuite()
 
   arcaneParallelFor(0, particles_view.size(), [&](Integer begin, Integer size) {
     for (Integer i = begin; i < (begin + size); i++) {
-      Particle particle(particles_view[i].internal());
+      Particle particle(particles_view[i]);
       updateTrajectory(m_extra_particles_energy_out_particle_src[i], m_extra_particles_angle_out_particle_src[i], particle);
       m_particle_ene_grp[particle] = m_nuclearData->getEnergyGroup(m_particle_kin_ene[particle]);
     }
@@ -1228,8 +1228,8 @@ cloneParticles(Int32UniqueArray idsSrc, Int32UniqueArray idsNew, Int64UniqueArra
 
   arcaneParallelFor(0, idsSrc.size(), [&](Integer begin, Integer size) {
     for (Integer i = begin; i < (begin + size); i++) {
-      Particle p_src(src_particles_view[i].internal());
-      Particle p_new(cloned_particles_view[i].internal());
+      Particle p_src(src_particles_view[i]);
+      Particle p_new(cloned_particles_view[i]);
       cloneParticle(p_src, p_new, rnsNew[i]);
     }
   });
