@@ -65,12 +65,13 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/microhydro/test_list.json" TESTLIST_JSON)
 
 string(JSON NB_TEST LENGTH "${TESTLIST_JSON}" "test_list")
 math(EXPR NB_TEST "${NB_TEST} - 1")
+message(STATUS "Number of potential MicroHydro test = ${NB_TEST}")
 
 foreach(X RANGE ${NB_TEST})
   string(JSON TEST_BASE_NAME GET "${TESTLIST_JSON}" "test_list" ${X} "name")
   string(JSON NB_PROC GET "${TESTLIST_JSON}" "test_list" ${X} "nb-proc")
   string(JSON MAX_ITER GET "${TESTLIST_JSON}" "test_list" ${X} "max-iter")
-
+  message(STATUS "Try adding microhydro test nb_proc=${NB_PROC}")
   if(PROCESSOR_COUNT GREATER_EQUAL NB_PROC)
     set(TEST_NAME "microhydro_${TEST_BASE_NAME}_${NB_PROC}proc")
     message(STATUS "MicroHydro: TEST_BASE_NAME=${TEST_BASE_NAME} NB_PROC=${NB_PROC}")
@@ -88,13 +89,14 @@ endforeach()
 add_subdirectory(mahyco)
 set(MAHYCO_EXE "${Mahyco_BINARY_DIR}/Mahyco")
 set(MAHYCO_DATADIR "${CMAKE_CURRENT_SOURCE_DIR}/mahyco/data")
-set(MAHYCO_CPULIST 4 8 16 32 128 256 512 1024 2048 4096 8192)
+set(MAHYCO_CPULIST 1 4 8 16 32 128 256 512 1024 2048 4096 8192)
 foreach(X ${MAHYCO_CPULIST})
   # Used by 'mahyco/launch_test'
   set(NB_CPU ${X})
   configure_file(mahyco/launch_test.sh.in ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_${X}.sh @ONLY)
 endforeach()
 
+add_test(NAME mahyco_1proc COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_1.sh)
 add_test(NAME mahyco_4proc COMMAND /bin/sh ${CMAKE_CURRENT_BINARY_DIR}/test_scripts/mahyco/launch_mahyco_4.sh)
 
 # ----------------------------------------------------------------------------
