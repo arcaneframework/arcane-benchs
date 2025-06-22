@@ -79,13 +79,13 @@ const char* get_string_items<Node>() {
 /*---------------------------------------------------------------------------*/
 template<typename ItemType>
 SyncItems<ItemType>::SyncItems(IMesh* mesh, Int32ConstArrayView neigh_ranks,
-    AccMemAdviser* acc_mem_adv) :
-  m_buf_owned_item_idx    (platform::getAcceleratorHostMemoryAllocator()),
-  m_indexes_owned_item_pn (platform::getAcceleratorHostMemoryAllocator()),
-  m_nb_owned_item_pn      (platform::getAcceleratorHostMemoryAllocator()),
-  m_buf_ghost_item_idx    (platform::getAcceleratorHostMemoryAllocator()),
-  m_indexes_ghost_item_pn (platform::getAcceleratorHostMemoryAllocator()),
-  m_nb_ghost_item_pn      (platform::getAcceleratorHostMemoryAllocator())
+    AccMemAdviser* acc_mem_adv)
+: m_buf_owned_item_idx    (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_indexes_owned_item_pn (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_nb_owned_item_pn      (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_buf_ghost_item_idx    (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_indexes_ghost_item_pn (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_nb_ghost_item_pn      (AcceleratorUtils::getAcceleratorHostMemoryAllocator())
 {
   eItemKind item_kind = get_item_kind<ItemType>();
   IItemFamily* item_family = mesh->itemFamily(item_kind);

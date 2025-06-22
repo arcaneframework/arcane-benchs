@@ -522,7 +522,7 @@ cloneParticles(Int32UniqueArray idsSrc,
   ParticleVectorView viewSrcP = m_particle_family->view(idsSrc);
   ParticleVectorView viewNewP = m_particle_family->view(idsNew);
   ENUMERATE_PARTICLE (iparticle, viewSrcP) {
-    Particle pNew(viewNewP[iparticle.index()].internal());
+    Particle pNew(viewNewP[iparticle.index()]);
     cloneParticle((*iparticle), pNew, rnsNew[iparticle.index()]);
   }
 }

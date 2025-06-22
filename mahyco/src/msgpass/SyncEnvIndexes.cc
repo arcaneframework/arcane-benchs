@@ -8,12 +8,12 @@ SyncEnvIndexes::SyncEnvIndexes(MatVarSpace mvs, IMeshMaterialMng* mm,
   m_acc_mem_adv          (acc_mem_adv),
   m_mvs                  (mvs),
   m_nb_nei               (neigh_ranks.size()),
-  m_buf_owned_evi        (platform::getAcceleratorHostMemoryAllocator()),
-  m_indexes_owned_evi_pn (platform::getAcceleratorHostMemoryAllocator()),
-  m_nb_owned_evi_pn      (platform::getAcceleratorHostMemoryAllocator()),
-  m_buf_ghost_evi        (platform::getAcceleratorHostMemoryAllocator()),
-  m_indexes_ghost_evi_pn (platform::getAcceleratorHostMemoryAllocator()),
-  m_nb_ghost_evi_pn      (platform::getAcceleratorHostMemoryAllocator())
+  m_buf_owned_evi        (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_indexes_owned_evi_pn (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_nb_owned_evi_pn      (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_buf_ghost_evi        (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_indexes_ghost_evi_pn (AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
+  m_nb_ghost_evi_pn      (AcceleratorUtils::getAcceleratorHostMemoryAllocator())
 {
   if (!m_mesh_material_mng) {
     throw NotSupportedException(A_FUNCINFO, "Unsupported m_mesh_material_mng nullptr");

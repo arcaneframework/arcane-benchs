@@ -240,7 +240,7 @@ void SyncBuffers::addEstimatedMaxSz(IntegerConstArrayView item_sizes,
 void SyncBuffers::BufMem::reallocIfNeededOnHost(Int64 wanted_size, bool is_acc_avl) {
   if (m_buf==nullptr) {
     eMemoryRessource mem_res = (is_acc_avl ? eMemoryRessource::HostPinned : eMemoryRessource::Host);
-    IMemoryAllocator* allocator = platform::getDataMemoryRessourceMng()->getAllocator(mem_res);
+    IMemoryAllocator* allocator = AcceleratorUtils::getMemoryAllocator(mem_res);
     m_buf = new UniqueArray<Byte>(allocator, wanted_size);
   }
   m_buf->resize(wanted_size);
@@ -251,8 +251,7 @@ void SyncBuffers::BufMem::reallocIfNeededOnHost(Int64 wanted_size, bool is_acc_a
 /*---------------------------------------------------------------------------*/
 void SyncBuffers::BufMem::reallocIfNeededOnDevice(Int64 wanted_size) {
   if (m_buf==nullptr) {
-    IMemoryAllocator* allocator = 
-      platform::getDataMemoryRessourceMng()->getAllocator(eMemoryRessource::Device);
+    IMemoryAllocator* allocator = AcceleratorUtils::getMemoryAllocator(eMemoryRessource::Device);
     m_buf = new UniqueArray<Byte>(allocator, wanted_size);
   }
   m_buf->resize(wanted_size);

@@ -48,7 +48,7 @@ target_include_directories(cartesian PUBLIC .)
 target_link_libraries(cartesian PUBLIC arcane_core)
 
 # Services communs pour les accélérateurs
-add_library(accenv accenv/AccEnvDefaultService.cc)
+add_library(accenv accenv/AccEnvDefaultService.cc accenv/AcceleratorUtils.cc)
 target_include_directories(accenv PUBLIC .)
 target_link_libraries(accenv PUBLIC arcane_core)
 

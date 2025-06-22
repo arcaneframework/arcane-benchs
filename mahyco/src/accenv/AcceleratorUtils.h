@@ -100,7 +100,11 @@ enum eQueuePriority {
 /*---------------------------------------------------------------------------*/
 /* Disponibilité d'un accélérateur associé à un runner                       */
 /*---------------------------------------------------------------------------*/
-class AcceleratorUtils {
+class AcceleratorUtils
+{
+ public:
+  static IMemoryAllocator* getMemoryAllocator(Arcane::eMemoryRessource x);
+  static IMemoryAllocator* getAcceleratorHostMemoryAllocator();
  public:
   static bool isAvailable(const ax::Runner& runner) {
     return ax::impl::isAcceleratorPolicy(runner.executionPolicy());
@@ -165,22 +169,19 @@ class MultiAsyncRunQueue {
     }
     m_queues.resize(m_nb_queue);
     for(Integer iq=0 ; iq<m_nb_queue ; ++iq) {
-      m_queues[iq] = new ax::RunQueue(runner);
+      m_queues[iq] = makeQueueRef(runner);
       m_queues[iq]->setAsync(true);
     }
   }
 
   virtual ~MultiAsyncRunQueue() {
-    for(auto q : m_queues) {
-      delete q;
-    }
     m_nb_queue=0;
     m_queues.clear();
   }
 
   // Pour récupérer la iq%nbQueue()-ième queue d'exécution
   inline ax::RunQueue& queue(Integer iq) {
-    return *(m_queues[iq%m_nb_queue]);
+    return *(m_queues[iq%m_nb_queue].get());
   }
 
   // Force l'attente de toutes les RunQueue
@@ -197,7 +198,7 @@ class MultiAsyncRunQueue {
   }
 
  protected:
-  UniqueArray<ax::RunQueue*> m_queues; //!< toutes les RunQueue
+  UniqueArray<Ref<ax::RunQueue>> m_queues; //!< toutes les RunQueue
   Integer m_nb_queue=0; //!< m_queues.size()
 };
 

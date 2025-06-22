@@ -15,7 +15,8 @@ using namespace Arcane::Materials;
 /*!
  * \brief Manager of buffers of Int64
  */
-class BufAddrMng {
+class BufAddrMng
+{
  public:
   BufAddrMng(ax::Runner& runner, IMeshMaterialMng* mm) :
     m_mesh_mat_mng (mm)
@@ -24,8 +25,8 @@ class BufAddrMng {
     eMemoryRessource mem_h = (is_acc_avl ? eMemoryRessource::HostPinned : eMemoryRessource::Host);
     eMemoryRessource mem_d = (is_acc_avl ? eMemoryRessource::Device : eMemoryRessource::Host);
 
-    IMemoryAllocator* alloc_h = platform::getDataMemoryRessourceMng()->getAllocator(mem_h);
-    IMemoryAllocator* alloc_d = platform::getDataMemoryRessourceMng()->getAllocator(mem_d);
+    IMemoryAllocator* alloc_h = AcceleratorUtils::getMemoryAllocator(mem_h);
+    IMemoryAllocator* alloc_d = AcceleratorUtils::getMemoryAllocator(mem_d);
 
     m_nb_addr_per_buf = mm->environments().size()+1;
     Integer sz = 10*m_nb_addr_per_buf; 
