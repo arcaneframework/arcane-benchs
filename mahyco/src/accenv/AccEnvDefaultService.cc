@@ -71,7 +71,7 @@ using namespace Arcane;
 
 AccEnvDefaultService::AccEnvDefaultService(const ServiceBuildInfo & sbi) : 
   ArcaneAccEnvDefaultObject(sbi), 
-  m_node_index_in_cells(platform::getAcceleratorHostMemoryAllocator())
+  m_node_index_in_cells(AcceleratorUtils::getAcceleratorHostMemoryAllocator())
 {
 }
 

@@ -88,7 +88,7 @@ template<typename value_type>
 class MultiEnvVar {
  public:
   MultiEnvVar(CellMaterialVariableScalarRef<value_type>& var_menv, IMeshMaterialMng* mm) :
-   m_var_menv_impl(platform::getAcceleratorHostMemoryAllocator(), mm->environments().size()+1)
+  m_var_menv_impl(AcceleratorUtils::getAcceleratorHostMemoryAllocator(), mm->environments().size()+1)
   {
     m_var_menv_impl[0].setArray(Span<value_type>(var_menv._internalValue()[0]));
     ENUMERATE_ENV(ienv, mm) {
@@ -151,7 +151,7 @@ class MultiEnvDataVar {
  public:
   MultiEnvDataVar(CellMaterialVariableScalarRef<value_type>& var_menv, IMeshMaterialMng* mm,
       eMemoryRessource mem_res = eMemoryRessource::UnifiedMemory) :
-   m_buf_addr(platform::getDataMemoryRessourceMng()->getAllocator(mem_res), 
+  m_buf_addr(AcceleratorUtils::getMemoryAllocator(mem_res), 
        mm->environments().size()+1)
   {
     m_var_menv_impl = _viewFromBuf(m_buf_addr);
@@ -161,7 +161,7 @@ class MultiEnvDataVar {
 
   // Allocation mais pas encore d'association à une variable multi-env
   MultiEnvDataVar(IMeshMaterialMng* mm, eMemoryRessource mem_res) :
-   m_buf_addr(platform::getDataMemoryRessourceMng()->getAllocator(mem_res), 
+   m_buf_addr(AcceleratorUtils::getMemoryAllocator(mem_res), 
        mm->environments().size()+1)
   {
     m_var_menv_impl = _viewFromBuf(m_buf_addr);
@@ -306,7 +306,7 @@ class MultiEnvCellStorage {
     m_mesh_material_mng (mm),
     m_max_nb_env (mm->environments().size()),
     m_nb_env(VariableBuildInfo(mm->mesh(), "NbEnv" , IVariable::PNoDump| IVariable::PNoNeedSync)),
-    m_l_env_arrays_idx(platform::getAcceleratorHostMemoryAllocator()),
+    m_l_env_arrays_idx(AcceleratorUtils::getAcceleratorHostMemoryAllocator()),
     m_l_env_values_idx(VariableBuildInfo(mm->mesh(), "LEnvValuesIdx" , IVariable::PNoDump| IVariable::PNoNeedSync)),
     m_env_id(VariableBuildInfo(mm->mesh(), "EnvId" , IVariable::PNoDump| IVariable::PNoNeedSync))
   {
