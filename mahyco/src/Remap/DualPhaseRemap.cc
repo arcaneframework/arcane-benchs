@@ -224,7 +224,7 @@ void RemapADIService::computeDualUremap(Integer idir, Integer nb_env)  {
 
       // 2 Mailles "back" dans la direction en 2D
       for(Integer sht1=-1 ; sht1<=0 ; ++sht1) {
-        IdxType cellb_idx=idx;
+        Cartesian::IdxType cellb_idx=idx;
         cellb_idx[idir]-=1; // back
         cellb_idx[dir1]+=sht1;
 
@@ -242,7 +242,7 @@ void RemapADIService::computeDualUremap(Integer idir, Integer nb_env)  {
 
       // 2 Mailles "front" dans la direction en 2D
       for(Integer sht1=-1 ; sht1<=0 ; ++sht1) {
-        IdxType cellf_idx=idx;
+        Cartesian::IdxType cellf_idx=idx;
         // cellf_idx[idir]+=0; // front
         cellf_idx[dir1]+=sht1;
 
@@ -298,7 +298,7 @@ void RemapADIService::computeDualUremap(Integer idir, Integer nb_env)  {
       // 4 Mailles "back" dans la direction en 3D
       for(Integer sht1=-1 ; sht1<=0 ; ++sht1) {
         for(Integer sht2=-1 ; sht2<=0 ; ++sht2) {
-          IdxType cellb_idx=idx;
+          Cartesian::IdxType cellb_idx=idx;
           cellb_idx[idir]-=1; // back
           cellb_idx[dir1]+=sht1;
           cellb_idx[dir2]+=sht2;
@@ -320,7 +320,7 @@ void RemapADIService::computeDualUremap(Integer idir, Integer nb_env)  {
       // 4 Mailles "front" dans la direction en 3D
       for(Integer sht1=-1 ; sht1<=0 ; ++sht1) {
         for(Integer sht2=-1 ; sht2<=0 ; ++sht2) {
-          IdxType cellf_idx=idx;
+          Cartesian::IdxType cellf_idx=idx;
           // cellf_idx[idir]+=0; // front
           cellf_idx[dir1]+=sht1;
           cellf_idx[dir2]+=sht2;

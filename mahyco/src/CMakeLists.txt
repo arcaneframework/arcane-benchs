@@ -39,10 +39,6 @@ target_link_libraries(Remap PUBLIC arcane_core)
 
 # Cartesian
 add_library(cartesian cartesian/CartesianConnectivity.cc
-                      cartesian/CartesianMesh.cc
-                      cartesian/CellDirectionMng.cc
-                      cartesian/FaceDirectionMng.cc
-                      cartesian/NodeDirectionMng.cc
                       cartesian/CartesianItemSorter.cc)
 target_include_directories(cartesian PUBLIC .)
 target_link_libraries(cartesian PUBLIC arcane_core)
@@ -142,7 +138,7 @@ if (WANT_PROF_ACC)
 endif()
 
 # Pour utiliser l'implémentation Arcane du cartésien
-option(WANT_IMPL_CART_ARCANE "Utilisation de l'implémentation Arcane:: dans arcane/cea/" FALSE)
+set(WANT_IMPL_CART_ARCANE ON)
 if (WANT_IMPL_CART_ARCANE)
   target_compile_definitions(${EXAMPLE_NAME} PRIVATE IMPL_CART_ARCANE)
   target_compile_definitions(PerfectGas PRIVATE IMPL_CART_ARCANE)
