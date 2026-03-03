@@ -144,3 +144,7 @@ endforeach()
 # ----------------------------------------------------------------------------
 # Add Synchronize
 add_subdirectory(synchronize/src)
+
+# ----------------------------------------------------------------------------
+# Add SimpleEulerianCFD
+add_subdirectory(simple_eulerian_cfd)
