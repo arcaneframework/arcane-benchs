@@ -60,10 +60,9 @@
 
 using namespace Arcane;
 
-const Int32 U_FIELD = 0;
-const Int32 V_FIELD = 1;
-const Int32 S_FIELD = 2;
-Int32 cnt = 0;
+constexpr Int32 U_FIELD = 0;
+constexpr Int32 V_FIELD = 1;
+constexpr Int32 S_FIELD = 2;
 
 Int32 canvas_width = 600;
 Int32 canvas_height = 400;
@@ -92,6 +91,11 @@ class Utils
     for (Int32 i = 0; i < size; ++i)
       p[i] = {};
   }
+  static void _destroy(Real** ptr)
+  {
+    delete *ptr;
+    *ptr = nullptr;
+  }
   static void _allocateAndFillZero(NumArray<Real, MDDim1>* ptr, Int32 size)
   {
     ptr->resize(size);
@@ -99,13 +103,16 @@ class Utils
     for (Int32 i = 0; i < size; ++i)
       p[i] = {};
   }
+  static void _destroy([[maybe_unused]] NumArray<Real, MDDim1>* ptr)
+  {
+  }
 
-  static void _doCopy(Real* new_v, Real* v, Int32 size)
+  static void _doCopy(Real* new_v, const Real* v, Int32 size)
   {
     for (Int32 i = 0; i < size; ++i)
       new_v[i] = v[i];
   }
-  static void _doCopy(NumArray<Real, MDDim1>& new_v, NumArray<Real, MDDim1>& v, [[maybe_unused]] Int32 size)
+  static void _doCopy(NumArray<Real, MDDim1>& new_v, const NumArray<Real, MDDim1>& v, [[maybe_unused]] Int32 size)
   {
     new_v.copy(v);
   }
@@ -127,22 +134,15 @@ class Scene
 {
  public:
 
-  Real gravity = -9.81;
-  Real dt = 1.0 / 120.0;
-  Int32 numIters = 100;
+  Real m_dt = 1.0 / 120.0;
+  Int32 m_num_iteration = 100;
   Int32 frameNr = 0;
-  Real overRelaxation = 1.9;
-  Real obstacleX = 0.0;
-  Real obstacleY = 0.0;
-  Real obstacleRadius = 0.15;
-  bool paused = false;
+  Real m_over_relaxation = 1.9;
+  Real m_obstacle_x = 0.0;
+  Real m_obstacle_y = 0.0;
+  Real m_obstacle_radius = 0.15;
   Int32 sceneNr = 0;
-  bool showObstacle = false;
-  bool showStreamlines = false;
-  bool showVelocities = false;
-  bool showPressure = false;
-  bool showSmoke = true;
-  Fluid* fluid = nullptr;
+  std::unique_ptr<Fluid> m_fluid;
 
  public:
 
@@ -162,23 +162,35 @@ class Fluid
 
   Fluid(Real density_, Int32 numX_, Int32 numY_, Real h_, Scene* scene_)
   {
-    density = density_;
-    numX = numX_ + 2;
-    numY = numY_ + 2;
-    h = h_;
+    m_density = density_;
+    m_nb_cell_x = numX_ + 2;
+    m_nb_cell_y = numY_ + 2;
+    m_height = h_;
     scene = scene_;
 
-    numCells = numX * numY;
-    Utils::_allocateAndFillZero(&u, numCells);
-    Utils::_allocateAndFillZero(&v, numCells);
-    Utils::_allocateAndFillZero(&newU, numCells);
-    Utils::_allocateAndFillZero(&newV, numCells);
-    Utils::_allocateAndFillZero(&p, numCells);
-    Utils::_allocateAndFillZero(&s, numCells);
-    Utils::_allocateAndFillZero(&m, numCells);
-    Utils::_allocateAndFillZero(&newM, numCells);
+    m_nb_cell = m_nb_cell_x * m_nb_cell_y;
+    Utils::_allocateAndFillZero(&m_velocity_u, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_velocity_v, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_new_velocity_u, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_new_velocity_v, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_p, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_is_fluid, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_m, m_nb_cell);
+    Utils::_allocateAndFillZero(&m_new_m, m_nb_cell);
   }
 
+  ~Fluid()
+  {
+    Utils::_destroy(&m_velocity_u);
+    Utils::_destroy(&m_velocity_v);
+    Utils::_destroy(&m_new_velocity_u);
+    Utils::_destroy(&m_new_velocity_v);
+    Utils::_destroy(&m_p);
+    Utils::_destroy(&m_is_fluid);
+    Utils::_destroy(&m_m);
+    Utils::_destroy(&m_new_m);
+
+  }
   void integrate(Real dt, Real gravity);
   void solveIncompressibility(Int32 numIters, Real dt);
   void extrapolate();
@@ -186,37 +198,37 @@ class Fluid
 
   Real avgU(Int32 i, Int32 j)
   {
-    Int32 n = numY;
-    Real lu = (u[i * n + j - 1] + u[i * n + j] + u[(i + 1) * n + j - 1] + u[(i + 1) * n + j]) * 0.25;
+    Int32 n = m_nb_cell_y;
+    Real lu = (m_velocity_u[i * n + j - 1] + m_velocity_u[i * n + j] + m_velocity_u[(i + 1) * n + j - 1] + m_velocity_u[(i + 1) * n + j]) * 0.25;
     return lu;
   }
 
   Real avgV(Int32 i, Int32 j)
   {
-    Int32 n = numY;
-    Real lv = (v[(i - 1) * n + j] + v[i * n + j] + v[(i - 1) * n + j + 1] + v[i * n + j + 1]) * 0.25;
+    Int32 n = m_nb_cell_y;
+    Real lv = (m_velocity_v[(i - 1) * n + j] + m_velocity_v[i * n + j] + m_velocity_v[(i - 1) * n + j + 1] + m_velocity_v[i * n + j + 1]) * 0.25;
     return lv;
   }
 
-  void advectVel(Real dt);
+  void advectVelocity(Real dt);
   void advectSmoke(Real dt);
-  void simulate(Real dt, Real gravity, Int32 numIters);
+  void simulate(Real dt, Int32 numIters);
 
  public:
 
-  Int32 numX = 0;
-  Int32 numY = 0;
-  Int32 numCells = 0;
-  Real density = 0.0;
-  Real h = 0.0;
-  RealArrayType u;
-  RealArrayType v;
-  RealArrayType newU;
-  RealArrayType newV;
-  RealArrayType p;
-  RealArrayType s;
-  RealArrayType m;
-  RealArrayType newM;
+  Int32 m_nb_cell_x = 0;
+  Int32 m_nb_cell_y = 0;
+  Int32 m_nb_cell = 0;
+  Real m_density = 0.0;
+  Real m_height = 0.0;
+  RealArrayType m_velocity_u;
+  RealArrayType m_velocity_v;
+  RealArrayType m_new_velocity_u;
+  RealArrayType m_new_velocity_v;
+  RealArrayType m_p;
+  RealArrayType m_is_fluid;
+  RealArrayType m_m;
+  RealArrayType m_new_m;
   Scene* scene = nullptr;
 };
 
@@ -224,51 +236,36 @@ class Fluid
 /*---------------------------------------------------------------------------*/
 
 void Fluid::
-integrate(Real dt, Real gravity)
-{
-  Int32 n = numY;
-  for (Int32 i = 1; i < numX; i++) {
-    for (Int32 j = 1; j < numY - 1; j++) {
-      if (s[i * n + j] != 0.0 && s[i * n + j - 1] != 0.0)
-        v[i * n + j] += gravity * dt;
-    }
-  }
-}
-
-/*---------------------------------------------------------------------------*/
-/*---------------------------------------------------------------------------*/
-
-void Fluid::
 solveIncompressibility(Int32 numIters, Real dt)
 {
-  Int32 n = numY;
-  Real cp = density * h / dt;
+  const Int32 n = m_nb_cell_y;
+  Real cp = m_density * m_height / dt;
 
   for (Int32 iter = 0; iter < numIters; iter++) {
 
-    for (Int32 i = 1; i < numX - 1; i++) {
-      for (Int32 j = 1; j < numY - 1; j++) {
+    for (Int32 i = 1; i < m_nb_cell_x - 1; i++) {
+      for (Int32 j = 1; j < m_nb_cell_y - 1; j++) {
 
-        if (s[i * n + j] == 0.0)
+        if (m_is_fluid[i * n + j] == 0.0)
           continue;
 
-        Real sx0 = s[(i - 1) * n + j];
-        Real sx1 = s[(i + 1) * n + j];
-        Real sy0 = s[i * n + j - 1];
-        Real sy1 = s[i * n + j + 1];
+        Real sx0 = m_is_fluid[(i - 1) * n + j];
+        Real sx1 = m_is_fluid[(i + 1) * n + j];
+        Real sy0 = m_is_fluid[i * n + j - 1];
+        Real sy1 = m_is_fluid[i * n + j + 1];
         Real ls = sx0 + sx1 + sy0 + sy1;
 
         if (ls == 0.0)
           continue;
 
-        Real div = u[(i + 1) * n + j] - u[i * n + j] + v[i * n + j + 1] - v[i * n + j];
+        Real div = m_velocity_u[(i + 1) * n + j] - m_velocity_u[i * n + j] + m_velocity_v[i * n + j + 1] - m_velocity_v[i * n + j];
         Real lp = -div / ls;
-        lp *= scene->overRelaxation;
-        p[i * n + j] += cp * lp;
-        u[i * n + j] -= sx0 * lp;
-        u[(i + 1) * n + j] += sx1 * lp;
-        v[i * n + j] -= sy0 * lp;
-        v[i * n + j + 1] += sy1 * lp;
+        lp *= scene->m_over_relaxation;
+        m_p[i * n + j] += cp * lp;
+        m_velocity_u[i * n + j] -= sx0 * lp;
+        m_velocity_u[(i + 1) * n + j] += sx1 * lp;
+        m_velocity_v[i * n + j] -= sy0 * lp;
+        m_velocity_v[i * n + j + 1] += sy1 * lp;
       }
     }
   }
@@ -280,14 +277,14 @@ solveIncompressibility(Int32 numIters, Real dt)
 void Fluid::
 extrapolate()
 {
-  Int32 n = numY;
-  for (Int32 i = 0; i < numX; i++) {
-    u[i * n + 0] = u[i * n + 1];
-    u[i * n + numY - 1] = u[i * n + numY - 2];
+  const Int32 n = m_nb_cell_y;
+  for (Int32 i = 0; i < m_nb_cell_x; i++) {
+    m_velocity_u[i * n + 0] = m_velocity_u[i * n + 1];
+    m_velocity_u[i * n + m_nb_cell_y - 1] = m_velocity_u[i * n + m_nb_cell_y - 2];
   }
-  for (Int32 j = 0; j < numY; j++) {
-    v[0 * n + j] = v[1 * n + j];
-    v[(numX - 1) * n + j] = v[(numX - 2) * n + j];
+  for (Int32 j = 0; j < m_nb_cell_y; j++) {
+    m_velocity_v[0 * n + j] = m_velocity_v[1 * n + j];
+    m_velocity_v[(m_nb_cell_x - 1) * n + j] = m_velocity_v[(m_nb_cell_x - 2) * n + j];
   }
 }
 
@@ -297,12 +294,12 @@ extrapolate()
 Real Fluid::
 sampleField(Real x, Real y, RealArrayType& f, Int32 field)
 {
-  Int32 n = numY;
-  Real h1 = 1.0 / h;
-  Real h2 = 0.5 * h;
+  Int32 n = m_nb_cell_y;
+  Real h1 = 1.0 / m_height;
+  Real h2 = 0.5 * m_height;
 
-  x = std::max(std::min(x, numX * h), h);
-  y = std::max(std::min(y, numY * h), h);
+  x = std::max(std::min(x, m_nb_cell_x * m_height), m_height);
+  y = std::max(std::min(y, m_nb_cell_y * m_height), m_height);
 
   Real dx = 0.0;
   Real dy = 0.0;
@@ -320,13 +317,13 @@ sampleField(Real x, Real y, RealArrayType& f, Int32 field)
     break;
   }
 
-  Int32 x0 = std::min(Utils::_doInt32Floor((x - dx) * h1), numX - 1);
-  Real tx = ((x - dx) - x0 * h) * h1;
-  Int32 x1 = std::min(x0 + 1, numX - 1);
+  Int32 x0 = std::min(Utils::_doInt32Floor((x - dx) * h1), m_nb_cell_x - 1);
+  Real tx = ((x - dx) - x0 * m_height) * h1;
+  Int32 x1 = std::min(x0 + 1, m_nb_cell_x - 1);
 
-  Int32 y0 = std::min(Utils::_doInt32Floor((y - dy) * h1), numY - 1);
-  Real ty = ((y - dy) - y0 * h) * h1;
-  Int32 y1 = std::min(y0 + 1, numY - 1);
+  Int32 y0 = std::min(Utils::_doInt32Floor((y - dy) * h1), m_nb_cell_y - 1);
+  Real ty = ((y - dy) - y0 * m_height) * h1;
+  Int32 y1 = std::min(y0 + 1, m_nb_cell_y - 1);
 
   Real sx = 1.0 - tx;
   Real sy = 1.0 - ty;
@@ -343,46 +340,44 @@ sampleField(Real x, Real y, RealArrayType& f, Int32 field)
 /*---------------------------------------------------------------------------*/
 
 void Fluid::
-advectVel(Real dt)
+advectVelocity(Real dt)
 {
-  Utils::_doCopy(newU, u, numCells);
-  Utils::_doCopy(newV, v, numCells);
+  Utils::_doCopy(m_new_velocity_u, m_velocity_u, m_nb_cell);
+  Utils::_doCopy(m_new_velocity_v, m_velocity_v, m_nb_cell);
 
-  Int32 n = numY;
-  Real h2 = 0.5 * h;
+  Int32 n = m_nb_cell_y;
+  Real h2 = 0.5 * m_height;
 
-  for (Int32 i = 1; i < numX; i++) {
-    for (Int32 j = 1; j < numY; j++) {
-
-      cnt++;
+  for (Int32 i = 1; i < m_nb_cell_x; i++) {
+    for (Int32 j = 1; j < m_nb_cell_y; j++) {
 
       // u component
-      if (s[i * n + j] != 0.0 && s[(i - 1) * n + j] != 0.0 && j < numY - 1) {
-        Real x = i * h;
-        Real y = j * h + h2;
-        Real lu = u[i * n + j];
+      if (m_is_fluid[i * n + j] != 0.0 && m_is_fluid[(i - 1) * n + j] != 0.0 && j < m_nb_cell_y - 1) {
+        Real x = i * m_height;
+        Real y = j * m_height + h2;
+        Real lu = m_velocity_u[i * n + j];
         Real lv = avgV(i, j);
         x = x - dt * lu;
         y = y - dt * lv;
-        Real new_u = sampleField(x, y, u, U_FIELD);
-        newU[i * n + j] = new_u;
+        Real new_u = sampleField(x, y, m_velocity_u, U_FIELD);
+        m_new_velocity_u[i * n + j] = new_u;
       }
       // v component
-      if (s[i * n + j] != 0.0 && s[i * n + j - 1] != 0.0 && i < numX - 1) {
-        Real x = i * h + h2;
-        Real y = j * h;
+      if (m_is_fluid[i * n + j] != 0.0 && m_is_fluid[i * n + j - 1] != 0.0 && i < m_nb_cell_x - 1) {
+        Real x = i * m_height + h2;
+        Real y = j * m_height;
         Real lu = avgU(i, j);
-        Real lv = v[i * n + j];
+        Real lv = m_velocity_v[i * n + j];
         x = x - dt * lu;
         y = y - dt * lv;
-        Real new_v = sampleField(x, y, v, V_FIELD);
-        newV[i * n + j] = new_v;
+        Real new_v = sampleField(x, y, m_velocity_v, V_FIELD);
+        m_new_velocity_v[i * n + j] = new_v;
       }
     }
   }
 
-  Utils::_doCopy(u, newU, numCells);
-  Utils::_doCopy(v, newV, numCells);
+  Utils::_doCopy(m_velocity_u, m_new_velocity_u, m_nb_cell);
+  Utils::_doCopy(m_velocity_v, m_new_velocity_v, m_nb_cell);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -391,40 +386,38 @@ advectVel(Real dt)
 void Fluid::
 advectSmoke(Real dt)
 {
-  Utils::_doCopy(newM, m, numCells);
+  Utils::_doCopy(m_new_m, m_m, m_nb_cell);
 
-  Int32 n = numY;
-  Real h2 = 0.5 * h;
+  Int32 n = m_nb_cell_y;
+  Real h2 = 0.5 * m_height;
 
-  for (Int32 i = 1; i < numX - 1; i++) {
-    for (Int32 j = 1; j < numY - 1; j++) {
+  for (Int32 i = 1; i < m_nb_cell_x - 1; i++) {
+    for (Int32 j = 1; j < m_nb_cell_y - 1; j++) {
 
-      if (s[i * n + j] != 0.0) {
-        Real lu = (u[i * n + j] + u[(i + 1) * n + j]) * 0.5;
-        Real lv = (v[i * n + j] + v[i * n + j + 1]) * 0.5;
-        Real x = i * h + h2 - dt * lu;
-        Real y = j * h + h2 - dt * lv;
+      if (m_is_fluid[i * n + j] != 0.0) {
+        Real lu = (m_velocity_u[i * n + j] + m_velocity_u[(i + 1) * n + j]) * 0.5;
+        Real lv = (m_velocity_v[i * n + j] + m_velocity_v[i * n + j + 1]) * 0.5;
+        Real x = i * m_height + h2 - dt * lu;
+        Real y = j * m_height + h2 - dt * lv;
 
-        newM[i * n + j] = sampleField(x, y, m, S_FIELD);
+        m_new_m[i * n + j] = sampleField(x, y, m_m, S_FIELD);
       }
     }
   }
-  Utils::_doCopy(m, newM, numCells);
+  Utils::_doCopy(m_m, m_new_m, m_nb_cell);
 }
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
 void Fluid::
-simulate(Real dt, Real gravity, Int32 numIters)
+simulate(Real dt, Int32 numIters)
 {
-  integrate(dt, gravity);
-
-  Utils::_doFillZero(p, numCells);
+  Utils::_doFillZero(m_p, m_nb_cell);
   solveIncompressibility(numIters, dt);
 
   extrapolate();
-  advectVel(dt);
+  advectVelocity(dt);
   advectSmoke(dt);
 }
 
@@ -434,17 +427,15 @@ simulate(Real dt, Real gravity, Int32 numIters)
 void Scene::
 setupScene(Int32 resolution)
 {
-  obstacleRadius = 0.15;
-  overRelaxation = 1.9;
+  m_obstacle_radius = 0.15;
+  m_over_relaxation = 1.9;
 
-  dt = 1.0 / 60.0;
-  numIters = 40;
-
-  Int32 res = 100;
+  m_dt = 1.0 / 60.0;
+  m_num_iteration = 40;
 
   Real domainHeight = 1.0;
   Real domainWidth = domainHeight / simHeight * simWidth;
-  Real h = domainHeight / res;
+  Real h = domainHeight / resolution;
 
   Int32 numX = Utils::_doInt32Floor(domainWidth / h);
   Int32 numY = Utils::_doInt32Floor(domainHeight / h);
@@ -454,51 +445,46 @@ setupScene(Int32 resolution)
 
   std::cout << "NumX=" << numX << " NumY=" << numY << " h=" << h << "\n";
 
-  Fluid* f_ptr = new Fluid(density, numX, numY, h, this);
-  fluid = f_ptr;
-  Fluid& f = *f_ptr;
+  m_fluid = std::make_unique<Fluid>(density, numX, numY, h, this);
+  Fluid& f = *m_fluid;
 
-  Int32 n = f.numY;
+  const Int32 n = f.m_nb_cell_y;
 
   {
     // vortex shedding
     Real inVel = 2.0;
-    for (Int32 i = 0; i < f.numX; i++) {
-      for (Int32 j = 0; j < f.numY; j++) {
+    for (Int32 i = 0; i < f.m_nb_cell_x; i++) {
+      for (Int32 j = 0; j < f.m_nb_cell_y; j++) {
         Real s = 1.0; // fluid
-        if (i == 0 || j == 0 || j == f.numY - 1)
+        if (i == 0 || j == 0 || j == f.m_nb_cell_y - 1)
           s = 0.0; // solid
-        f.s[i * n + j] = s;
+        f.m_is_fluid[i * n + j] = s;
 
         if (i == 1) {
-          f.u[i * n + j] = inVel;
+          f.m_velocity_u[i * n + j] = inVel;
         }
       }
     }
 
-    Real pipeH = 0.1 * f.numY;
-    Int32 minJ = Utils::_doInt32Floor(0.5 * f.numY - 0.5 * pipeH);
-    Int32 maxJ = Utils::_doInt32Floor(0.5 * f.numY + 0.5 * pipeH);
+    Real pipeH = 0.1 * f.m_nb_cell_y;
+    Int32 minJ = Utils::_doInt32Floor(0.5 * f.m_nb_cell_y - 0.5 * pipeH);
+    Int32 maxJ = Utils::_doInt32Floor(0.5 * f.m_nb_cell_y + 0.5 * pipeH);
 
     for (Int32 j = minJ; j < maxJ; j++)
-      f.m[j] = 0.0;
+      f.m_m[j] = 0.0;
 
     setObstacle(0.4, 0.5, true);
 
-    gravity = 0.0;
-    showPressure = false;
-    showSmoke = true;
-    showStreamlines = false;
-    showVelocities = false;
-
     {
       // Vortex shedding
-      dt = 1.0 / 120.0;
-      numIters = 100;
-      showPressure = true;
+      m_dt = 1.0 / 120.0;
+      m_num_iteration = 100;
     }
   }
 }
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 void Scene::
 setObstacle(Real x, Real y, bool reset)
@@ -507,37 +493,38 @@ setObstacle(Real x, Real y, bool reset)
   Real vy = 0.0;
 
   if (!reset) {
-    vx = (x - obstacleX) / dt;
-    vy = (y - obstacleY) / dt;
+    vx = (x - m_obstacle_x) / m_dt;
+    vy = (y - m_obstacle_y) / m_dt;
   }
 
-  obstacleX = x;
-  obstacleY = y;
-  Real r = obstacleRadius;
-  Fluid& f = *fluid;
-  Int32 n = f.numY;
+  m_obstacle_x = x;
+  m_obstacle_y = y;
+  Real r = m_obstacle_radius;
+  Fluid& f = *m_fluid;
+  Int32 n = f.m_nb_cell_y;
 
-  for (Int32 i = 1; i < f.numX - 2; i++) {
-    for (Int32 j = 1; j < f.numY - 2; j++) {
+  for (Int32 i = 1; i < f.m_nb_cell_x - 2; i++) {
+    for (Int32 j = 1; j < f.m_nb_cell_y - 2; j++) {
 
-      f.s[i * n + j] = 1.0;
+      f.m_is_fluid[i * n + j] = 1.0;
 
-      Real dx = (i + 0.5) * f.h - x;
-      Real dy = (j + 0.5) * f.h - y;
+      Real dx = (i + 0.5) * f.m_height - x;
+      Real dy = (j + 0.5) * f.m_height - y;
 
       if (dx * dx + dy * dy < r * r) {
-        f.s[i * n + j] = 0.0;
-        f.m[i * n + j] = 1.0;
-        f.u[i * n + j] = vx;
-        f.u[(i + 1) * n + j] = vx;
-        f.v[i * n + j] = vy;
-        f.v[i * n + j + 1] = vy;
+        f.m_is_fluid[i * n + j] = 0.0;
+        f.m_m[i * n + j] = 1.0;
+        f.m_velocity_u[i * n + j] = vx;
+        f.m_velocity_u[(i + 1) * n + j] = vx;
+        f.m_velocity_v[i * n + j] = vy;
+        f.m_velocity_v[i * n + j + 1] = vy;
       }
     }
   }
-
-  showObstacle = true;
 }
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 void executeCode(ISubDomain* sd)
 {
@@ -547,22 +534,20 @@ void executeCode(ISubDomain* sd)
   ITraceMng* tr = sd->traceMng();
 
   // Number of cells by dimension
-  Int32 resolution = 100;
+  const Int32 resolution = 100;
   // Number of time step
-  Int32 nb_time_step = 100;
+  const Int32 nb_time_step = 100;
 
   Scene scene;
   scene.setupScene(resolution);
-  Real current_time = 0.0;
   Real begin_x = Platform::getRealTime();
   for (Int32 i = 0; i < 100; ++i) {
-    Fluid& f = *scene.fluid;
+    Fluid& f = *scene.m_fluid;
     if (i < 10 || ((i % 5) == 0))
-      tr->info() << "DoSimulate nx=" << f.numX << " ny=" << f.numY << " dt=" << scene.dt
-                 << " gravity=" << scene.gravity << " frame=" << scene.frameNr;
-    f.simulate(scene.dt, scene.gravity, scene.numIters);
+      tr->info() << "DoSimulate nx=" << f.m_nb_cell_x << " ny=" << f.m_nb_cell_y << " dt=" << scene.m_dt
+                 << " frame=" << scene.frameNr;
+    f.simulate(scene.m_dt, scene.m_num_iteration);
     ++scene.frameNr;
-    current_time += scene.dt;
   }
   Real end_x = Platform::getRealTime();
   tr->info() << "ComputeTime=" << (end_x - begin_x);
@@ -571,12 +556,12 @@ void executeCode(ISubDomain* sd)
   // Only valid if resolution == 100 and nb_time_step == 100
   if (nb_time_step == 100 && resolution == 100) {
     Real velocity_sum = 0.0;
-    Fluid& f = *scene.fluid;
-    Int32 n = f.numY;
-    for (Int32 i = 1; i < f.numX - 2; i++) {
-      for (Int32 j = 1; j < f.numY - 2; j++) {
-        Real u = f.u[i * n + j];
-        Real v = f.v[i * n + j];
+    Fluid& f = *scene.m_fluid;
+    Int32 n = f.m_nb_cell_y;
+    for (Int32 i = 1; i < f.m_nb_cell_x - 2; i++) {
+      for (Int32 j = 1; j < f.m_nb_cell_y - 2; j++) {
+        Real u = f.m_velocity_u[i * n + j];
+        Real v = f.m_velocity_v[i * n + j];
         Real norm = std::sqrt(u * u + v * v);
         velocity_sum += norm;
       }
