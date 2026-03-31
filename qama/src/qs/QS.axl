@@ -66,6 +66,7 @@
         item-kind="cell"
         dim="0"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
     <!-- Grandeurs -->
@@ -76,6 +77,7 @@
         item-kind="cell"
         dim="0"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
     <variable
@@ -85,6 +87,7 @@
         item-kind="face"
         dim="0"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
     <variable
@@ -94,6 +97,7 @@
         item-kind="face"
         dim="0"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
     <variable
@@ -103,6 +107,7 @@
         item-kind="cell"
         dim="0"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
 
@@ -113,6 +118,7 @@
         item-kind="cell"
         dim="0"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
 
@@ -123,6 +129,7 @@
         item-kind="cell"
         dim="1"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
     <variable
@@ -132,6 +139,7 @@
         item-kind="none"
         dim="1"
         dump="true"
+        in-shmem="true"
         need-sync="true" />
 
     <variable 
@@ -140,6 +148,7 @@
         data-type="real"
         item-kind="cell"
         dim="0"
+        in-shmem="true"
         need-sync="true" />
 
     <variable 
@@ -148,6 +157,7 @@
         data-type="int32"
         item-kind="face"
         dim="0"
+        in-shmem="true"
         need-sync="true" />
 
     <variable 

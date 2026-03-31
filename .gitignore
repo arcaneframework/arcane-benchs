@@ -54,6 +54,7 @@ debug*
 Release*
 Debug*
 
+.idea
 .vscode
 .vs
 /build
