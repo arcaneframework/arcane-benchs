@@ -469,7 +469,7 @@ tracking()
   // Coordonnées des nodes (en cm).
   VariableNodeReal3& node_coord = nodesCoordinates();
 
-  pinfo(3) << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processing_view.size() << " particles.";
+  info() << "P" << mesh()->parallelMng()->commRank() << " - Tracking of " << processing_view.size() << " particles.";
 
   IParticleExchanger* pe = options()->particleExchanger();
   //IAsyncParticleExchanger* ae = pe->asyncParticleExchanger();
@@ -481,8 +481,8 @@ tracking()
   Integer iter = 1;
 
   while (!done) {
-    arcaneParallelForeach(processing_view, [&](ParticleVectorView particles) {
-      ENUMERATE_PARTICLE (iparticle, particles) {
+    arcaneParallelForeach(processing_view, [&](const ParticleVectorView& particles) {
+      ENUMERATE_ (Particle, iparticle, particles) {
         Particle particle = (*iparticle);
         cycleTrackingGuts(particle, node_coord);
 
@@ -526,7 +526,7 @@ tracking()
     // pinfo(5) << "  m_local_ids_processed : " << m_census_a << " m_exited_particles_local_ids : " << m_exited_particles_local_ids.size();
     // pinfo(5) << "========";
 
-    // On retire les particules qui sont sortie du maillage.
+    // On retire les particules sorties du maillage.
     m_particle_family->toParticleFamily()->removeParticles(m_exited_particles_local_ids);
     // endUpdate fait par collisionEventSuite;
     m_exited_particles_local_ids.clear();
@@ -539,7 +539,9 @@ tracking()
       m_outgoing += m_outgoing_particles_local_ids.size();
 
       // On essaye de recevoir tant que quelqu'un bosse encore.
-      do {
+      // Note : Le do while empêche le fonctionnement de QAMA avec des
+      // variables particules en mémoire partagée.
+      //do {
         // Echange particles.
         pe->exchangeItems(m_outgoing_particles_local_ids.size(), m_outgoing_particles_local_ids, m_outgoing_particles_rank_to, &incoming_particles_local_ids, 0);
 
@@ -555,13 +557,13 @@ tracking()
 
         m_outgoing_particles_rank_to.clear();
         m_outgoing_particles_local_ids.clear();
-      } while (incoming_particles_local_ids.size() == 0 && m_extra_particles_local_ids.size() == 0 && !done);
+      //} while (incoming_particles_local_ids.size() == 0 && m_extra_particles_local_ids.size() == 0 && !done);
 
       incoming_particles_view = m_particle_family->view(incoming_particles_local_ids);
       m_incoming += incoming_particles_local_ids.size();
     }
 
-    else if (m_extra_particles_local_ids.size() == 0) {
+    else if (m_extra_particles_local_ids.empty()) {
       done = true;
     }
 
