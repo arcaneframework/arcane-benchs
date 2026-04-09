@@ -63,8 +63,13 @@ cycleTracking()
     computeCrossSection();
     #endif
     tracking();
-    
-    if(m_absorb_a != 0 || m_escape != 0){
+
+    // Note : Avec la mémoire partagée, le compactItems() devient collectif.
+    Int64 absorb_reduced = parallelMng()->reduce(MessagePassing::ReduceSum, m_absorb_a);
+    Int64 escape_reduced = parallelMng()->reduce(MessagePassing::ReduceSum, m_escape);
+
+    // if(m_absorb_a != 0 || m_escape != 0){
+    if(absorb_reduced != 0 || escape_reduced != 0){
       m_particle_family->compactItems(false);
     }
   }

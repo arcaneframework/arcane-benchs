@@ -78,7 +78,10 @@ cycleSampling()
              << " - RouletteLowWeightParticles: " << m_rr - tmpLog
              << " particle(s) killed.";
 
-    if(m_rr != 0){
+    // Note : Avec la mémoire partagée, le compactItems() devient collectif.
+    Int64 rr_reduced = parallelMng()->reduce(MessagePassing::ReduceSum, m_rr);
+    // if(m_rr != 0){
+    if(rr_reduced != 0){
       m_particle_family->compactItems(false);
     }
   }
